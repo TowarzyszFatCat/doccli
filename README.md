@@ -34,3 +34,9 @@ sh doccli/install.sh
 ```bash
 sudo rm -rf /usr/local/bin/doccli_src && sudo rm -rf /usr/local/bin/doccli
 ```
+
+## Running
+##### If you don't now, it's simple, just type this :D
+```bash
+doccli
+```
