@@ -105,6 +105,6 @@ if __name__ == "__main__":
 
     clear()
 
-    print("To stop press <CTRL + C>")
+    print("Press <CTRL + C> to exit")
 
     os.system(f'mpv "{choosed_player}"')
