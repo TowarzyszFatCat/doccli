@@ -1,2 +1,2 @@
 !bin/bash
-.venv/bin/python3 main.py
+doccli_src/.venv/bin/python3 doccli_src/doccli.py
