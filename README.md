@@ -2,7 +2,9 @@
 A cli to watch anime from <a href="https://docchi.pl/">docchi</a> with polish subtitles.
 </h3>
 
-[demo.webm](demo.webm)
+[demo](https://github.com/TowarzyszFatCat/doccli/assets/68988781/89a5f65c-8aa6-46f0-9e53-887e6a9dee3a)
+
+
 
 
 ## Dependencies
