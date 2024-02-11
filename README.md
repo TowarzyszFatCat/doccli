@@ -4,7 +4,10 @@ A cli to watch anime from <a href="https://docchi.pl/">docchi</a> with polish su
 
 [demo](https://github.com/TowarzyszFatCat/doccli/assets/68988781/15160ff1-c184-4ff6-bf04-8a4ea5fa0370)
 
-
+## Future plans:
+- mega.nz support
+- choose player between mpv and vlc
+- integration with anilist
 
 
 ## Dependencies
