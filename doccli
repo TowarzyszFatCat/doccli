@@ -1,2 +1,2 @@
-!bin/bash
-/usr/bin/local/doccli_src/venv/bin/python /usr/bin/local/doccli_src/doccli.py
+#!bin/bash
+/usr/local/bin/doccli_src/venv/bin/python /usr/local/bin/doccli_src/doccli.py
