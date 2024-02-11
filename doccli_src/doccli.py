@@ -1,3 +1,6 @@
+# @TowarzyszFatCat
+# v1.0
+
 import requests as rq
 import os
 
@@ -85,6 +88,7 @@ def clear():
     os.system('clear')
 
 
+# It looks terrible ik!
 if __name__ == "__main__":
     clear()
 
