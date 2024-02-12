@@ -1,5 +1,5 @@
 # @TowarzyszFatCat
-# v1.0
+# v1.1
 
 import requests as rq
 import os
