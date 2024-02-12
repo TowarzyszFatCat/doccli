@@ -9,7 +9,8 @@ A cli to watch anime from <a href="https://docchi.pl/">docchi</a> with polish su
 ---
 ### Features:
 - Discord rich presence - let others know what you are watching
-  ![image](https://github.com/TowarzyszFatCat/doccli/assets/68988781/f4ebb46e-8b3b-4580-9ab6-d745928a916d)
+  ![image](https://github.com/TowarzyszFatCat/doccli/assets/68988781/d4644fc9-3f9f-4181-99d3-3c03d442f74d)
+
 
 ---
 
