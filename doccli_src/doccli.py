@@ -1,13 +1,21 @@
 # @TowarzyszFatCat
-# v1.1
+# v1.2
 
 import requests as rq
 import os
 import time
-from discordrp import Presence
 import subprocess
+from pypresence import Presence
 
 client_id = '1206583480771936318'
+RPC = Presence(client_id)
+try:
+    print("Connecting with DRP RPC... If it takes too long to connect, press <CTRL C>")
+    RPC.connect()
+    RPC.update(state="Using doccli", details="Searching...", large_image="doccli_icon")
+except:
+    print("Failed to connect with DRP RPC!")
+
 
 # Get list of all aviable players.
 def get_players_list(slug, number):
@@ -92,40 +100,26 @@ def choose_player(players):
 def clear():
     os.system('clear')
 
-def discord(state, details):
-    with Presence(client_id) as presence:
-        print("Connected")
-        presence.set(
+
+def update_discord(state, details, time):
+    RPC.update(
+        state=f"{state}",
+        details=f"{details}",
+        large_image="doccli_icon",
+        large_text="A cli to watch anime from docchi.pl",
+        start=int(time),
+        buttons=[
             {
-                "state": f"{state}",
-                "details": f"{details}",
-                "assets": {
-                    "large_image": "doccli_icon",
-                    "large_text": "A cli to watch anime from docchi.pl :D",
-                },
-                "timestamps": {"start": int(time.time())},
-                "buttons": [
-                {
-                    "label": "Download doccli",
-                    "url": "https://github.com/TowarzyszFatCat/doccli",
-                },
-                {
-                    "label": "Visit docchi.pl",
-                    "url": "https://docchi.pl/",
-                },
-            ],
+                "label": "Download doccli",
+                "url": "https://github.com/TowarzyszFatCat/doccli"
+            },
+            {
+                     "label": "Visit docchi.pl",
+                     "url": "https://docchi.pl/",
             }
+        ]
         )
-        print("Presence updated")
-
-        while True:
-            time.sleep(15)
-
-
-
-def play_ep(choosed_player):
-    subprocess.Popen(['mpv', choosed_player], shell=False)
-
+    
 
 # It looks terrible ik!
 if __name__ == "__main__":
@@ -145,10 +139,20 @@ if __name__ == "__main__":
 
         clear()
 
-        print("Press <CTRL + C> two times to exit!")
+        print("Press <CTRL + C> to exit!")
 
-        play_ep(choosed_player)
+        # Start mpv in separate process.
+        process = subprocess.Popen(['mpv', choosed_player], shell=False, stdout=subprocess.DEVNULL)
 
-        discord(f"Ep: {ep}",serie[1])
+        # Status will stay while program is running.
+        update_discord(f"Ep: {ep}",serie[1], time.time())
+
+        # Check if mpv is still running, if no exit.
+        while process.poll() is None:
+            time.sleep(5)
+        else:
+            print("Exiting...")
+
+            
     except KeyboardInterrupt:
         print("")
