@@ -7,11 +7,15 @@ A cli to watch anime from <a href="https://docchi.pl/">docchi</a> with polish su
 [demo](https://github.com/TowarzyszFatCat/doccli/assets/68988781/15160ff1-c184-4ff6-bf04-8a4ea5fa0370)
 
 ---
+### Features:
+- Discord rich presence - let others know what you are watching
+  ![image](https://github.com/TowarzyszFatCat/doccli/assets/68988781/f4ebb46e-8b3b-4580-9ab6-d745928a916d)
+
+---
 
 ### Future plans:
 - [] add exceptions
 - [WIP] **windows support**
-- [WIP] discord rich presence
 - [] streaming from mega.nz
 - [] choose player between mpv and vlc
 - [] integration with anilist
