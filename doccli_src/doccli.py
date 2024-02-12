@@ -109,6 +109,10 @@ def discord(state, details):
                     "label": "Download doccli",
                     "url": "https://github.com/TowarzyszFatCat/doccli",
                 },
+                {
+                    "label": "Visit docchi.pl",
+                    "url": "https://docchi.pl/",
+                },
             ],
             }
         )
