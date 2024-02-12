@@ -36,17 +36,9 @@ sudo apt install mpv && sudo apt install git
 ---
 
 ## Install
-#### First clone repo.
 ```bash
-git clone https://github.com/TowarzyszFatCat/doccli.git
+git clone https://github.com/TowarzyszFatCat/doccli.git && sh doccli/install.sh
 ```
-#### Second execute installation script.
-```bash
-sh doccli/install.sh
-```
-> [!WARNING]
-> Do not execute script directly from doccli folder, just use command above after cloning repo!
-
 ---
 
 ## Uninstall
