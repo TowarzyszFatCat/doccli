@@ -104,6 +104,12 @@ def discord(state, details):
                     "large_text": "A cli to watch anime from docchi.pl :D",
                 },
                 "timestamps": {"start": int(time.time())},
+                "buttons": [
+                {
+                    "label": "Download doccli",
+                    "url": "https://github.com/TowarzyszFatCat/doccli",
+                },
+            ],
             }
         )
         print("Presence updated")
