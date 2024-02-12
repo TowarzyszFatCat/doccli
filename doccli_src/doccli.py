@@ -3,6 +3,11 @@
 
 import requests as rq
 import os
+import time
+from discordrp import Presence
+import subprocess
+
+client_id = '1206583480771936318'
 
 # Get list of all aviable players.
 def get_players_list(slug, number):
@@ -87,24 +92,49 @@ def choose_player(players):
 def clear():
     os.system('clear')
 
+def discord(state, details):
+    with Presence(client_id) as presence:
+        print("Connected")
+        presence.set(
+            {
+                "state": f"{state}",
+                "details": f"{details}",
+                "timestamps": {"start": int(time.time())},
+            }
+        )
+        print("Presence updated")
+
+        while True:
+            time.sleep(15)
+
+
+
+def play_ep(choosed_player):
+    subprocess.Popen(['mpv', choosed_player], shell=False)
+
 
 # It looks terrible ik!
 if __name__ == "__main__":
-    clear()
+    try:
+        clear()
 
-    serie = choose_serie()
+        serie = choose_serie()
 
-    clear()
+        clear()
 
-    ep = choose_ep(serie)
+        ep = choose_ep(serie)
 
-    clear()
+        clear()
 
-    players = get_players_list(serie[0], ep)
-    choosed_player = choose_player(players)
+        players = get_players_list(serie[0], ep)
+        choosed_player = choose_player(players)
 
-    clear()
+        clear()
 
-    print("Press <CTRL + C> to exit")
+        print("Press <CTRL + C> two times to exit!")
 
-    os.system(f'mpv "{choosed_player}"')
+        play_ep(choosed_player)
+
+        discord(f"Ep: {ep}",serie[1])
+    except KeyboardInterrupt:
+        print("")
