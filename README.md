@@ -9,12 +9,12 @@ A cli to watch anime from <a href="https://docchi.pl/">docchi</a> with polish su
 ---
 
 ### Future plans:
-- add exceptions
-- windows support
-- discord rich presence
-- streaming from mega.nz
-- choose player between mpv and vlc
-- integration with anilist
+- [] add exceptions
+- [WIP] **windows support**
+- [WIP] discord rich presence
+- [] streaming from mega.nz
+- [] choose player between mpv and vlc
+- [] integration with anilist
 
 ---
 
