@@ -99,6 +99,10 @@ def discord(state, details):
             {
                 "state": f"{state}",
                 "details": f"{details}",
+                "assets": {
+                    "large_image": "doccli_icon",
+                    "large_text": "A cli to watch anime from docchi.pl :D",
+                },
                 "timestamps": {"start": int(time.time())},
             }
         )
