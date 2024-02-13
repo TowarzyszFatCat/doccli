@@ -45,7 +45,7 @@ sudo apt install mpv
 
 ## Install
 ```bash
-wget https://github.com/TowarzyszFatCat/doccli/blob/main/linux/doccli && sudo chmod +x doccli && sudo mv doccli /usr/local/bin
+wget https://github.com/TowarzyszFatCat/doccli/raw/main/linux/doccli && sudo chmod +x doccli && sudo mv doccli /usr/local/bin
 ```
 ---
 
