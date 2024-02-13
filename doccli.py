@@ -8,8 +8,9 @@ from os import name as system_name
 from time import sleep, time
 from subprocess import Popen, DEVNULL
 from pypresence import Presence
+from credintials import client_id
 
-client_id = '1206583480771936318'
+# Client id from discord developer portal
 RPC = Presence(client_id=client_id)
 
 def connect_discord() -> None:
@@ -127,8 +128,11 @@ def update_discord(state : str, details : str, time : time) -> None:
 
 # It looks terrible ik!
 if __name__ == "__main__":
-    connect_discord()
-    update_discord(state="Using doccli", details="Searching...",time=time())
+    try:
+        connect_discord()
+        update_discord(state="Using doccli", details="Searching...",time=time())
+    except:
+        pass
 
     # Always run program
     while True:
@@ -161,9 +165,12 @@ if __name__ == "__main__":
             except FileNotFoundError:
                 print('[ERROR] Make sure you installed MPV!')
                 exit()
-
-            # Status will stay while program is running.
-            update_discord(state=f"Ep: {ep}",details=serie[1], time=time())
+            
+            try:
+                # Status will stay while program is running.
+                update_discord(state=f"Ep: {ep}",details=serie[1], time=time())
+            except:
+                pass
 
             print("[INFO] Press <CTRL + C> to exit all or close MPV to return to search bar!")
 
