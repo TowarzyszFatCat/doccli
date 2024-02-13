@@ -5,14 +5,13 @@ __pycache__/
 
 # C extensions
 *.so
-
+.notes.txt
 # Distribution / packaging
 .Python
 build/
 develop-eggs/
 downloads/
 dist/
-linux/doccli/_internal
 eggs/
 .eggs/
 lib/
