@@ -1,9 +1,9 @@
 # @TowarzyszFatCat
-# v1.3
-# Multisupport update!
+# v1.3.1
+# Rewrite update
 
 from requests import get
-from os import system
+from os import system, getpid
 from os import name as system_name
 from time import sleep, time
 from subprocess import Popen, DEVNULL
@@ -11,12 +11,14 @@ from pypresence import Presence
 
 client_id = '1206583480771936318'
 RPC = Presence(client_id)
-try:
-    print("[INFO] Connecting with DRP RPC... If it takes too long to connect, abort it by pressing <CTRL C>")
-    RPC.connect()
-    RPC.update(state="Using doccli", details="Searching...", large_image="doccli_icon")
-except:
-    print("Failed to connect with DRP RPC!")
+
+def connect_discord():
+    try:
+        print("[INFO] Connecting with DRP RPC... If it takes too long to connect, abort it by pressing <CTRL C>")
+        RPC.connect()
+        RPC.clear(getpid())
+    except:
+        print("[ERROR] Failed to connect with DRP RPC!")
 
 
 # Get list of all aviable players.
@@ -39,8 +41,9 @@ def get_players_list(slug, number):
 
 
 # Search for series.
-def search(name):
-    series_list = get(f'https://api.docchi.pl/v1/series/related/{name}').json()
+def search():
+    search_prompt = str(input("Search: "))
+    series_list = get(f'https://api.docchi.pl/v1/series/related/{search_prompt}').json()
 
     all_aviable_series = []
 
@@ -55,14 +58,17 @@ def search(name):
 
         all_aviable_series.append(serie_data)
 
-    # Return format: [('slug', 'title', 'cover url', 'episodes number'), ... ]
-    return(all_aviable_series)
+    if len(all_aviable_series) == 0:
+        print("[INFO] No results!")
+        return 0
+    else:
+        # Return format: [('slug', 'title', 'cover url', 'episodes number'), ... ]
+        return(all_aviable_series)
 
 
 # Let someone choose serie.
-def choose_serie():
+def choose_serie(all_aviable_series):
 
-    all_aviable_series = search(input("Search: "))
     number = 0
 
     for serie in all_aviable_series:
@@ -125,40 +131,44 @@ def update_discord(state, details, time):
 
 # It looks terrible ik!
 if __name__ == "__main__":
-    try:
-        clear()
+    connect_discord()
+    update_discord("Using doccli", "Searching...",time())
 
-        serie = choose_serie()
-
-        clear()
-
-        ep = choose_ep(serie)
-
-        clear()
-
-        players = get_players_list(serie[0], ep)
-        choosed_player = choose_player(players)
-
-        clear()
-
-        print("[INFO] Press <CTRL + C> to exit!")
-
-        # Start mpv in separate process.
+    # Always run program
+    while True:
         try:
-            process = Popen(['mpv', choosed_player], shell=False, stdout=DEVNULL)
-        except FileNotFoundError:
-            print('[ERROR] Make sure you installed MPV!')
-            exit()
-
-        # Status will stay while program is running.
-        update_discord(f"Ep: {ep}",serie[1], time())
-
-        # Check if mpv is still running, if no exit.
-        while process.poll() is None:
-            sleep(5)
-        else:
-            print("Exiting...")
-
+            clear()
+            print("[INFO] Press <CTRL + C> if you want to exit !")
+            search_prompt = search()
+            if search_prompt == False:
+                continue
             
-    except KeyboardInterrupt:
-        print("")
+            clear()
+            serie = choose_serie(search_prompt)
+            clear()
+            ep = choose_ep(serie)
+            clear()
+            players = get_players_list(serie[0], ep)
+            choosed_player = choose_player(players)
+            clear()
+
+            # Start mpv in separate process.
+            try:
+                process = Popen(['mpv', choosed_player], shell=False, stdout=DEVNULL)
+            except FileNotFoundError:
+                print('[ERROR] Make sure you installed MPV!')
+                exit()
+
+            # Status will stay while program is running.
+            update_discord(f"Ep: {ep}",serie[1], time())
+
+            print("[INFO] Press <CTRL + C> to exit all or close MPV to return to search bar!")
+
+            # Check if mpv is still running, if no exit.
+            while process.poll() is None:
+                sleep(1)
+            else:
+                continue
+
+        except KeyboardInterrupt:
+            exit()
