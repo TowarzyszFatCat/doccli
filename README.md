@@ -107,3 +107,5 @@ sudo rm /usr/local/bin/doccli
 ```bash
 doccli
 ```
+---
+## Inspired by: <a href="https://github.com/pystardust/ani-cli">ani-cli</a>
