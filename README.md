@@ -58,7 +58,7 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a>
 > <a href="https://github.com/ScoopInstaller/Scoop/wiki/Uninstalling-Scoop">Jak odinstalować Scoop</a>.
 
 ---
-# Instalacja Linux (narazie działa, będzie przerabiane):
+# Instalacja Linux (jeszcze nie ma update'a):
 
 ### Wymagagane paczki na linuxie:
 Aby korzystać z doccli na systemie linux musisz zainstalować `mpv`!
