@@ -6,4 +6,9 @@
     "url": "https://github.com/TowarzyszFatCat/doccli/archive/refs/heads/main.zip",
     "extract_dir": "doccli-main",
     "bin": "doccli.py"
+    "depends": {
+        "python": "python"
+        "mpv": "mpv"
+    },
+    "post_install": "python -m pip install requests pypresence"
 }
