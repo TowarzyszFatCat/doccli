@@ -4,6 +4,6 @@
     "homepage": "https://github.com/TowarzyszFatCat/doccli",
     "license": "GPL-3.0 license",
     "url": "https://github.com/TowarzyszFatCat/doccli/archive/refs/heads/main.zip",
-    "extract_dir": "linux",
+    "extract_dir": "doccli-main/linux",
     "bin": "doccli"
 }
