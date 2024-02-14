@@ -1,5 +1,5 @@
 <h1 align="center">
-CLI do oglądania anime z <a href="https://docchi.pl/">docchi</a>
+CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a>
 </h1>
 
 ---
