@@ -1,5 +1,5 @@
 
-<h1 align="center">Disclaimer / Sprostowanie</h1>
+<h1 align="center">Sprostowanie</h1>
 
 <div align="center">
 
