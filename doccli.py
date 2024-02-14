@@ -1,6 +1,6 @@
 # @TowarzyszFatCat
-# v1.3.1
-# Rewrite update
+# v1.3.2
+# Small presence fix
 
 from requests import get
 from os import system, getpid
@@ -129,13 +129,17 @@ def update_discord(state : str, details : str, time : time) -> None:
 if __name__ == "__main__":
     try:
         connect_discord()
-        update_discord(state="Używa doccli!", details="Szuka czegoś do obejrzenia...",time=time())
     except:
         pass
 
     # Always run program
     while True:
         try:
+            try:
+                update_discord(state="Używa doccli!", details="Szuka czegoś do obejrzenia...",time=time())
+            except:
+                pass
+
             clear()
 
             print("[INFO] Naciśnij <CTRL + C> aby wyjść!")
