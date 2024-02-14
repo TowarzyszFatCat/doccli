@@ -7,8 +7,8 @@
     "extract_dir": "doccli-main",
     "bin": "doccli.py",
     "depends": [
-        "python": "python",
-        "mpv": "mpv"
+        "python",
+        "mpv"
     ],
     "post_install": [
         "python -m pip install requests pypresence"
