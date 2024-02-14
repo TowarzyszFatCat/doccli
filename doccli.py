@@ -8,10 +8,9 @@ from os import name as system_name
 from time import sleep, time
 from subprocess import Popen, DEVNULL
 from pypresence import Presence
-from credintials import client_id
 
 # Client id from discord developer portal
-RPC = Presence(client_id=client_id)
+RPC = Presence(client_id='1206583480771936318')
 
 def connect_discord() -> None:
     try:
