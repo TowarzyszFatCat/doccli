@@ -1,5 +1,5 @@
 <h1 align="center">
-A cli to watch anime from <a href="https://docchi.pl/">docchi</a> with polish subtitles.
+CLI do oglądania anime z <a href="https://docchi.pl/">docchi</a>
 </h1>
 
 ---
@@ -7,59 +7,85 @@ A cli to watch anime from <a href="https://docchi.pl/">docchi</a> with polish su
 [demo](https://github.com/TowarzyszFatCat/doccli/assets/68988781/15160ff1-c184-4ff6-bf04-8a4ea5fa0370)
 
 ---
-### Features:
-- Currently working on windows support!
-- Discord rich presence - let others know what you are watching
+### Zaimplementowane funkcje:
+- Discord rich presence
   ![image](https://github.com/TowarzyszFatCat/doccli/assets/68988781/d4644fc9-3f9f-4181-99d3-3c03d442f74d)
 
+---
+
+### Co może zostać dodane w przyszłości:
+- Menu ustawień
+- Oglądanie z mega.nz
+- Integracja z anilist
 
 ---
 
-### Future plans:
-- [] add exceptions
-- [WIP] **windows support**
-- [] streaming from mega.nz
-- [] integration with anilist
+# Instalacja Windows:
+
+### 1) Instalacja Scoop:
+> Aby zainstalować doccli na windowsie niezbędny jest <a href="https://scoop.sh/">Scoop</a> czyli program do instalacji CLI.
+> Możesz to zrobić za pomocą dwóch komend które należy wpisać w <a href="https://www.google.com/search?q=powershell+jak+w%C5%82%C4%85czy%C4%87">POWER SHELLU</a> widocznych w sekcji Quickstart na stronie <a href="https://scoop.sh/">Scoop.sh</a>, które znajdują się także poniżej.
+> ```
+> Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+> ```
+> ```
+> Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
+> ```
+
+> [!WARNING]
+> Jeżeli po wpisaniu pierwszej komendy wyskoczy ci komunikat do akceptacji wpisz `y` i naciśnij `Enter`
+
+### 2) Dodanie repozytoriów do Scoop i instalacja doccli:
+> Za pomocą pobranego wcześniej programu zainstaluj doccli. Wpisując w dowolnym terminalu (np. cmd) te dwie komendy:
+> ```
+> scoop install git && scoop bucket add extras
+> ```
+> ```
+> scoop install https://raw.githubusercontent.com/TowarzyszFatCat/doccli/main/doccli.json
+> ```
+
+### 3) Uruchamianie doccli:
+> Aby uruchomić doccli w dowolnym terminalu (np. cmd) wpisz:
+> ```
+> doccli
+> ```
+
+> [!WARNING]
+> Jeżeli masz jakieś problemy pisz śmiało <a href="https://github.com/TowarzyszFatCat/doccli/issues/new">tutaj</a>.
+
+## Jak odinstalować:
+> Wystarczy że odinstalujesz program Scoop. Instrukcję znajdziesz tutaj:
+> <a href="https://github.com/ScoopInstaller/Scoop/wiki/Uninstalling-Scoop">Jak odinstalować Scoop</a>.
 
 ---
+# Instalacja Linux (narazie działa, będzie przerabiane):
 
-## Dependencies
-If you want to use this cli `mpv` is needed!
+### Wymagagane paczki na linuxie:
+Aby korzystać z doccli na systemie linux musisz zainstalować `mpv`!
 
-##### For windows users:
-    https://mpv.io/installation/
-
-##### Example for arch users:
+Arch:
 ```bash
 sudo pacman -S mpv
 ```
-##### Example for debian/ubuntu users:
+
+Debian/Ubuntu/Pop:
 ```bash
 sudo apt install mpv
 ```
----
 
-## Install
+### Jak zainstalować na linuxie:
 ```bash
-wget https://github.com/TowarzyszFatCat/doccli/raw/main/linux/doccli && sudo chmod +x doccli && sudo mv doccli /usr/local/bin
+wget https://github.com/TowarzyszFatCat/doccli/raw/main/linux/doccli
+sudo chmod +x doccli && sudo mv doccli /usr/local/bin
 ```
----
 
-## Uninstall
+### Jak odinstalować na linuxie:
 ```bash
 sudo rm /usr/local/bin/doccli
 ```
----
 
-## Running
-##### If you don't now, it's simple, just type this :D
+## Jak uruchomić na linuxie:
+#####
 ```bash
 doccli
-```
-
----
-
-## Install from source
-```bash
-WIP
 ```
