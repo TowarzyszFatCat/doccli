@@ -1,0 +1,9 @@
+{
+    "version": "1.3",
+    "description": "A cli to watch anime from docchi with polish subtitles",
+    "homepage": "https://github.com/TowarzyszFatCat/doccli",
+    "license": "GPL-3.0 license",
+    "url": "https://github.com/TowarzyszFatCat/doccli/archive/refs/heads/main.zip",
+    "extract_dir": "doccli-master",
+    "bin": "linux/doccli"
+}
