@@ -5,7 +5,7 @@
     "license": "GPL-3.0 license",
     "url": "https://github.com/TowarzyszFatCat/doccli/archive/refs/heads/main.zip",
     "extract_dir": "doccli-main",
-    "bin": "doccli.py"
+    "bin": "doccli.py",
     "depends": {
         "python": "python"
         "mpv": "mpv"
