@@ -8,7 +8,8 @@
     "bin": "doccli.py",
     "depends": [
         "python",
-        "mpv"
+        "mpv",
+        "yt-dlp"
     ],
     "post_install": [
         "python -m pip install requests pypresence"
