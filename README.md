@@ -56,10 +56,12 @@ https://github.com/TowarzyszFatCat/doccli/assets/68988781/6990807f-10af-4067-b66
 > [!WARNING]
 > Jeżeli masz jakieś problemy pisz śmiało <a href="https://github.com/TowarzyszFatCat/doccli/issues/new">tutaj</a>.
 
+
+
+### Jak zaktualizować:
 > [!TIP]
 > Pamiętaj aby od czasu do czasu sprawdzać czy nie ma jakiejś aktualizacji :D
 
-### Jak zaktualizować:
 > Użyj tej komendy:
 > ```
 > scoop update doccli
