@@ -16,6 +16,7 @@ https://github.com/TowarzyszFatCat/doccli/assets/68988781/6990807f-10af-4067-b66
 ---
 
 ### Co może zostać dodane w przyszłości:
+- Auto aktualizacje
 - Menu ustawień
 - Oglądanie z mega.nz
 - Integracja z anilist
@@ -55,6 +56,8 @@ https://github.com/TowarzyszFatCat/doccli/assets/68988781/6990807f-10af-4067-b66
 > [!WARNING]
 > Jeżeli masz jakieś problemy pisz śmiało <a href="https://github.com/TowarzyszFatCat/doccli/issues/new">tutaj</a>.
 
+> [!TIP]
+> Pamiętaj aby od czasu do czasu sprawdzać czy nie ma jakiejś aktualizacji :D
 
 ### Jak zaktualizować:
 > Użyj tej komendy:
