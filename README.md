@@ -53,7 +53,14 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a>
 > [!WARNING]
 > Jeżeli masz jakieś problemy pisz śmiało <a href="https://github.com/TowarzyszFatCat/doccli/issues/new">tutaj</a>.
 
-## Jak odinstalować:
+
+### Jak zaktualizować:
+> Użyj tej komendy:
+> ```
+> scoop update doccli
+> ```
+
+### Jak odinstalować:
 > Wystarczy że odinstalujesz program Scoop. Instrukcję znajdziesz tutaj:
 > <a href="https://github.com/ScoopInstaller/Scoop/wiki/Uninstalling-Scoop">Jak odinstalować Scoop</a>.
 
