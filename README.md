@@ -4,7 +4,9 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a>
 
 ---
 
-[demo](https://github.com/TowarzyszFatCat/doccli/assets/68988781/15160ff1-c184-4ff6-bf04-8a4ea5fa0370)
+
+https://github.com/TowarzyszFatCat/doccli/assets/68988781/6990807f-10af-4067-b66b-f54daaa12d58
+
 
 ---
 ### Zaimplementowane funkcje:
@@ -14,6 +16,7 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a>
 ---
 
 ### Co może zostać dodane w przyszłości:
+- Auto aktualizacje
 - Menu ustawień
 - Oglądanie z mega.nz
 - Integracja z anilist
@@ -36,10 +39,14 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a>
 > Jeżeli po wpisaniu pierwszej komendy wyskoczy ci komunikat do akceptacji wpisz `y` i naciśnij `Enter`
 
 ### 2) Dodanie repozytoriów do Scoop i instalacja doccli:
-> Za pomocą pobranego wcześniej programu zainstaluj doccli. Wpisując w dowolnym terminalu (np. cmd) te dwie komendy:
+> Za pomocą pobranego wcześniej programu zainstaluj doccli. Wpisując w dowolnym terminalu (np. cmd) te trzy komendy:
 > ```
-> scoop install git && scoop bucket add extras
+> scoop install git
 > ```
+> ```
+> scoop bucket add extras
+> ```
+> ^ Po wpisaniu tej komendy naciśnij enter gdy zobaczysz komunikat `Checking repo...`
 > ```
 > scoop install https://raw.githubusercontent.com/TowarzyszFatCat/doccli/main/doccli.json
 > ```
@@ -54,7 +61,11 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a>
 > Jeżeli masz jakieś problemy pisz śmiało <a href="https://github.com/TowarzyszFatCat/doccli/issues/new">tutaj</a>.
 
 
+
 ### Jak zaktualizować:
+> [!TIP]
+> Pamiętaj aby od czasu do czasu sprawdzać czy nie ma jakiejś aktualizacji :D
+
 > Użyj tej komendy:
 > ```
 > scoop update doccli
