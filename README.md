@@ -4,7 +4,9 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a>
 
 ---
 
-[demo](https://github.com/TowarzyszFatCat/doccli/assets/68988781/15160ff1-c184-4ff6-bf04-8a4ea5fa0370)
+
+https://github.com/TowarzyszFatCat/doccli/assets/68988781/6990807f-10af-4067-b66b-f54daaa12d58
+
 
 ---
 ### Zaimplementowane funkcje:
