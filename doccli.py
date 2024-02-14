@@ -14,11 +14,11 @@ RPC = Presence(client_id='1206583480771936318')
 
 def connect_discord() -> None:
     try:
-        print("[INFO] Connecting with DRP RPC... If it takes too long to connect, abort it by pressing <CTRL C>")
+        print("[INFO] Łączenie z discordem... Jeżeli zajmuje to zbyt długo, możesz anulować łączenie za pomocą <CTRL C>")
         RPC.connect()
         RPC.clear(getpid())
     except:
-        print("[ERROR] Failed to connect with DRP RPC!")
+        print("[ERROR] Błąd podczas łączenia z discordem!")
 
 
 # Get list of all aviable players.
@@ -42,7 +42,7 @@ def get_players_list(slug : str, ep : int) -> list:
 
 # Search for series.
 def search() -> list:
-    search_prompt : str = str(input("Search: "))
+    search_prompt : str = str(input("Wyszukaj: "))
     series_list : list = get(f'https://api.docchi.pl/v1/series/related/{search_prompt}').json()
 
     all_aviable_series : list = []
@@ -73,7 +73,7 @@ def choose_serie(all_aviable_series : list) -> list:
 
         print(f'{number}. {serie[1]} [ep: {serie[3]}]')
     
-    choosed_number : int = int(input("Choose: "))
+    choosed_number : int = int(input("Wybierz: "))
 
     return all_aviable_series[choosed_number - 1]
 
@@ -81,7 +81,7 @@ def choose_serie(all_aviable_series : list) -> list:
 # Let someone choose episode.
 def choose_ep(serie : list) -> int:
 
-    return int(input(f'Choose ep from 1 to {serie[3]}: '))
+    return int(input(f'Wybierz odcinek od 1 do {serie[3]}: '))
     
 
 # Let someone choose player.
@@ -95,7 +95,7 @@ def choose_player(players) -> str:
 
         print(f'{number}. {player[0]}')
     
-    choose_prompt : int = int(input(f'Choose host (mega.nz not working): '))
+    choose_prompt : int = int(input(f'Wybierz hosta (mega.nz nie jest wspierany): '))
     choosed_player : str = players[choose_prompt - 1]
     return choosed_player[1]
 
@@ -110,15 +110,15 @@ def update_discord(state : str, details : str, time : time) -> None:
         state=f"{state}",
         details=f"{details}",
         large_image="doccli_icon",
-        large_text="A cli to watch anime from docchi.pl",
+        large_text="CLI do oglądania anime z docchi.pl",
         start=int(time),
         buttons=[
             {
-                "label": "Download doccli",
+                "label": "Pobierz doccli",
                 "url": "https://github.com/TowarzyszFatCat/doccli"
             },
             {
-                     "label": "Visit docchi.pl",
+                     "label": "Odwiedź docchi.pl",
                      "url": "https://docchi.pl/",
             }
         ]
@@ -129,7 +129,7 @@ def update_discord(state : str, details : str, time : time) -> None:
 if __name__ == "__main__":
     try:
         connect_discord()
-        update_discord(state="Using doccli", details="Searching...",time=time())
+        update_discord(state="Używa doccli!", details="Szuka czegoś do obejrzenia...",time=time())
     except:
         pass
 
@@ -138,12 +138,12 @@ if __name__ == "__main__":
         try:
             clear()
 
-            print("[INFO] Press <CTRL + C> if you want to exit !")
+            print("[INFO] Naciśnij <CTRL + C> aby wyjść!")
 
             search_prompt : list = search()
 
             if len(search_prompt) == 0:
-                print("[INFO] No results!")
+                print("[INFO] Brak rezultatów!")
                 continue
             clear()
 
@@ -161,8 +161,8 @@ if __name__ == "__main__":
             # Start mpv in separate process.
             try:
                 process : Popen = Popen(args=['mpv', choosed_player], shell=False, stdout=DEVNULL)
-            except FileNotFoundError:
-                print('[ERROR] Make sure you installed MPV!')
+            except:
+                print('[ERROR] Błąd podczas uruchamiania MPV!')
                 exit()
             
             try:
@@ -171,7 +171,7 @@ if __name__ == "__main__":
             except:
                 pass
 
-            print("[INFO] Press <CTRL + C> to exit all or close MPV to return to search bar!")
+            print("[INFO] Naciśnij <CTRL + C> aby wyłączyć program lub zamknij odtwarzacz by wrócić do wyszukiwarki!")
 
             # Check if mpv is still running, if no exit.
             while process.poll() is None:
