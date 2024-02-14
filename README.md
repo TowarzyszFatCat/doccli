@@ -46,7 +46,7 @@ https://github.com/TowarzyszFatCat/doccli/assets/68988781/6990807f-10af-4067-b66
 > ```
 > scoop bucket add extras
 > ```
-> ^ Po wpisaniu tej komendy naciśnij enter gdy zobaczysz komunikat `Checking repo...`
+> ^ Po wpisaniu tej komendy naciśnij enter gdy zobaczysz komunikat `Checking repo...`. (możliwe że w innych momentach instalacji też będziesz musiał to zrobić)
 > ```
 > scoop install https://raw.githubusercontent.com/TowarzyszFatCat/doccli/main/doccli.json
 > ```
