@@ -1,5 +1,5 @@
 <h1 align="center">
-<img src="icon.png" alt="Icon" width="150" height="150"> <br>
+<img src="icon.png" alt="Icon" width="100" height="100"> <br>
 CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a>
 </h1>
 
@@ -8,27 +8,38 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a>
 https://github.com/TowarzyszFatCat/doccli/assets/68988781/6990807f-10af-4067-b66b-f54daaa12d58
 
 ---
-### Zaimplementowane funkcje:
-- Sprawdzanie aktualizacji
-- Discord rich presence
+
+<table align="center">
+<tr>
+    <th><div style="width:50%">Dostępne funkcje</div></th>
+    <th><div style="width:50%">Planowane funkcje</div></th>
+</tr>
+<tr>
+<td>
+
+- Discord Rich Presence (status na discordzie, można go włączyć lub wyłączyć)
+
+</td>
+<td>
+
+- Menu ustawień (możliwość konfiguracji programu)
+- Wsparcie mega.nz
+- Integracja z anilist (po obejrzeniu odcinka doda się do twoich obejrzanych)
+
+</td>
+</tr>
+</table>
 
 ---
-
-### Co może zostać dodane w przyszłości:
-- Menu ustawień
-- Oglądanie z mega.nz
-- Integracja z anilist
-
----
-
-# Instalacja Windows:
+# Jak zainstalować?
+## Windows
 
 > [!NOTE]
 > Póki co jedyną możliwością zainstalowania programu na Windowsa jest zainstalowanie go poprzez Scoop, ponieważ odtwarzacz którego używa program nie jest oficjalnie wspierany na Windowsie. W przyszłości może się to zmienić!
 
 ### 1) Instalacja Scoop:
 > Aby zainstalować doccli na windowsie niezbędny jest <a href="https://scoop.sh/">Scoop</a> czyli program do instalacji CLI.
-> Możesz to zrobić za pomocą dwóch poniższych komend, które należy wpisać w <a href="https://www.google.com/search?q=powershell+jak+w%C5%82%C4%85czy%C4%87">POWER SHELLU</a>. Widoczne są one także w sekcji Quickstart na stonie <a href="https://scoop.sh/">Scoop.sh</a>.
+> Możesz to zrobić za pomocą dwóch komend które należy wpisać w <a href="https://www.google.com/search?q=powershell+jak+w%C5%82%C4%85czy%C4%87">POWER SHELLU</a> widocznych w sekcji Quickstart na stronie <a href="https://scoop.sh/">Scoop.sh</a>, które znajdują się także poniżej.
 > ```
 > Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 > ```
@@ -66,7 +77,7 @@ https://github.com/TowarzyszFatCat/doccli/assets/68988781/6990807f-10af-4067-b66
 
 
 > [!WARNING]
-> Jeżeli masz jakieś problemy pisz śmiało <a href="https://github.com/TowarzyszFatCat/doccli/issues/new">tutaj</a>. Pamiętaj także, że z jakiegoś powodu nie ma danej serii/odcinka/odtwarzacza program może wyrzucić błąd! Zanim zgłosisz bład, sprawdź inne możliwości!
+> Jeżeli masz jakieś problemy pisz śmiało <a href="https://github.com/TowarzyszFatCat/doccli/issues/new">tutaj</a>.
 
 
 
@@ -82,9 +93,9 @@ https://github.com/TowarzyszFatCat/doccli/assets/68988781/6990807f-10af-4067-b66
 ### Jak odinstalować:
 > Wystarczy że odinstalujesz program Scoop. Instrukcję znajdziesz tutaj:
 > <a href="https://github.com/ScoopInstaller/Scoop/wiki/Uninstalling-Scoop">Jak odinstalować Scoop</a>.
-
 ---
-# Instalacja Linux:
+
+## Linux
 
 ### Wymagagane paczki na linuxie:
 Aby korzystać z doccli na systemie linux musisz zainstalować `mpv`! Oraz posiadać pythona3.9 lub nowszego (powinien być domyślnie zainstalowany)
@@ -112,10 +123,11 @@ sh doccli/install.sh
 sudo rm -rf /usr/local/bin/doccli_src && sudo rm /usr/local/bin/doccli
 ```
 
-## Jak uruchomić na linuxie:
+### Jak uruchomić na linuxie:
 #####
 ```bash
 doccli
 ```
+
 ---
-## Inspired by: <a href="https://github.com/pystardust/ani-cli">ani-cli</a>
+### Inspired by: <a href="https://github.com/pystardust/ani-cli">ani-cli</a>
