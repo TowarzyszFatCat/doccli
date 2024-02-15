@@ -5,18 +5,15 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a>
 ---
 
 
-https://github.com/TowarzyszFatCat/doccli/assets/68988781/6990807f-10af-4067-b66b-f54daaa12d58
-
-
 ---
 ### Zaimplementowane funkcje:
+- Sprawdzanie aktualizacji
 - Discord rich presence
   ![image](https://github.com/TowarzyszFatCat/doccli/assets/68988781/d4644fc9-3f9f-4181-99d3-3c03d442f74d)
 
 ---
 
 ### Co może zostać dodane w przyszłości:
-- Auto aktualizacje
 - Menu ustawień
 - Oglądanie z mega.nz
 - Integracja z anilist
