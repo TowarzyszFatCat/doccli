@@ -1,6 +1,6 @@
 # @TowarzyszFatCat
-# v1.3.2
-# Small presence fix
+# v1.3.3
+# Update checker
 
 from requests import get
 from os import system, getpid
@@ -124,9 +124,22 @@ def update_discord(state : str, details : str, time : time) -> None:
         ]
         )
     
+def check_update():
+    version = 'v1.3.3'
+
+    response = get("https://api.github.com/repos/TowarzyszFatCat/doccli/releases/latest")
+
+    if response.json()["name"] != version:
+        print(f'Wersja programu: {version}')
+        print(f'Dostępna jest nowa: {response.json()["name"]}')
+        print(f'Możesz pobrać nową wersję na stronie programu!\n')
+        input("Naciśnij enter by pominąć...")
+
 
 # It looks terrible ik!
 if __name__ == "__main__":
+    check_update()
+
     try:
         connect_discord()
     except:
