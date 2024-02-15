@@ -1,12 +1,13 @@
 # @TowarzyszFatCat
-# v1.3.4
+# v1.3.5
 
 from requests import get
 from os import system, getpid
 from os import name as system_name
 from time import sleep, time
-from subprocess import Popen, DEVNULL
+from subprocess import Popen, DEVNULL, run, PIPE
 from pypresence import Presence
+from typing import List
 
 # Client id from discord developer portal
 RPC = Presence(client_id='1206583480771936318')
@@ -66,21 +67,31 @@ def choose_serie(all_aviable_series : list) -> list:
 
     number : int = 0
 
+    _series : list = []
+
     for serie in all_aviable_series:
 
         number += 1
 
-        print(f'{number}. {serie[1]} [ep: {serie[3]}]')
-    
-    choosed_number : int = int(input("Wybierz: "))
+        _series.append(f'{number}. {serie[1]} [ep: {serie[3]}]')
 
-    return all_aviable_series[choosed_number - 1]
+
+    choosed = _series.index(fzf(_series, '--header=WYBIERZ ANIME:')[0])
+
+    return all_aviable_series[choosed]
 
 
 # Let someone choose episode.
 def choose_ep(serie : list) -> int:
 
-    return int(input(f'Wybierz odcinek od 1 do {serie[3]}: '))
+    _ep = []
+
+    for i in range(int(serie[3])):
+        _ep.append(str(i+1))
+
+    choosed : int = int(_ep.index(fzf(_ep, '--header=WYBIERZ ODCINEK:')[0])) + 1
+
+    return choosed
     
 
 # Let someone choose player.
@@ -88,14 +99,17 @@ def choose_player(players) -> str:
 
     number : int = 0
 
+    _players = []
+
     for player in players:
 
         number += 1
 
-        print(f'{number}. {player[0]}')
-    
-    choose_prompt : int = int(input(f'Wybierz hosta (mega.nz nie jest wspierany): '))
-    choosed_player : str = players[choose_prompt - 1]
+        _players.append(f'{number}. {player[0]}')
+
+    choosed = _players.index(fzf(_players, '--header=WYBIERZ HOSTA:')[0])
+
+    choosed_player : str = players[choosed]
     return choosed_player[1]
 
 
@@ -124,7 +138,7 @@ def update_discord(state : str, details : str, time : time) -> None:
         )
     
 def check_update() -> None:
-    version : str = 'v1.3.4'
+    version : str = 'v1.3.5'
 
     response = get("https://api.github.com/repos/TowarzyszFatCat/doccli/releases/latest")
 
@@ -137,24 +151,39 @@ def check_update() -> None:
 
 def connect_to_discord_querry() -> bool:
     while True:
-        querry : str = str(input("Czy chcesz aby twoi znajomi z discorda widzieli co oglądasz? (t/n): "))
+
+        querry : str = fzf(['TAK', 'NIE'], '--header=Czy chcesz aby twoi znajomi z discorda widzieli co oglądasz?')[0]
         
-        if querry == 't':
+        if querry == 'TAK':
             return True
-        elif querry == 'n':
+        elif querry == 'NIE':
             return False
-        else:
-            print(f"Nie ma takiej opcji jak: {querry}")
-            continue
+
+
+def fzf(choices: List[str], fzf_options: str = '') -> List[str]:
+    if fzf_options is None:
+        fzf_options = ''
+
+    command = ['fzf',fzf_options]
+    choices_bytes = '\n'.join(choices).encode()
+
+    try:
+        command_result = run(command, input=choices_bytes, check=True, stdout=PIPE)
+        results = command_result.stdout.decode().strip().split('\n')
+        return results
+    except:
+        pass
+
 
 
 # It looks terrible ik!
 if __name__ == "__main__":
     check_update()
 
+    dc : bool = connect_to_discord_querry()
+
     try:
-        if connect_to_discord_querry():
-            connect_discord()
+        connect_discord()
     except:
         pass
 
@@ -196,8 +225,10 @@ if __name__ == "__main__":
                 exit()
             
             try:
-                # Status will stay while program is running.
-                update_discord(state=f"Ep: {ep}",details=serie[1], time=time())
+                if dc:
+                    update_discord(state=f"Ep: {ep}",details=serie[1], time=time())
+                else:
+                    update_discord(state=f"Tajne!",details='Ogląda anime...', time=time())
             except:
                 pass
 
