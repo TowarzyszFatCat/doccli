@@ -23,6 +23,9 @@ https://github.com/TowarzyszFatCat/doccli/assets/68988781/6990807f-10af-4067-b66
 
 # Instalacja Windows:
 
+> [!NOTE]
+> Póki co jedyną możliwością zainstalowania programu na Windowsa jest zainstalowanie go poprzez Scoop, ponieważ odtwarzacz którego używa program nie jest oficjalnie wspierany na Windowsie. W przyszłości może się to zmienić, a może także zostać dodane odtwarzanie w VLC.
+
 ### 1) Instalacja Scoop:
 > Aby zainstalować doccli na windowsie niezbędny jest <a href="https://scoop.sh/">Scoop</a> czyli program do instalacji CLI.
 > Możesz to zrobić za pomocą dwóch komend które należy wpisać w <a href="https://www.google.com/search?q=powershell+jak+w%C5%82%C4%85czy%C4%87">POWER SHELLU</a> widocznych w sekcji Quickstart na stronie <a href="https://scoop.sh/">Scoop.sh</a>, które znajdują się także poniżej.
@@ -54,6 +57,13 @@ https://github.com/TowarzyszFatCat/doccli/assets/68988781/6990807f-10af-4067-b66
 > ```
 > doccli
 > ```
+
+> [!NOTE]
+> Jeżeli nie chcesz otwierać programu za pomocą terminala, możesz w łatwy sposób utworzyć skrót na pulpicie.
+> `Prawy przycisk myszy > Nowy > Skrót`
+> W polu na lokalizacja elementu wpisz `doccli` i zapisz.
+> Możesz też dodać swoją ikonkę wchodząc we właściwości skrótu.
+
 
 > [!WARNING]
 > Jeżeli masz jakieś problemy pisz śmiało <a href="https://github.com/TowarzyszFatCat/doccli/issues/new">tutaj</a>.
