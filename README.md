@@ -79,25 +79,33 @@ https://github.com/TowarzyszFatCat/doccli/assets/68988781/6990807f-10af-4067-b66
 # Instalacja Linux (jeszcze nie ma update'a):
 
 ### Wymagagane paczki na linuxie:
-Aby korzystać z doccli na systemie linux musisz zainstalować `mpv`!
+Aby korzystać z doccli na systemie linux musisz zainstalować `mpv`! Oraz posiadać pythona3.9 lub nowszego (powinien być domyślnie zainstalowany)
 
-Arch:
+Instalacja `mpv` na Arch:
 ```bash
 sudo pacman -S mpv
 ```
 
-Debian/Ubuntu/Pop:
+Instalacja `mpv` na Debian/Ubuntu/Pop:
 ```bash
 sudo apt install mpv
 ```
 
 ### Jak zainstalować na linuxie:
 ```bash
-wget https://github.com/TowarzyszFatCat/doccli/raw/main/linux/doccli
-sudo chmod +x doccli && sudo mv doccli /usr/local/bin
+git clone https://github.com/TowarzyszFatCat/doccli.git
+```
+```bash
+sh doccli/install.sh
 ```
 
 ### Jak odinstalować na linuxie:
+```bash
+sudo rm /usr/local/bin/doccli_src/*
+```
+```bash
+sudo rmdir /usr/local/bin/doccli_src
+```
 ```bash
 sudo rm /usr/local/bin/doccli
 ```
