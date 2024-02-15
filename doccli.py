@@ -39,54 +39,12 @@ def get_players_list(slug : str, ep : int) -> list:
     # Return format: [('hosting name', 'player link'), ... ]
     return(all_aviable_players)
 
-
-# Search for series.
-def search() -> list:
-    search_prompt : str = str(input("Wyszukaj: "))
-    series_list : list = get(f'https://api.docchi.pl/v1/series/related/{search_prompt}').json()
-
-    all_aviable_series : list = []
-
-    for serie in series_list:
-
-        serie_data : list = []
-
-        serie_data.append(serie['slug'])
-        serie_data.append(serie['title'])
-        serie_data.append(serie['cover']) # Future plans
-        serie_data.append(serie['episodes'])
-
-        all_aviable_series.append(serie_data)
-
-    # Return format: [('slug', 'title', 'cover url', 'episodes number'), ... ]
-    return(all_aviable_series)
-
-
-# Let someone choose serie.
-def choose_serie(all_aviable_series : list) -> list:
-
-    number : int = 0
-
-    _series : list = []
-
-    for serie in all_aviable_series:
-
-        number += 1
-
-        _series.append(f'{number}. {serie[1]} [ep: {serie[3]}]')
-
-
-    choosed = _series.index(fzf(_series, '--header=WYBIERZ ANIME:')[0])
-
-    return all_aviable_series[choosed]
-
-
 # Let someone choose episode.
 def choose_ep(serie : list) -> int:
 
     _ep = []
 
-    for i in range(int(serie[3])):
+    for i in range(int(serie['episodes'])):
         _ep.append(str(i+1))
 
     choosed : int = int(_ep.index(fzf(_ep, '--header=WYBIERZ ODCINEK:')[0])) + 1
@@ -170,10 +128,82 @@ def fzf(choices: List[str], fzf_options: str = '') -> List[str]:
     try:
         command_result = run(command, input=choices_bytes, check=True, stdout=PIPE)
         results = command_result.stdout.decode().strip().split('\n')
+
         return results
     except:
         pass
 
+
+def all_series():
+    all_series_list : list = get(f'https://api.docchi.pl/v1/series/list').json()
+
+    _all_series : list = []
+
+    for serie in all_series_list:
+#        _all_series.append(f"{serie['title_en']}, [{serie['episodes']}]")
+        _all_series.append(f"{serie['title']} [{serie['episodes']}]")
+    
+    choosed = _all_series.index(fzf(_all_series, '--header=WYSZUKAJ ANIME:')[0])
+    
+    serie = all_series_list[choosed]
+
+    return serie
+
+
+def search_for_anime():
+    serie : dict = all_series()
+
+    ep : int = choose_ep(serie=serie)
+
+    players : list = get_players_list(slug=serie['slug'], ep=ep)
+
+    return [choose_player(players=players), serie, ep]
+
+
+def main_menu():
+    tabs = ['Wyszukaj anime','Zamknij']
+
+    option = fzf(tabs, '--header=WYBIERZ:')[0]
+
+    if option == tabs[0]:
+        anime = search_for_anime()
+
+        quality = ''
+        quality_list = ["NAJLEPSZA","NAJGORSZA"]
+        quality_choose = fzf(quality_list,'--header=WYBIERZ JAKOŚĆ: ')[0]
+        if quality_choose == quality_list[0]:
+            quality = 'best'
+        elif quality_choose == quality_list[1]:
+            quality = 'worst'
+
+        try:
+            process : Popen = Popen(args=['mpv', f'--ytdl-format={quality}', anime[0]], shell=False, stdout=DEVNULL)
+        except:
+            print('[ERROR] Błąd podczas uruchamiania MPV!')
+            exit()
+        
+        try:
+            if dc:
+                update_discord(state=f"Ep: {anime[2]}",details=anime[1]['title'], time=time())
+            else:
+                update_discord(state=f"Tajne!",details='Ogląda anime...', time=time())
+        except:
+            pass
+
+        watching_menu(process=process)
+
+    elif option == tabs[1]:
+        exit()
+
+
+def watching_menu(process):
+    tabs = ['Wróć do menu głównego']
+
+    option = fzf(tabs, '--header=WYBIERZ:')[0]
+
+    if option == tabs[0]:
+        process.kill()
+        main_menu()
 
 
 # It looks terrible ik!
@@ -184,61 +214,8 @@ if __name__ == "__main__":
 
     try:
         connect_discord()
+        update_discord(state="Używa doccli!", details="Szuka czegoś do obejrzenia...",time=time())
     except:
         pass
 
-    # Always run program
-    while True:
-        try:
-            try:
-                update_discord(state="Używa doccli!", details="Szuka czegoś do obejrzenia...",time=time())
-            except:
-                pass
-
-            clear()
-
-            print("[INFO] Naciśnij <CTRL + C> aby wyjść!")
-
-            search_prompt : list = search()
-
-            if len(search_prompt) == 0:
-                print("[INFO] Brak rezultatów!")
-                continue
-            clear()
-
-            serie : list = choose_serie(all_aviable_series=search_prompt)
-            clear()
-
-            ep : int = choose_ep(serie=serie)
-            clear()
-    
-            players : list = get_players_list(slug=serie[0], ep=ep)
-
-            choosed_player : str = choose_player(players=players)
-            clear()
-
-            # Start mpv in separate process.
-            try:
-                process : Popen = Popen(args=['mpv', choosed_player], shell=False, stdout=DEVNULL)
-            except:
-                print('[ERROR] Błąd podczas uruchamiania MPV!')
-                exit()
-            
-            try:
-                if dc:
-                    update_discord(state=f"Ep: {ep}",details=serie[1], time=time())
-                else:
-                    update_discord(state=f"Tajne!",details='Ogląda anime...', time=time())
-            except:
-                pass
-
-            print("[INFO] Naciśnij <CTRL + C> aby wyłączyć program lub zamknij odtwarzacz by wrócić do wyszukiwarki!")
-
-            # Check if mpv is still running, if no exit.
-            while process.poll() is None:
-                sleep(1)
-            else:
-                continue
-
-        except KeyboardInterrupt:
-            exit()
+    main_menu()
