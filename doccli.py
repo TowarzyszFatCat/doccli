@@ -80,7 +80,7 @@ def update_discord(state : str, details : str, time : time) -> None:
     RPC.update(
         state=f"{state}",
         details=f"{details}",
-        large_image="doccli_icon",
+        large_image="icon_1",
         large_text="CLI do oglądania anime z docchi.pl",
         start=int(time),
         buttons=[
