@@ -1,4 +1,5 @@
 <h1 align="center">
+<img src="doccli_icon.png" alt="Icon" width="100" height="100"> <br>
 CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a>
 </h1>
 
