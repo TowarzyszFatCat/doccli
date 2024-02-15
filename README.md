@@ -76,7 +76,7 @@ https://github.com/TowarzyszFatCat/doccli/assets/68988781/6990807f-10af-4067-b66
 > <a href="https://github.com/ScoopInstaller/Scoop/wiki/Uninstalling-Scoop">Jak odinstalować Scoop</a>.
 
 ---
-# Instalacja Linux (jeszcze nie ma update'a):
+# Instalacja Linux:
 
 ### Wymagagane paczki na linuxie:
 Aby korzystać z doccli na systemie linux musisz zainstalować `mpv`! Oraz posiadać pythona3.9 lub nowszego (powinien być domyślnie zainstalowany)
