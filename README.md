@@ -109,13 +109,7 @@ sh doccli/install.sh
 
 ### Jak odinstalować na linuxie:
 ```bash
-sudo rm /usr/local/bin/doccli_src/*
-```
-```bash
-sudo rmdir /usr/local/bin/doccli_src
-```
-```bash
-sudo rm /usr/local/bin/doccli
+sudo rm -rf /usr/local/bin/doccli_src && sudo rm /usr/local/bin/doccli
 ```
 
 ## Jak uruchomić na linuxie:
