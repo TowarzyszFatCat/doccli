@@ -35,7 +35,7 @@ https://github.com/TowarzyszFatCat/doccli/assets/68988781/6990807f-10af-4067-b66
     Jak zainstalować?
 </h1>
 
-## Windows
+## Windows:
 
 > [!NOTE]
 > Póki co jedyną możliwością zainstalowania programu na Windowsa jest zainstalowanie go poprzez Scoop, ponieważ odtwarzacz którego używa program nie jest oficjalnie wspierany na Windowsie. W przyszłości może się to zmienić!
@@ -98,7 +98,7 @@ https://github.com/TowarzyszFatCat/doccli/assets/68988781/6990807f-10af-4067-b66
 > <a href="https://github.com/ScoopInstaller/Scoop/wiki/Uninstalling-Scoop">Jak odinstalować Scoop</a>.
 ---
 
-## Linux
+## Linux:
 
 ### Wymagagane paczki na linuxie:
 Aby korzystać z doccli na systemie linux musisz zainstalować `mpv`! Oraz posiadać pythona3.9 lub nowszego (powinien być domyślnie zainstalowany)
