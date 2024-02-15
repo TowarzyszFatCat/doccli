@@ -31,7 +31,10 @@ https://github.com/TowarzyszFatCat/doccli/assets/68988781/6990807f-10af-4067-b66
 </table>
 
 ---
-# Jak zainstalować?
+<h1 align="center">
+    Jak zainstalować?
+</h1>
+
 ## Windows
 
 > [!NOTE]
