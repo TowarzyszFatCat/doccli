@@ -1,6 +1,5 @@
 # @TowarzyszFatCat
-# v1.3.3
-# Update checker
+# v1.3.4
 
 from requests import get
 from os import system, getpid
@@ -125,7 +124,7 @@ def update_discord(state : str, details : str, time : time) -> None:
         )
     
 def check_update() -> None:
-    version : str = 'v1.3.3'
+    version : str = 'v1.3.4'
 
     response = get("https://api.github.com/repos/TowarzyszFatCat/doccli/releases/latest")
 
