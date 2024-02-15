@@ -51,7 +51,7 @@ https://github.com/TowarzyszFatCat/doccli/assets/68988781/6990807f-10af-4067-b66
 > ```
 
 > [!WARNING]
-> Jeżeli po wpisaniu pierwszej komendy wyskoczy ci komunikat do akceptacji wpisz `y` i naciśnij `Enter`
+> Jeżeli po wpisaniu pierwszej komendy wyskoczy ci komunikat do akceptacji wpisz `A` i naciśnij `Enter`
 
 ### 2) Dodanie repozytoriów do Scoop i instalacja doccli:
 > Za pomocą pobranego wcześniej programu zainstaluj doccli. Wpisując w dowolnym terminalu (np. cmd) te trzy komendy:
