@@ -11,7 +11,6 @@ https://github.com/TowarzyszFatCat/doccli/assets/68988781/6990807f-10af-4067-b66
 ### Zaimplementowane funkcje:
 - Sprawdzanie aktualizacji
 - Discord rich presence
-  ![image](https://github.com/TowarzyszFatCat/doccli/assets/68988781/d4644fc9-3f9f-4181-99d3-3c03d442f74d)
 
 ---
 
