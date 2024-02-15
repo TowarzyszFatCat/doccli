@@ -124,8 +124,8 @@ def update_discord(state : str, details : str, time : time) -> None:
         ]
         )
     
-def check_update():
-    version = 'v1.3.3'
+def check_update() -> None:
+    version : str = 'v1.3.3'
 
     response = get("https://api.github.com/repos/TowarzyszFatCat/doccli/releases/latest")
 
@@ -136,12 +136,26 @@ def check_update():
         input("Naciśnij enter by pominąć...")
 
 
+def connect_to_discord_querry() -> bool:
+    while True:
+        querry : str = str(input("Czy chcesz aby twoi znajomi z discorda widzieli co oglądasz? (t/n): "))
+        
+        if querry == 't':
+            return True
+        elif querry == 'n':
+            return False
+        else:
+            print(f"Nie ma takiej opcji jak: {querry}")
+            continue
+
+
 # It looks terrible ik!
 if __name__ == "__main__":
     check_update()
 
     try:
-        connect_discord()
+        if connect_to_discord_querry():
+            connect_discord()
     except:
         pass
 
