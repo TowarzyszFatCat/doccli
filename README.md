@@ -117,8 +117,12 @@ sudo apt install mpv fzf
 git clone https://github.com/TowarzyszFatCat/doccli.git
 ```
 ```bash
-sh doccli/install.sh
+cd doccli
 ```
+```bash
+sh install.sh
+```
+Jeżeli wszystko przebiegło pomyślnie, możesz usunąć folder.
 
 ### Jak odinstalować na linuxie:
 ```bash
