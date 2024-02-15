@@ -66,7 +66,7 @@ https://github.com/TowarzyszFatCat/doccli/assets/68988781/6990807f-10af-4067-b66
 
 
 > [!WARNING]
-> Jeżeli masz jakieś problemy pisz śmiało <a href="https://github.com/TowarzyszFatCat/doccli/issues/new">tutaj</a>.
+> Jeżeli masz jakieś problemy pisz śmiało <a href="https://github.com/TowarzyszFatCat/doccli/issues/new">tutaj</a>. Pamiętaj także, że z jakiegoś powodu nie ma danej serii/odcinka/odtwarzacza program może wyrzucić błąd! Zanim zgłosisz bład, sprawdź inne możliwości!
 
 
 
