@@ -7,8 +7,6 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a>
 
 https://github.com/TowarzyszFatCat/doccli/assets/68988781/30996888-de48-4891-9a88-60ede955e4c6
 
-[Kliknij tutaj żeby obejrzeć filmik pokazowy w lepszej jakości](https://youtu.be/GSy1EVMzAbw)
-
 ---
 
 <table align="center">
