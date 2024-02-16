@@ -97,6 +97,12 @@ https://github.com/TowarzyszFatCat/doccli/assets/68988781/30996888-de48-4891-9a8
 ### Jak odinstalować:
 > Wystarczy że odinstalujesz program Scoop. Instrukcję znajdziesz tutaj:
 > <a href="https://github.com/ScoopInstaller/Scoop/wiki/Uninstalling-Scoop">Jak odinstalować Scoop</a>.
+
+> [!NOTE]
+> Istnieje także możliwość instalacji programu za pomocą WSL, więcej dowiesz się tutaj:
+> <a href="https://learn.microsoft.com/pl-pl/windows/wsl/about">WSL</a>.
+> Po instalacji WSL do instalacji używasz komend z zakładki LINUX
+
 ---
 
 ## Linux:
