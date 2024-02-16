@@ -7,7 +7,7 @@ credintials.py
 
 # C extensions
 *.so
-.notes
+.notes.txt
 # Distribution / packaging
 .Python
 build/

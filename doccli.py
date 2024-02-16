@@ -1,5 +1,5 @@
 # @TowarzyszFatCat
-# v1.3.5
+# v1.3.6
 
 from requests import get
 from os import system, getpid
@@ -9,8 +9,12 @@ from subprocess import Popen, DEVNULL, run, PIPE
 from pypresence import Presence
 from typing import List
 
+
+# GLOBAL VARIABLES
 # Client id from discord developer portal
 RPC = Presence(client_id='1206583480771936318')
+dc_status : bool = True
+version : str = 'v1.3.6'
 
 def connect_discord() -> None:
     try:
@@ -29,7 +33,7 @@ def get_players_list(slug : str, ep : int) -> list:
 
     for player in players_list:
 
-        player_data : list = []
+        player_data : List[str] = []
 
         player_data.append(player['player_hosting'])
         player_data.append(player['player'])
@@ -42,7 +46,7 @@ def get_players_list(slug : str, ep : int) -> list:
 # Let someone choose episode.
 def choose_ep(serie : list) -> int:
 
-    _ep = []
+    _ep : List[str] = []
 
     for i in range(int(serie['episodes'])):
         _ep.append(str(i+1))
@@ -57,7 +61,7 @@ def choose_player(players) -> str:
 
     number : int = 0
 
-    _players = []
+    _players : List[str] = []
 
     for player in players:
 
@@ -96,8 +100,6 @@ def update_discord(state : str, details : str, time : time) -> None:
         )
     
 def check_update() -> None:
-    version : str = 'v1.3.5'
-
     response = get("https://api.github.com/repos/TowarzyszFatCat/doccli/releases/latest")
 
     if response.json()["name"] != version:
@@ -112,17 +114,21 @@ def connect_to_discord_querry() -> bool:
 
         querry : str = fzf(['TAK', 'NIE'], '--header=Czy chcesz aby twoi znajomi z discorda widzieli co oglądasz?')[0]
         
+        global dc_status
+
         if querry == 'TAK':
-            return True
+            dc_status = True
+            break
         elif querry == 'NIE':
-            return False
+            dc_status = False
+            break
 
 
 def fzf(choices: List[str], fzf_options: str = '') -> List[str]:
     if fzf_options is None:
         fzf_options = ''
 
-    command = ['fzf',fzf_options]
+    command : List[str] = ['fzf',fzf_options]
     choices_bytes = '\n'.join(choices).encode()
 
     try:
@@ -134,7 +140,7 @@ def fzf(choices: List[str], fzf_options: str = '') -> List[str]:
         pass
 
 
-def all_series():
+def all_series() -> dict:
     all_series_list : list = get(f'https://api.docchi.pl/v1/series/list').json()
 
     _all_series : list = []
@@ -143,79 +149,121 @@ def all_series():
 #        _all_series.append(f"{serie['title_en']}, [{serie['episodes']}]")
         _all_series.append(f"{serie['title']} [{serie['episodes']}]")
     
-    choosed = _all_series.index(fzf(_all_series, '--header=WYSZUKAJ ANIME:')[0])
+    choosed : int = _all_series.index(fzf(_all_series, '--header=WYSZUKAJ ANIME:')[0])
     
-    serie = all_series_list[choosed]
+    serie : dict = all_series_list[choosed]
 
     return serie
 
 
-def search_for_anime():
-    serie : dict = all_series()
+def search_for_anime(serie = None, ep = None, players = None) -> List[any]:
+    if serie == None:
+        serie : dict = all_series()
 
-    ep : int = choose_ep(serie=serie)
+    if ep == None:
+        ep : int = choose_ep(serie=serie)
 
     players : list = get_players_list(slug=serie['slug'], ep=ep)
 
     return [choose_player(players=players), serie, ep]
 
 
-def main_menu():
-    tabs = ['Wyszukaj anime','Zamknij']
-
-    option = fzf(tabs, '--header=WYBIERZ:')[0]
-
-    if option == tabs[0]:
-        anime = search_for_anime()
-
-        quality = ''
-        quality_list = ["NAJLEPSZA","NAJGORSZA"]
-        quality_choose = fzf(quality_list,'--header=WYBIERZ JAKOŚĆ: ')[0]
-        if quality_choose == quality_list[0]:
-            quality = 'best'
-        elif quality_choose == quality_list[1]:
-            quality = 'worst'
-
-        try:
-            process : Popen = Popen(args=['mpv', f'--ytdl-format={quality}', anime[0]], shell=False, stdout=DEVNULL)
-        except:
-            print('[ERROR] Błąd podczas uruchamiania MPV!')
-            exit()
-        
-        try:
-            if dc:
-                update_discord(state=f"Ep: {anime[2]}",details=anime[1]['title'], time=time())
-            else:
-                update_discord(state=f"Tajne!",details='Ogląda anime...', time=time())
-        except:
-            pass
-
-        watching_menu(process=process)
-
-    elif option == tabs[1]:
+def open_mpv(quality, anime):
+    try:
+        process : Popen = Popen(args=['mpv', f'--ytdl-format={quality}', anime[0]], shell=False, stdout=DEVNULL)
+    except:
+        print('[ERROR] Błąd podczas uruchamiania MPV!')
         exit()
 
-
-def watching_menu(process):
-    tabs = ['Wróć do menu głównego']
-
-    option = fzf(tabs, '--header=WYBIERZ:')[0]
-
-    if option == tabs[0]:
-        process.kill()
-        main_menu()
+    return process
 
 
-# It looks terrible ik!
-if __name__ == "__main__":
-    check_update()
+def choose_quality() -> None:
+    quality : str = ''
+    quality_list : List[str] = ["NAJLEPSZA","NAJGORSZA"]
+    quality_choose : str = fzf(quality_list,'--header=WYBIERZ JAKOŚĆ: ')[0]
+    if quality_choose == quality_list[0]:
+        quality = 'best'
+    elif quality_choose == quality_list[1]:
+        quality = 'worst'
 
-    dc : bool = connect_to_discord_querry()
+    return quality
+
+
+def watch(serie = None, ep = None):
+    anime = search_for_anime(serie, ep)
+    quality = choose_quality()
+    process = open_mpv(quality=quality, anime=anime)
 
     try:
-        connect_discord()
-        update_discord(state="Używa doccli!", details="Szuka czegoś do obejrzenia...",time=time())
+        if dc_status:
+            update_discord(state=f"Ep: {anime[2]}",details=anime[1]['title'], time=time())
+        else:
+            update_discord(state=f"Tajne!",details='Ogląda anime...', time=time())
+    except:
+        pass
+        
+    info = [anime, quality, process]
+    watching_menu(info=info)
+
+
+def main_menu() -> None:
+    try:
+        update_discord(state="Używa doccli!", details="Menu główne",time=time())
     except:
         pass
 
+    tabs : List[str] = ['Wyszukaj anime',f'Status aktywności: {dc_status}','Zamknij']
+
+    option = fzf(tabs, '--header=WYBIERZ:')[0]
+
+    if option == tabs[0]:
+        
+        watch()
+
+    elif option == tabs[1]:
+        connect_to_discord_querry()
+        main_menu()
+
+    elif option == tabs[2]:
+        exit()
+
+
+def watching_menu(info) -> None:
+    tabs : List[str] = ['Wróć do menu głównego','Wróć do listy odcinków']
+
+    min_ep = 1
+    actual_ep = int(info[0][2])
+    max_ep = int(info[0][1]['episodes'])
+
+    if actual_ep > min_ep:
+        tabs.append('Poprzedni odcinek')
+
+    if actual_ep < max_ep:
+        tabs.append('Następny odcinek')
+
+
+    option : str = fzf(tabs, '--header=WYBIERZ:')[0]
+
+
+    if option == tabs[0]:
+        info[2].kill()
+        main_menu()
+
+    if option == tabs[1]:
+        info[2].kill()
+        watch(serie=info[0][1])
+    
+    if option == 'Poprzedni odcinek':
+        info[2].kill()
+        watch(serie=info[0][1],ep=str(actual_ep - 1))
+
+    if option == 'Następny odcinek':
+        info[2].kill()
+        watch(serie=info[0][1],ep=str(actual_ep + 1))
+    
+# Start!
+if __name__ == "__main__":
+    check_update()
+    connect_discord()
     main_menu()
