@@ -1,20 +1,28 @@
 # @TowarzyszFatCat
-# v1.3.6
+# v1.3.7
 
 from requests import get
-from os import system, getpid
+from os import system, getpid, path
 from os import name as system_name
 from time import sleep, time
 from subprocess import Popen, DEVNULL, run, PIPE
 from pypresence import Presence
 from typing import List
+import pickle
 
 
 # GLOBAL VARIABLES
 # Client id from discord developer portal
 RPC = Presence(client_id='1206583480771936318')
-dc_status : bool = True
+#dc_status : bool = True
 version : str = 'v1.3.6'
+
+default_config = {
+    "dc_status" : "TAK"
+}
+
+config = {}
+
 
 def connect_discord() -> None:
     try:
@@ -113,14 +121,12 @@ def connect_to_discord_querry() -> bool:
     while True:
 
         querry : str = fzf(['TAK', 'NIE'], '--header=Czy chcesz aby twoi znajomi z discorda widzieli co oglądasz?')[0]
-        
-        global dc_status
 
         if querry == 'TAK':
-            dc_status = True
+            save_config('dc_status', "TAK")
             break
         elif querry == 'NIE':
-            dc_status = False
+            save_config('dc_status', "NIE")
             break
 
 
@@ -128,8 +134,8 @@ def fzf(choices: List[str], fzf_options: str = '') -> List[str]:
     if fzf_options is None:
         fzf_options = ''
 
-    command : List[str] = ['fzf',fzf_options]
     choices_bytes = '\n'.join(choices).encode()
+    command : List[str] = ['fzf',fzf_options] #f'--preview=echo "{}"'
 
     try:
         command_result = run(command, input=choices_bytes, check=True, stdout=PIPE)
@@ -138,6 +144,7 @@ def fzf(choices: List[str], fzf_options: str = '') -> List[str]:
         return results
     except:
         pass
+
 
 
 def all_series() -> dict:
@@ -196,9 +203,9 @@ def watch(serie = None, ep = None):
     process = open_mpv(quality=quality, anime=anime)
 
     try:
-        if dc_status:
+        if config['dc_status'] == "TAK":
             update_discord(state=f"Ep: {anime[2]}",details=anime[1]['title'], time=time())
-        else:
+        elif config['dc_status'] == "NIE":
             update_discord(state=f"Tajne!",details='Ogląda anime...', time=time())
     except:
         pass
@@ -213,7 +220,7 @@ def main_menu() -> None:
     except:
         pass
 
-    tabs : List[str] = ['Wyszukaj anime',f'Status aktywności: {dc_status}','Zamknij']
+    tabs : List[str] = ['Wyszukaj anime',f'Status aktywności: {config["dc_status"]}','Zamknij']
 
     option = fzf(tabs, '--header=WYBIERZ:')[0]
 
@@ -227,6 +234,30 @@ def main_menu() -> None:
 
     elif option == tabs[2]:
         exit()
+
+
+def load_config():
+    if not path.exists("doccli.config"):
+        with open('doccli.config', 'wb') as file:
+            pickle.dump(default_config, file)
+
+
+    with open("doccli.config","rb") as f:
+        global config
+        config = pickle.load(f)
+            
+    
+
+
+def save_config(var, value):
+
+    config.update({f"{var}": f"{value}"})
+
+    with open("doccli.config","wb") as f:
+        pickle.dump(config, f)
+
+    load_config()
+
 
 
 def watching_menu(info) -> None:
@@ -264,6 +295,7 @@ def watching_menu(info) -> None:
     
 # Start!
 if __name__ == "__main__":
+    load_config()
     check_update()
     connect_discord()
     main_menu()
