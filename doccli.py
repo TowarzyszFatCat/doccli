@@ -220,19 +220,21 @@ def main_menu() -> None:
     except:
         pass
 
-    tabs : List[str] = ['Wyszukaj anime',f'Status aktywności: {config["dc_status"]}','Zamknij']
+    tabs : List[str] = ['Wyszukaj anime', f'Kontynuuj: Ep: ',f'Status aktywności: {config["dc_status"]}','Zamknij']
 
     option = fzf(tabs, '--header=WYBIERZ:')[0]
 
     if option == tabs[0]:
-        
         watch()
 
     elif option == tabs[1]:
+        watch() # CONTINYUE
+
+    elif option == tabs[2]:
         connect_to_discord_querry()
         main_menu()
 
-    elif option == tabs[2]:
+    elif option == tabs[3]:
         exit()
 
 
@@ -245,7 +247,6 @@ def load_config():
     with open("doccli.config","rb") as f:
         global config
         config = pickle.load(f)
-            
     
 
 
