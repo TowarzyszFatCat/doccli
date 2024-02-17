@@ -27,6 +27,11 @@ https://github.com/TowarzyszFatCat/doccli/assets/68988781/30996888-de48-4891-9a8
 - Menu ustawień (możliwość konfiguracji programu)
 - Wsparcie mega.nz
 - Integracja z anilist (po obejrzeniu odcinka doda się do twoich obejrzanych itp.)
+- Historia oglądania
+- Wznawianie oglądania
+- Kategorie
+- Customowy status na DC
+- Customowe opcje dla mpv
 
 </td>
 </tr>
