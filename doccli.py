@@ -17,6 +17,9 @@ RPC = Presence(client_id='1206583480771936318')
 #dc_status : bool = True
 version : str = 'v1.3.7'
 
+ROOT_DIR = path.dirname(path.abspath(__file__))
+CONFIG_PATH = path.join(ROOT_DIR, 'doccli.config')
+
 default_config = {
     "config_version" : None,
     "dc_status" : "TAK",
@@ -305,19 +308,19 @@ def main_menu() -> None:
 
 
 def load_config():
-    if not path.exists("doccli.config"):
-        with open('doccli.config', 'w') as f:
+    if not path.exists(CONFIG_PATH):
+        with open(CONFIG_PATH, 'w') as f:
             default_config.update({"config_version" : version})
             json.dump(default_config, f)
             f.close()
 
-    with open("doccli.config","r") as f:
+    with open(CONFIG_PATH,"r") as f:
         readed = json.load(f)
 
         if readed['config_version'] != version:
             print("[INFO] Wykryto config ze starej wersji! Podmienianie...")
             f.close()
-            remove("doccli.config")
+            remove(CONFIG_PATH)
             load_config()
         else:
             global config
@@ -330,7 +333,7 @@ def update_config(var, value):
 
 
 def save_config():
-    with open("doccli.config","w") as f:
+    with open(CONFIG_PATH,"w") as f:
         json.dump(config, f)
         f.close()
 
