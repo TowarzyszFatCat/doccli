@@ -20,15 +20,14 @@ https://github.com/TowarzyszFatCat/doccli/assets/68988781/30996888-de48-4891-9a8
 - Discord Rich Presence (status na discordzie, można go włączyć lub wyłączyć)
 - Funkcja następny/poprzedni odcinek
 - Szybka wyszukiwarka
+- Wznawianie oglądania
 
 </td>
 <td>
 
-- Menu ustawień (możliwość konfiguracji programu)
 - Wsparcie mega.nz
 - Integracja z anilist (po obejrzeniu odcinka doda się do twoich obejrzanych itp.)
 - Historia oglądania
-- Wznawianie oglądania
 - Kategorie
 - Customowy status na DC
 - Customowe opcje dla mpv
