@@ -2,23 +2,29 @@
 # v1.3.7
 
 from requests import get
-from os import system, getpid, path
+from os import system, getpid, path, remove
 from os import name as system_name
 from time import sleep, time
 from subprocess import Popen, DEVNULL, run, PIPE
 from pypresence import Presence
 from typing import List
-import pickle
+import json
 
 
 # GLOBAL VARIABLES
 # Client id from discord developer portal
 RPC = Presence(client_id='1206583480771936318')
 #dc_status : bool = True
-version : str = 'v1.3.6'
+version : str = 'v1.3.7'
 
 default_config = {
-    "dc_status" : "TAK"
+    "config_version" : None,
+    "dc_status" : "TAK",
+    "search_lang": "ORYGINALNY",
+    "last_url" : None,
+    "last_info" : None,
+    "last_ep" : None,
+    "quality" : 'NAJLEPSZA'
 }
 
 config = {}
@@ -43,7 +49,13 @@ def get_players_list(slug : str, ep : int) -> list:
 
         player_data : List[str] = []
 
-        player_data.append(player['player_hosting'])
+        unsupported = ["Mega", "mega", "MEGA"]
+
+        if player['player_hosting'] in unsupported:
+            player_data.append(player['player_hosting'] + " [NIEWSPIERANY]")
+        else:
+            player_data.append(player['player_hosting'])
+
         player_data.append(player['player'])
 
         all_aviable_players.append(player_data)
@@ -118,16 +130,25 @@ def check_update() -> None:
 
 
 def connect_to_discord_querry() -> bool:
-    while True:
+    querry : str = fzf(['TAK', 'NIE'], '--header=Czy chcesz aby twoi znajomi z discorda widzieli co oglądasz?')[0]
 
-        querry : str = fzf(['TAK', 'NIE'], '--header=Czy chcesz aby twoi znajomi z discorda widzieli co oglądasz?')[0]
+    if querry == 'TAK':
+        update_config('dc_status', "TAK")
+        save_config()
+    elif querry == 'NIE':
+        update_config('dc_status', "NIE")
+        save_config()
 
-        if querry == 'TAK':
-            save_config('dc_status', "TAK")
-            break
-        elif querry == 'NIE':
-            save_config('dc_status', "NIE")
-            break
+
+def change_search_lang() -> bool:
+    querry : str = fzf(['ORYGINALNY', 'ANGIELSKI'], '--header=Chesz wyszukiwać po oryginalnym tytule, czy tytule angielskim?')[0]
+
+    if querry == 'ORYGINALNY':
+        update_config('search_lang', "ORYGINALNY")
+        save_config()
+    elif querry == 'ANGIELSKI':
+        update_config('search_lang', "ANGIELSKI")
+        save_config()
 
 
 def fzf(choices: List[str], fzf_options: str = '') -> List[str]:
@@ -135,7 +156,8 @@ def fzf(choices: List[str], fzf_options: str = '') -> List[str]:
         fzf_options = ''
 
     choices_bytes = '\n'.join(choices).encode()
-    command : List[str] = ['fzf',fzf_options] #f'--preview=echo "{}"'
+
+    command : List[str] = ['fzf',fzf_options]
 
     try:
         command_result = run(command, input=choices_bytes, check=True, stdout=PIPE)
@@ -153,8 +175,19 @@ def all_series() -> dict:
     _all_series : list = []
 
     for serie in all_series_list:
-#        _all_series.append(f"{serie['title_en']}, [{serie['episodes']}]")
-        _all_series.append(f"{serie['title']} [{serie['episodes']}]")
+        if config['search_lang'] == "ORYGINALNY":
+            _all_series.append(f"{serie['title']} [{serie['episodes']}]")
+        elif config['search_lang'] == "ANGIELSKI":
+            _all_series.append(f"{serie['title_en']}, [{serie['episodes']}]")
+    
+    # number = 0
+    # for serie in all_series_list:
+    #     img_url = serie['cover']
+    #     img_data = get(img_url).content
+    #     with open(f'temp/{number}', 'wb') as img_file:
+    #         img_file.write(img_data)
+    #     number += 1
+        
     
     choosed : int = _all_series.index(fzf(_all_series, '--header=WYSZUKAJ ANIME:')[0])
     
@@ -175,9 +208,9 @@ def search_for_anime(serie = None, ep = None, players = None) -> List[any]:
     return [choose_player(players=players), serie, ep]
 
 
-def open_mpv(quality, anime):
+def open_mpv(quality, URL):
     try:
-        process : Popen = Popen(args=['mpv', f'--ytdl-format={quality}', anime[0]], shell=False, stdout=DEVNULL)
+        process : Popen = Popen(args=['mpv', f'--ytdl-format={quality}', URL], shell=False, stdout=DEVNULL)
     except:
         print('[ERROR] Błąd podczas uruchamiania MPV!')
         exit()
@@ -186,21 +219,36 @@ def open_mpv(quality, anime):
 
 
 def choose_quality() -> None:
-    quality : str = ''
-    quality_list : List[str] = ["NAJLEPSZA","NAJGORSZA"]
+    quality_list : List[str] = ["NAJLEPSZA","NAJSZYBSZA"]
     quality_choose : str = fzf(quality_list,'--header=WYBIERZ JAKOŚĆ: ')[0]
     if quality_choose == quality_list[0]:
-        quality = 'best'
+        update_config('quality', 'NAJLEPSZA')
+        save_config()
     elif quality_choose == quality_list[1]:
-        quality = 'worst'
+        update_config('quality', 'NAJSZYBSZA')
+        save_config()
 
-    return quality
 
+def watch(serie = None, ep = None, cont = False):
+    if cont == True:
+        if config['last_url'] == None:
+            print("[BŁĄD] Nie możesz kontynuować niczego")
+            exit()
+        anime = [config['last_url'],config['last_info'],config['last_ep']]
+    else:
+        anime = search_for_anime(serie, ep)
+        update_config('last_url', anime[0])
+        update_config('last_info', anime[1])
+        update_config('last_ep', anime[2])
+        save_config()
+    
 
-def watch(serie = None, ep = None):
-    anime = search_for_anime(serie, ep)
-    quality = choose_quality()
-    process = open_mpv(quality=quality, anime=anime)
+    if config['quality'] == "NAJLEPSZA":
+        mpv_quality = 'best'
+    elif config['quality'] == "NAJSZYBSZA":
+        mpv_quality = 'worst'
+    
+    process = open_mpv(quality=mpv_quality, URL=anime[0])
 
     try:
         if config['dc_status'] == "TAK":
@@ -210,7 +258,7 @@ def watch(serie = None, ep = None):
     except:
         pass
         
-    info = [anime, quality, process]
+    info = [anime, mpv_quality, process]
     watching_menu(info=info)
 
 
@@ -220,48 +268,78 @@ def main_menu() -> None:
     except:
         pass
 
-    tabs : List[str] = ['Wyszukaj anime',f'Status aktywności: {config["dc_status"]}','Zamknij']
+    try:
+        if config['search_lang'] == 'ORYGINALNY':
+            continue_title = config["last_info"]["title"]
+        elif config['search_lang'] == 'ANGIELSKI':
+            continue_title = config["last_info"]["title_en"]
+        continue_ep = config["last_ep"]
+    except:
+        continue_title = None
+        continue_ep = None
+
+    tabs : List[str] = ['Wyszukaj anime', f'Kontynuuj: {continue_title} [Ep: {continue_ep}]',f'Status aktywności: {config["dc_status"]}',f'Język tytułów: {config["search_lang"]}',f'Domyślna jakość: {config["quality"]}','Zamknij']
 
     option = fzf(tabs, '--header=WYBIERZ:')[0]
 
     if option == tabs[0]:
-        
         watch()
 
     elif option == tabs[1]:
-        connect_to_discord_querry()
-        main_menu()
+        watch(cont=True) # CONTINYUE
 
     elif option == tabs[2]:
+        connect_to_discord_querry()
+        main_menu()
+    
+    elif option == tabs[3]:
+        change_search_lang()
+        main_menu()
+
+    elif option == tabs[4]:
+        choose_quality()
+        main_menu()
+
+    elif option == tabs[5]:
         exit()
 
 
 def load_config():
     if not path.exists("doccli.config"):
-        with open('doccli.config', 'wb') as file:
-            pickle.dump(default_config, file)
+        with open('doccli.config', 'w') as f:
+            default_config.update({"config_version" : version})
+            json.dump(default_config, f)
+            f.close()
 
+    with open("doccli.config","r") as f:
+        readed = json.load(f)
 
-    with open("doccli.config","rb") as f:
-        global config
-        config = pickle.load(f)
-            
+        if readed['config_version'] != version:
+            print("[INFO] Wykryto config ze starej wersji! Podmienianie...")
+            f.close()
+            remove("doccli.config")
+            load_config()
+        else:
+            global config
+            config = readed
+            f.close()
     
 
+def update_config(var, value):
+    config.update({f"{var}": value})
 
-def save_config(var, value):
 
-    config.update({f"{var}": f"{value}"})
-
-    with open("doccli.config","wb") as f:
-        pickle.dump(config, f)
+def save_config():
+    with open("doccli.config","w") as f:
+        json.dump(config, f)
+        f.close()
 
     load_config()
 
 
 
 def watching_menu(info) -> None:
-    tabs : List[str] = ['Wróć do menu głównego','Wróć do listy odcinków']
+    tabs : List[str] = ['Wróć do menu głównego','Wróć do listy odcinków', f'Zmień domyślną jakość: {config["quality"]}']
 
     min_ep = 1
     actual_ep = int(info[0][2])
@@ -284,6 +362,11 @@ def watching_menu(info) -> None:
     if option == tabs[1]:
         info[2].kill()
         watch(serie=info[0][1])
+
+    if option == tabs[2]:
+        info[2].kill()
+        choose_quality()
+        watch(cont=True)
     
     if option == 'Poprzedni odcinek':
         info[2].kill()
@@ -295,7 +378,7 @@ def watching_menu(info) -> None:
     
 # Start!
 if __name__ == "__main__":
-    load_config()
     check_update()
+    load_config()
     connect_discord()
     main_menu()
