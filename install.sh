@@ -6,6 +6,9 @@ if [ "${PWD##*/}" == "doccli" ] ; then
   
   sudo mkdir ~/.doccli_src
   sudo mv * ~/.doccli_src
+
+  sudo chmod 777 ~/.doccli_src
+  sudo chmod 777 ~/.doccli_src/*
   
   cd ~/.doccli_src && sudo python -m venv .venv
   cd ~/.doccli_src && sudo .venv/bin/pip install requests pypresence
