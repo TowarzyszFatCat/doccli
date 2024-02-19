@@ -148,7 +148,7 @@ Jeżeli wszystko przebiegło pomyślnie, możesz usunąć folder.
 
 ### Jak odinstalować na linuxie:
 ```bash
-sudo rm -rf /usr/local/bin/doccli_src && sudo rm /usr/local/bin/doccli
+sudo rm /usr/local/bin/doccli && sudo rm -rf ~/.doccli_src
 ```
 
 ### Jak uruchomić na linuxie:
