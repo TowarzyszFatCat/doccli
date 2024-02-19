@@ -43,14 +43,13 @@ https://github.com/TowarzyszFatCat/doccli/assets/68988781/30996888-de48-4891-9a8
 
 ## Windows:
 
-<div align="center">
-<h3>Poradnik do instalacji w wersji wiedeo:</h3>
-<a href="http://www.youtube.com/watch?feature=player_embedded&v=UrzfqMk4fXg" target="_blank">
- <img src="http://img.youtube.com/vi/UrzfqMk4fXg/mqdefault.jpg" alt="Poradnik wideo" width="240" height="180" border="10" />
-</a>
+<br><br>
+
+<div align="left">
+<a href="http://www.youtube.com/watch?feature=player_embedded&v=UrzfqMk4fXg">PORADNIK DO INSTALACJI W WERSJI WIDEO</a>
 </div>
 
-<br><br><br>
+<br><br>
 
 > [!NOTE]
 > Póki co jedyną możliwością zainstalowania programu na Windowsa jest zainstalowanie go poprzez program Scoop lub za pomocą WSL. W przyszłości może się to zmienić!
