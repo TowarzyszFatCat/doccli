@@ -1,5 +1,5 @@
 # @TowarzyszFatCat
-# v1.3.7
+# v1.3.8
 
 from requests import get
 from os import system, getpid, path, remove
@@ -15,7 +15,7 @@ import json
 # Client id from discord developer portal
 RPC = Presence(client_id='1206583480771936318')
 #dc_status : bool = True
-version : str = 'v1.3.7'
+version : str = 'v1.3.8'
 
 ROOT_DIR = path.dirname(path.abspath(__file__))
 CONFIG_PATH = path.join(ROOT_DIR, 'doccli.config')
