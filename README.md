@@ -52,12 +52,14 @@ https://github.com/TowarzyszFatCat/doccli/assets/68988781/30996888-de48-4891-9a8
 > ```
 > Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 > ```
+
+> [!WARNING]
+> Jeżeli po wpisaniu komendy wyskoczył ci komunikat do akceptacji wpisz `A` i naciśnij `Enter`, żeby zaoszczędzić sobie potwierdzania każdego procesu.
+ 
 > ```
 > Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
 > ```
 
-> [!WARNING]
-> Jeżeli po wpisaniu pierwszej komendy wyskoczy ci komunikat do akceptacji wpisz `A` i naciśnij `Enter`
 
 ### 2) Dodanie repozytoriów do Scoop i instalacja doccli:
 > Za pomocą pobranego wcześniej programu zainstaluj doccli. Wpisując w dowolnym terminalu (np. cmd) te trzy komendy:
