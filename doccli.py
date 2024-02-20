@@ -1,6 +1,7 @@
 # @TowarzyszFatCat
 # v1.3.8
 
+# Import necessary libraries
 from requests import get
 from os import system, getpid, path, remove
 from os import name as system_name
@@ -10,16 +11,16 @@ from pypresence import Presence
 from typing import List
 import json
 
-
 # GLOBAL VARIABLES
-# Client id from discord developer portal
+# Initialize Discord RPC
 RPC = Presence(client_id='1206583480771936318')
-#dc_status : bool = True
 version : str = 'v1.3.8'
 
+# Set up file paths
 ROOT_DIR = path.dirname(path.abspath(__file__))
 CONFIG_PATH = path.join(ROOT_DIR, 'doccli.config')
 
+# Default configuration settings
 default_config = {
     "config_version" : None,
     "dc_status" : "TAK",
@@ -32,7 +33,7 @@ default_config = {
 
 config = {}
 
-
+# Function to connect to Discord
 def connect_discord() -> None:
     try:
         print("[INFO] Łączenie z discordem... Jeżeli zajmuje to zbyt długo, możesz anulować łączenie za pomocą <CTRL C>")
@@ -41,15 +42,13 @@ def connect_discord() -> None:
     except:
         print("[ERROR] Błąd podczas łączenia z discordem!")
 
-
-# Get list of all aviable players.
+# Function to retrieve list of available players
 def get_players_list(slug : str, ep : int) -> list:
     players_list : list = get(f'https://api.docchi.pl/v1/episodes/find/{slug}/{ep}').json()
     
     all_aviable_players : list = []
 
     for player in players_list:
-
         player_data : List[str] = []
 
         unsupported = ["Mega", "mega", "MEGA"]
@@ -66,9 +65,8 @@ def get_players_list(slug : str, ep : int) -> list:
     # Return format: [('hosting name', 'player link'), ... ]
     return(all_aviable_players)
 
-# Let someone choose episode.
+# Function to let user choose an episode
 def choose_ep(serie : list) -> int:
-
     _ep : List[str] = []
 
     for i in range(int(serie['episodes'])):
@@ -77,19 +75,15 @@ def choose_ep(serie : list) -> int:
     choosed : int = int(_ep.index(fzf(_ep, '--header=WYBIERZ ODCINEK:')[0])) + 1
 
     return choosed
-    
 
-# Let someone choose player.
+# Function to let user choose a player
 def choose_player(players) -> str:
-
     number : int = 0
 
     _players : List[str] = []
 
     for player in players:
-
         number += 1
-
         _players.append(f'{number}. {player[0]}')
 
     choosed = _players.index(fzf(_players, '--header=WYBIERZ HOSTA:')[0])
@@ -97,12 +91,11 @@ def choose_player(players) -> str:
     choosed_player : str = players[choosed]
     return choosed_player[1]
 
-
-# Clear cli
+# Function to clear CLI screen
 def clear() -> None:
     system('cls' if system_name == 'nt' else 'clear')
 
-
+# Function to update Discord presence
 def update_discord(state : str, details : str, time : time) -> None:
     RPC.update(
         state=f"{state}",
@@ -116,12 +109,13 @@ def update_discord(state : str, details : str, time : time) -> None:
                 "url": "https://github.com/TowarzyszFatCat/doccli"
             },
             {
-                     "label": "Odwiedź docchi.pl",
-                     "url": "https://docchi.pl/",
+                "label": "Odwiedź docchi.pl",
+                "url": "https://docchi.pl/",
             }
         ]
         )
-    
+
+# Function to check for program updates
 def check_update() -> None:
     response = get("https://api.github.com/repos/TowarzyszFatCat/doccli/releases/latest")
 
@@ -131,7 +125,7 @@ def check_update() -> None:
         print(f'Możesz pobrać nową wersję na stronie programu!\n')
         input("Naciśnij enter by pominąć...")
 
-
+# Function to handle Discord connection query
 def connect_to_discord_querry() -> bool:
     querry : str = fzf(['TAK', 'NIE'], '--header=Czy chcesz aby twoi znajomi z discorda widzieli co oglądasz?')[0]
 
@@ -142,7 +136,7 @@ def connect_to_discord_querry() -> bool:
         update_config('dc_status', "NIE")
         save_config()
 
-
+# Function to change search language
 def change_search_lang() -> bool:
     querry : str = fzf(['ORYGINALNY', 'ANGIELSKI'], '--header=Chesz wyszukiwać po oryginalnym tytule, czy tytule angielskim?')[0]
 
@@ -153,7 +147,7 @@ def change_search_lang() -> bool:
         update_config('search_lang', "ANGIELSKI")
         save_config()
 
-
+# Function to execute fuzzy finding
 def fzf(choices: List[str], fzf_options: str = '') -> List[str]:
     if fzf_options is None:
         fzf_options = ''
@@ -170,8 +164,7 @@ def fzf(choices: List[str], fzf_options: str = '') -> List[str]:
     except:
         pass
 
-
-
+# Function to retrieve information about all series
 def all_series() -> dict:
     all_series_list : list = get(f'https://api.docchi.pl/v1/series/list').json()
 
@@ -182,23 +175,14 @@ def all_series() -> dict:
             _all_series.append(f"{serie['title']} [{serie['episodes']}]")
         elif config['search_lang'] == "ANGIELSKI":
             _all_series.append(f"{serie['title_en']}, [{serie['episodes']}]")
-    
-    # number = 0
-    # for serie in all_series_list:
-    #     img_url = serie['cover']
-    #     img_data = get(img_url).content
-    #     with open(f'temp/{number}', 'wb') as img_file:
-    #         img_file.write(img_data)
-    #     number += 1
-        
-    
+
     choosed : int = _all_series.index(fzf(_all_series, '--header=WYSZUKAJ ANIME:')[0])
     
     serie : dict = all_series_list[choosed]
 
     return serie
 
-
+# Function to search for an anime
 def search_for_anime(serie = None, ep = None, players = None) -> List[any]:
     if serie == None:
         serie : dict = all_series()
@@ -210,7 +194,7 @@ def search_for_anime(serie = None, ep = None, players = None) -> List[any]:
 
     return [choose_player(players=players), serie, ep]
 
-
+# Function to open MPV player
 def open_mpv(quality, URL):
     try:
         process : Popen = Popen(args=['mpv', f'--ytdl-format={quality}', URL], shell=False, stdout=DEVNULL)
@@ -220,7 +204,7 @@ def open_mpv(quality, URL):
 
     return process
 
-
+# Function to let user choose video quality
 def choose_quality() -> None:
     quality_list : List[str] = ["NAJLEPSZA","NAJSZYBSZA"]
     quality_choose : str = fzf(quality_list,'--header=WYBIERZ JAKOŚĆ: ')[0]
@@ -231,7 +215,7 @@ def choose_quality() -> None:
         update_config('quality', 'NAJSZYBSZA')
         save_config()
 
-
+# Function to watch anime
 def watch(serie = None, ep = None, cont = False):
     if cont == True:
         if config['last_url'] == None:
@@ -264,7 +248,7 @@ def watch(serie = None, ep = None, cont = False):
     info = [anime, mpv_quality, process]
     watching_menu(info=info)
 
-
+# Function for main menu
 def main_menu() -> None:
     try:
         update_discord(state="Używa doccli!", details="Menu główne",time=time())
@@ -306,7 +290,7 @@ def main_menu() -> None:
     elif option == tabs[5]:
         exit()
 
-
+# Function to load configuration
 def load_config():
     if not path.exists(CONFIG_PATH):
         with open(CONFIG_PATH, 'w') as f:
@@ -327,11 +311,11 @@ def load_config():
             config = readed
             f.close()
     
-
+# Function to update configuration
 def update_config(var, value):
     config.update({f"{var}": value})
 
-
+# Function to save configuration
 def save_config():
     with open(CONFIG_PATH,"w") as f:
         json.dump(config, f)
@@ -339,8 +323,7 @@ def save_config():
 
     load_config()
 
-
-
+# Function for watching menu
 def watching_menu(info) -> None:
     tabs : List[str] = ['Wróć do menu głównego','Wróć do listy odcinków', f'Zmień domyślną jakość: {config["quality"]}']
 
@@ -354,9 +337,7 @@ def watching_menu(info) -> None:
     if actual_ep < max_ep:
         tabs.append('Następny odcinek')
 
-
     option : str = fzf(tabs, '--header=WYBIERZ:')[0]
-
 
     if option == tabs[0]:
         info[2].kill()
