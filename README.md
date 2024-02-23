@@ -122,16 +122,16 @@ https://github.com/TowarzyszFatCat/doccli/assets/68988781/30996888-de48-4891-9a8
 ## Linux:
 
 ### Wymagagane paczki na linuxie:
-Aby korzystać z doccli na systemie linux musisz zainstalować `mpv` i `fzf`! Oraz posiadać pythona3.9 lub nowszego (powinien być domyślnie zainstalowany)
+Aby korzystać z doccli na systemie linux musisz zainstalować `mpv`, `fzf` oraz `yt-dlp`! Oraz posiadać pythona3.9 lub nowszego (powinien być domyślnie zainstalowany)
 
 Instalacja `mpv` i `fzf` na Arch:
 ```bash
-sudo pacman -S mpv fzf
+sudo pacman -S mpv fzf yt-dlp
 ```
 
 Instalacja `mpv` i `fzf` na Debian/Ubuntu/Pop:
 ```bash
-sudo apt install mpv fzf
+sudo apt install mpv fzf yt-dlp
 ```
 
 ### Jak zainstalować na linuxie:
