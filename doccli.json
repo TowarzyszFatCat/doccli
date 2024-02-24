@@ -9,10 +9,9 @@
     "depends": [
         "python",
         "mpv",
-        "yt-dlp",
         "fzf"
     ],
     "post_install": [
-        "python -m pip install requests pypresence"
+        "python -m pip install requests pypresence yt-dlp"
     ]
 }

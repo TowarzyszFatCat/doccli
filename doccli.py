@@ -1,5 +1,5 @@
 # @TowarzyszFatCat
-# v1.3.8
+# v1.4
 
 # Import necessary libraries
 from requests import get
@@ -10,11 +10,13 @@ from subprocess import Popen, DEVNULL, run, PIPE
 from pypresence import Presence
 from typing import List
 import json
+from yt_dlp import YoutubeDL
+from simple_term_menu import TerminalMenu
 
 # GLOBAL VARIABLES
 # Initialize Discord RPC
 RPC = Presence(client_id="1206583480771936318")
-version: str = "v1.3.8"
+version: str = "v1.4"
 
 # Set up file paths
 ROOT_DIR = path.dirname(path.abspath(__file__))
@@ -57,7 +59,7 @@ def get_players_list(slug: str, ep: int) -> list:
     for player in players_list:
         player_data: List[str] = []
 
-        unsupported = ["Mega", "mega", "MEGA"]
+        unsupported = ["Mega", "mega", "MEGA", "zoro", "Zoro", "ZORO"]
 
         if player["player_hosting"] in unsupported:
             player_data.append(player["player_hosting"] + " [NIEWSPIERANY]")
@@ -79,7 +81,7 @@ def choose_ep(serie: list) -> int:
     for i in range(int(serie["episodes"])):
         _ep.append(str(i + 1))
 
-    choosed: int = int(_ep.index(fzf(_ep, "--header=WYBIERZ ODCINEK:")[0])) + 1
+    choosed: int = int(_ep.index(open_menu(_ep, "WYBIERZ ODCINEK:"))) + 1
 
     return choosed
 
@@ -94,7 +96,7 @@ def choose_player(players) -> str:
         number += 1
         _players.append(f"{number}. {player[0]}")
 
-    choosed = _players.index(fzf(_players, "--header=WYBIERZ HOSTA:")[0])
+    choosed = _players.index(open_menu(_players, "WYBIERZ HOSTA:"))
 
     choosed_player: str = players[choosed]
     return choosed_player[1]
@@ -141,10 +143,10 @@ def check_update() -> None:
 
 # Function to handle Discord connection query
 def connect_to_discord_querry() -> None:
-    querry: str = fzf(
+    querry: str = open_menu(
         ["TAK", "NIE"],
-        "--header=Czy chcesz aby twoi znajomi z discorda widzieli co oglądasz?",
-    )[0]
+        "Czy chcesz aby twoi znajomi z discorda widzieli co oglądasz?",
+    )
 
     if querry == "TAK":
         update_config("dc_status", "TAK")
@@ -156,10 +158,10 @@ def connect_to_discord_querry() -> None:
 
 # Function to change search language
 def change_search_lang() -> None:
-    querry: str = fzf(
+    querry: str = open_menu(
         ["ORYGINALNY", "ANGIELSKI"],
-        "--header=Chesz wyszukiwać po oryginalnym tytule, czy tytule angielskim?",
-    )[0]
+        "Chesz wyszukiwać po oryginalnym tytule, czy tytule angielskim?",
+    )
 
     if querry == "ORYGINALNY":
         update_config("search_lang", "ORYGINALNY")
@@ -170,21 +172,12 @@ def change_search_lang() -> None:
 
 
 # Function to execute fuzzy finding
-def fzf(choices: List[str], fzf_options: str = "") -> List[str]:
-    if fzf_options is None:
-        fzf_options = ""
-
-    choices_bytes = "\n".join(choices).encode()
-
-    command: List[str] = ["fzf", fzf_options]
-
-    try:
-        command_result = run(command, input=choices_bytes, check=True, stdout=PIPE)
-        results = command_result.stdout.decode().strip().split("\n")
-
-        return results
-    except:
-        pass
+def open_menu(choices: List[str], title: str = "") -> str:
+    clear()
+    options = choices
+    menu = TerminalMenu(choices, title=title, menu_highlight_style=("fg_black", "bg_gray", "bold"), search_highlight_style=("fg_black", "bg_gray", "bold"))
+    menu_entry_index = menu.show()
+    return options[menu_entry_index]
 
 
 # Function to retrieve information about all series
@@ -199,7 +192,7 @@ def all_series() -> dict:
         elif config["search_lang"] == "ANGIELSKI":
             _all_series.append(f"{serie['title_en']}, [{serie['episodes']}]")
 
-    choosed: int = _all_series.index(fzf(_all_series, "--header=WYSZUKAJ ANIME:")[0])
+    choosed: int = _all_series.index(open_menu(_all_series, "WYSZUKAJ ANIME ('/' aby otworzyć pasek wyszukiwania):"))
 
     serie: dict = all_series_list[choosed]
 
@@ -220,10 +213,10 @@ def search_for_anime(serie=None, ep=None, players=None) -> List[any]:
 
 
 # Function to open MPV player
-def open_mpv(quality, URL):
+def open_mpv(URL):
     try:
         process: Popen = Popen(
-            args=["mpv", f"--ytdl-format={quality}", URL], shell=False, stdout=DEVNULL
+            args=["mpv", URL], shell=False, stdout=DEVNULL, stderr=DEVNULL
         )
     except:
         print("[ERROR] Błąd podczas uruchamiania MPV!")
@@ -234,18 +227,21 @@ def open_mpv(quality, URL):
 
 # Function to let user choose video quality
 def choose_quality() -> None:
-    quality_list: List[str] = ["NAJLEPSZA", "NAJSZYBSZA"]
-    quality_choose: str = fzf(quality_list, "--header=WYBIERZ JAKOŚĆ: ")[0]
+    quality_list: List[str] = ["NAJLEPSZA", "NAJSZYBSZA", "POZWÓL MI WYBRAĆ ZA KAŻDYM RAZEM"]
+    quality_choose: str = open_menu(quality_list, "WYBIERZ JAKOŚĆ: ")
     if quality_choose == quality_list[0]:
         update_config("quality", "NAJLEPSZA")
         save_config()
     elif quality_choose == quality_list[1]:
         update_config("quality", "NAJSZYBSZA")
         save_config()
+    elif quality_choose == quality_list[2]:
+        update_config("quality", "WYBÓR")
+        save_config()
 
 
 # Function to watch anime
-def watch(serie=None, ep=None, cont=False):
+def watch(serie=None, ep=None, cont=False, change_quality=False):
     if cont == True:
         if config["last_url"] == None:
             print("[BŁĄD] Nie możesz kontynuować niczego")
@@ -258,12 +254,20 @@ def watch(serie=None, ep=None, cont=False):
         update_config("last_ep", anime[2])
         save_config()
 
-    if config["quality"] == "NAJLEPSZA":
-        mpv_quality = "best"
-    elif config["quality"] == "NAJSZYBSZA":
-        mpv_quality = "worst"
+    aviable_formats = get_all_formats(anime[0])
 
-    process = open_mpv(quality=mpv_quality, URL=anime[0])
+    mpv_url = ''
+
+
+    if config['quality'] == "WYBÓR" or change_quality:
+        choosed = choose_format(aviable_formats)
+        mpv_url = choosed[1]
+    elif config["quality"] == "NAJLEPSZA":
+        mpv_url = aviable_formats[-1][1]   # Url from last item from list
+    elif config["quality"] == "NAJSZYBSZA":
+        mpv_url = aviable_formats[0][1]   # Url from last item from list
+
+    process = open_mpv(URL=mpv_url)
 
     try:
         if config["dc_status"] == "TAK":
@@ -275,9 +279,35 @@ def watch(serie=None, ep=None, cont=False):
     except:
         pass
 
-    info = [anime, mpv_quality, process]
+    info = [anime, process]
     watching_menu(info=info)
 
+
+def get_all_formats(url):
+    with YoutubeDL({'quiet': True}) as ydl:
+        info_dict = ydl.extract_info(url, download=False)
+        formats = info_dict['formats']
+
+        aviable_formats = []
+
+        for format in formats:
+            format_info = []
+
+            format_info.append(format['height'])
+            format_info.append(format['url'])
+
+            aviable_formats.append(format_info)
+
+        return aviable_formats
+
+def choose_format(formats):
+    ids = []
+    for format in formats:
+        ids.append(f"{format[0]}")
+
+    format_choose = open_menu(ids, "WYBIERZ JAKOŚĆ: ")
+
+    return formats[ids.index(format_choose)]
 
 # Function for main menu
 def main_menu() -> None:
@@ -305,7 +335,7 @@ def main_menu() -> None:
         "Zamknij",
     ]
 
-    option = fzf(tabs, "--header=WYBIERZ:")[0]
+    option = open_menu(tabs, "WYBIERZ:")
 
     if option == tabs[0]:
         watch()
@@ -350,7 +380,6 @@ def load_config():
             config = readed
             f.close()
 
-
 # Function to update configuration
 def update_config(var, value):
     config.update({f"{var}": value})
@@ -370,7 +399,7 @@ def watching_menu(info) -> None:
     tabs: List[str] = [
         "Wróć do menu głównego",
         "Wróć do listy odcinków",
-        f'Zmień domyślną jakość: {config["quality"]}',
+        'Zmień jakość',
     ]
 
     min_ep = 1
@@ -383,27 +412,26 @@ def watching_menu(info) -> None:
     if actual_ep < max_ep:
         tabs.append("Następny odcinek")
 
-    option: str = fzf(tabs, "--header=WYBIERZ:")[0]
+    option: str = open_menu(tabs, "WYBIERZ:")
 
     if option == tabs[0]:
-        info[2].kill()
+        info[1].kill()
         main_menu()
 
     if option == tabs[1]:
-        info[2].kill()
+        info[1].kill()
         watch(serie=info[0][1])
 
     if option == tabs[2]:
-        info[2].kill()
-        choose_quality()
-        watch(cont=True)
+        info[1].kill()
+        watch(cont=True, change_quality=True)
 
     if option == "Poprzedni odcinek":
-        info[2].kill()
+        info[1].kill()
         watch(serie=info[0][1], ep=str(actual_ep - 1))
 
     if option == "Następny odcinek":
-        info[2].kill()
+        info[1].kill()
         watch(serie=info[0][1], ep=str(actual_ep + 1))
 
 
