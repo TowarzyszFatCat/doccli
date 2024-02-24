@@ -11,7 +11,7 @@ from pypresence import Presence
 from typing import List
 import json
 from yt_dlp import YoutubeDL
-from simple_term_menu import TerminalMenu
+import menu
 
 # GLOBAL VARIABLES
 # Initialize Discord RPC
@@ -175,9 +175,11 @@ def change_search_lang() -> None:
 def open_menu(choices: List[str], title: str = "") -> str:
     clear()
     options = choices
-    menu = TerminalMenu(choices, title=title, menu_highlight_style=("fg_black", "bg_gray", "bold"), search_highlight_style=("fg_black", "bg_gray", "bold"))
-    menu_entry_index = menu.show()
-    return options[menu_entry_index]
+    menu_ex = menu.Menu(choices)
+    User_choice = menu_ex.launch(response="String")
+    print(menu.Colors.GREEN, f"Selected {menu_ex.selected}, index = {menu_ex.selected_index}, {User_choice}")
+    sleep(99999)
+
 
 
 # Function to retrieve information about all series
