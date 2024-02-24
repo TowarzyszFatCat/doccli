@@ -11,7 +11,7 @@ from pypresence import Presence
 from typing import List
 import json
 from yt_dlp import YoutubeDL
-import menu
+from InquirerPy import inquirer
 
 # GLOBAL VARIABLES
 # Initialize Discord RPC
@@ -174,12 +174,13 @@ def change_search_lang() -> None:
 # Function to execute fuzzy finding
 def open_menu(choices: List[str], title: str = "") -> str:
     clear()
-    options = choices
-    menu_ex = menu.Menu(choices)
-    User_choice = menu_ex.launch(response="String")
-    print(menu.Colors.GREEN, f"Selected {menu_ex.selected}, index = {menu_ex.selected_index}, {User_choice}")
-    sleep(99999)
-
+    action = inquirer.fuzzy(
+        message=title,
+        choices=choices,
+        border=True,
+        qmark='',
+    ).execute()
+    return choices[choices.index(action)]
 
 
 # Function to retrieve information about all series
@@ -194,7 +195,7 @@ def all_series() -> dict:
         elif config["search_lang"] == "ANGIELSKI":
             _all_series.append(f"{serie['title_en']}, [{serie['episodes']}]")
 
-    choosed: int = _all_series.index(open_menu(_all_series, "WYSZUKAJ ANIME ('/' aby otworzyć pasek wyszukiwania):"))
+    choosed: int = _all_series.index(open_menu(_all_series, "WYSZUKAJ ANIME:"))
 
     serie: dict = all_series_list[choosed]
 
