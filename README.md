@@ -47,8 +47,8 @@ https://github.com/TowarzyszFatCat/doccli/assets/68988781/30996888-de48-4891-9a8
 </h1>
 
 ## Windows:
-
 Przejdź do zakładki RELEASES znajdującej się po prawej stronie i pobierz najnowszą wersję! <a href="https://github.com/TowarzyszFatCat/doccli/releases/download/v2.0/doccli.zip">LUB KLIKNIJ TUTAJ</a> Po pobraniu wypakuj gdziekolwiek.
+
 ---
 
 ## Linux:
