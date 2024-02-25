@@ -1,5 +1,5 @@
 {
-    "version": "1.3.8",
+    "version": "1.4",
     "description": "A cli to watch anime from docchi with polish subtitles",
     "homepage": "https://github.com/TowarzyszFatCat/doccli",
     "license": "GPL-3.0 license",
@@ -8,10 +8,9 @@
     "bin": "doccli.py",
     "depends": [
         "python",
-        "mpv",
-        "fzf"
+        "mpv"
     ],
     "post_install": [
-        "python -m pip install requests pypresence yt-dlp"
+        "python -m pip install requests pypresence yt-dlp inquirerpy"
     ]
 }

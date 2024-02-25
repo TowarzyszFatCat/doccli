@@ -13,6 +13,7 @@ import json
 from yt_dlp import YoutubeDL
 from InquirerPy import inquirer
 
+
 # GLOBAL VARIABLES
 # Initialize Discord RPC
 RPC = Presence(client_id="1206583480771936318")
@@ -59,7 +60,7 @@ def get_players_list(slug: str, ep: int) -> list:
     for player in players_list:
         player_data: List[str] = []
 
-        unsupported = ["Mega", "mega", "MEGA", "zoro", "Zoro", "ZORO"]
+        unsupported = ["Mega", "mega", "MEGA", "zoro", "Zoro", "ZORO", 'GOOGLE DRIVE']
 
         if player["player_hosting"] in unsupported:
             player_data.append(player["player_hosting"] + " [NIEWSPIERANY]")
@@ -179,6 +180,9 @@ def open_menu(choices: List[str], title: str = "") -> str:
         choices=choices,
         border=True,
         qmark='',
+        amark='',
+        cycle=True,
+        height=10,
     ).execute()
     return choices[choices.index(action)]
 
@@ -293,13 +297,19 @@ def get_all_formats(url):
 
         aviable_formats = []
 
+
+        # For CDA
         for format in formats:
             format_info = []
 
-            format_info.append(format['height'])
-            format_info.append(format['url'])
-
-            aviable_formats.append(format_info)
+            try:
+                format_info.append(format['height'])
+                format_info.append(format['url'])
+                aviable_formats.append(format_info)
+            except:
+                format_info.append('Nieznany format')
+                format_info.append(format['url'])
+                aviable_formats.append(format_info)
 
         return aviable_formats
 
