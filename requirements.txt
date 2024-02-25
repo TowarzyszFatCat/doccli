@@ -1,3 +1,4 @@
 pypresence~=4.3.0
 requests~=2.31.0
 inquirerpy~=0.3.4
+yt-dlp
