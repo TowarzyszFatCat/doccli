@@ -1,18 +1,19 @@
 # @TowarzyszFatCat
 # v1.4
+import os.path
 
 from requests import get
-from os import system
 from os import name as system_name
 from time import sleep, time
 from subprocess import Popen, DEVNULL
 from typing import List
-from InquirerPy import inquirer
 
 from modules.url_module import get_all_formats
 from modules.discord_module import connect_discord, update_discord
 from modules.update_checker import check_update
 from modules.config_module import load_config, update_config, save_config
+from modules.menu_module import open_menu
+from modules.unzip_module import unzip
 
 import modules.global_variables_module as gvm
 
@@ -71,10 +72,6 @@ def choose_player(players) -> str:
     return choosed_player[1]
 
 
-# Function to clear CLI screen
-def clear() -> None:
-    system("cls" if system_name == "nt" else "clear")
-
 
 # Function to handle Discord connection query
 def connect_to_discord_querry() -> None:
@@ -104,23 +101,6 @@ def change_search_lang() -> None:
     elif querry == "ANGIELSKI":
         update_config("search_lang", "ANGIELSKI")
         save_config()
-
-
-# Function to execute fuzzy finding
-def open_menu(choices: List[str], title: str = "") -> str:
-    clear()
-    action = inquirer.fuzzy(
-        message=title,
-        choices=choices,
-        border=True,
-        qmark='',
-        amark='',
-        prompt='Szukaj:',
-        pointer='>',
-        cycle=True,
-        height=10,
-    ).execute()
-    return choices[choices.index(action)]
 
 
 # Function to retrieve information about all series
@@ -158,14 +138,14 @@ def search_for_anime(serie=None, ep=None, players=None) -> List[any]:
 # Function to open MPV player
 def open_mpv(URL):
 
-    player = "C:/Program Files/VideoLAN/VLC/vlc.exe" if system_name == "nt" else "mpv"
+    player = "mpv/mpv.com" if system_name == "nt" else "mpv"
 
     try:
         process: Popen = Popen(
             args=[player, URL], shell=False, stdout=DEVNULL, stderr=DEVNULL
         )
     except:
-        print(f"[ERROR] Upewnij się że {player} jest zainstalowane w domyślnej ścieżce!")
+        print(f"[ERROR] Błąd podczas uruchamiania MPV!")
         exit()
 
     return process
@@ -332,6 +312,9 @@ def watching_menu(info) -> None:
 
 # Start!
 if __name__ == "__main__":
+    if not os.path.isfile('mpv/mpv.com'):
+        unzip()
+
     check_update()
     load_config()
     connect_discord()
