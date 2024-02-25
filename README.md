@@ -9,7 +9,7 @@ UPDATE v2.0! Dodano exe dla windowsa!
 
 ---
 
-https://github.com/TowarzyszFatCat/doccli/assets/68988781/30996888-de48-4891-9a88-60ede955e4c6
+https://github.com/TowarzyszFatCat/doccli/assets/68988781/cea234d3-cbcd-4619-a4ea-0b667279ce1c
 
 ---
 
