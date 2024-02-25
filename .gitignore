@@ -5,6 +5,11 @@ __pycache__/
 
 credintials.py
 
+# MY
+doccli.config
+
+
+
 # C extensions
 *.so
 .notes.txt

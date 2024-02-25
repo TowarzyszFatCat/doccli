@@ -1,49 +1,21 @@
 # @TowarzyszFatCat
-# v1.3.8
+# v1.4
+import os.path
 
-# Import necessary libraries
 from requests import get
-from os import system, getpid, path, remove
 from os import name as system_name
 from time import sleep, time
-from subprocess import Popen, DEVNULL, run, PIPE
-from pypresence import Presence
+from subprocess import Popen, DEVNULL
 from typing import List
-import json
 
-# GLOBAL VARIABLES
-# Initialize Discord RPC
-RPC = Presence(client_id="1206583480771936318")
-version: str = "v1.3.8"
+from modules.url_module import get_all_formats
+from modules.discord_module import connect_discord, update_discord
+from modules.update_checker import check_update
+from modules.config_module import load_config, update_config, save_config
+from modules.menu_module import open_menu
+from modules.unzip_module import unzip
 
-# Set up file paths
-ROOT_DIR = path.dirname(path.abspath(__file__))
-CONFIG_PATH = path.join(ROOT_DIR, "doccli.config")
-
-# Default configuration settings
-default_config = {
-    "config_version": None,
-    "dc_status": "TAK",
-    "search_lang": "ORYGINALNY",
-    "last_url": None,
-    "last_info": None,
-    "last_ep": None,
-    "quality": "NAJLEPSZA",
-}
-
-config = {}
-
-
-# Function to connect to Discord
-def connect_discord() -> None:
-    try:
-        print(
-            "[INFO] Łączenie z discordem... Jeżeli zajmuje to zbyt długo, możesz anulować łączenie za pomocą <CTRL C>"
-        )
-        RPC.connect()
-        RPC.clear(getpid())
-    except:
-        print("[ERROR] Błąd podczas łączenia z discordem!")
+import modules.global_variables_module as gvm
 
 
 # Function to retrieve list of available players
@@ -57,12 +29,18 @@ def get_players_list(slug: str, ep: int) -> list:
     for player in players_list:
         player_data: List[str] = []
 
-        unsupported = ["Mega", "mega", "MEGA"]
+        supported = ["cda", "Cda", "CDA",
+                     'sibnet', 'Sibnet', 'SIBNET',
+                     'GOOGLE DRIVE', 'google drive', 'Google Drive', 'GDRIVE',
+                     'Sibnet', 'SIBNET', 'sibnet',
+                     'mp4upload', 'MP4UPLOAD',
+                     'dailymotion', 'Dailymotion', 'DAILYMOTION'
+                     ]
 
-        if player["player_hosting"] in unsupported:
-            player_data.append(player["player_hosting"] + " [NIEWSPIERANY]")
-        else:
+        if player["player_hosting"] in supported:
             player_data.append(player["player_hosting"])
+        else:
+            player_data.append(player["player_hosting"] + " [NIEWSPIERANY]")
 
         player_data.append(player["player"])
 
@@ -79,7 +57,7 @@ def choose_ep(serie: list) -> int:
     for i in range(int(serie["episodes"])):
         _ep.append(str(i + 1))
 
-    choosed: int = int(_ep.index(fzf(_ep, "--header=WYBIERZ ODCINEK:")[0])) + 1
+    choosed: int = int(_ep.index(open_menu(_ep, "WYBIERZ ODCINEK:"))) + 1
 
     return choosed
 
@@ -94,57 +72,19 @@ def choose_player(players) -> str:
         number += 1
         _players.append(f"{number}. {player[0]}")
 
-    choosed = _players.index(fzf(_players, "--header=WYBIERZ HOSTA:")[0])
+    choosed = _players.index(open_menu(_players, "WYBIERZ HOSTA:"))
 
     choosed_player: str = players[choosed]
     return choosed_player[1]
 
 
-# Function to clear CLI screen
-def clear() -> None:
-    system("cls" if system_name == "nt" else "clear")
-
-
-# Function to update Discord presence
-def update_discord(state: str, details: str, time: time) -> None:
-    RPC.update(
-        state=f"{state}",
-        details=f"{details}",
-        large_image="icon_1",
-        large_text="CLI do oglądania anime z docchi.pl",
-        start=int(time),
-        buttons=[
-            {
-                "label": "Pobierz doccli",
-                "url": "https://github.com/TowarzyszFatCat/doccli",
-            },
-            {
-                "label": "Odwiedź docchi.pl",
-                "url": "https://docchi.pl/",
-            },
-        ],
-    )
-
-
-# Function to check for program updates
-def check_update() -> None:
-    response = get(
-        "https://api.github.com/repos/TowarzyszFatCat/doccli/releases/latest"
-    )
-
-    if response.json()["name"] != version:
-        print(f"Wersja programu: {version}")
-        print(f'Dostępna jest nowa: {response.json()["name"]}')
-        print(f"Możesz pobrać nową wersję na stronie programu!\n")
-        input("Naciśnij enter by pominąć...")
-
 
 # Function to handle Discord connection query
 def connect_to_discord_querry() -> None:
-    querry: str = fzf(
+    querry: str = open_menu(
         ["TAK", "NIE"],
-        "--header=Czy chcesz aby twoi znajomi z discorda widzieli co oglądasz?",
-    )[0]
+        "Czy chcesz aby twoi znajomi z discorda widzieli co oglądasz?",
+    )
 
     if querry == "TAK":
         update_config("dc_status", "TAK")
@@ -156,10 +96,10 @@ def connect_to_discord_querry() -> None:
 
 # Function to change search language
 def change_search_lang() -> None:
-    querry: str = fzf(
+    querry: str = open_menu(
         ["ORYGINALNY", "ANGIELSKI"],
-        "--header=Chesz wyszukiwać po oryginalnym tytule, czy tytule angielskim?",
-    )[0]
+        "Chesz wyszukiwać po oryginalnym tytule, czy tytule angielskim?",
+    )
 
     if querry == "ORYGINALNY":
         update_config("search_lang", "ORYGINALNY")
@@ -169,24 +109,6 @@ def change_search_lang() -> None:
         save_config()
 
 
-# Function to execute fuzzy finding
-def fzf(choices: List[str], fzf_options: str = "") -> List[str]:
-    if fzf_options is None:
-        fzf_options = ""
-
-    choices_bytes = "\n".join(choices).encode()
-
-    command: List[str] = ["fzf", fzf_options]
-
-    try:
-        command_result = run(command, input=choices_bytes, check=True, stdout=PIPE)
-        results = command_result.stdout.decode().strip().split("\n")
-
-        return results
-    except:
-        pass
-
-
 # Function to retrieve information about all series
 def all_series() -> dict:
     all_series_list: list = get(f"https://api.docchi.pl/v1/series/list").json()
@@ -194,12 +116,12 @@ def all_series() -> dict:
     _all_series: list = []
 
     for serie in all_series_list:
-        if config["search_lang"] == "ORYGINALNY":
+        if gvm.config["search_lang"] == "ORYGINALNY":
             _all_series.append(f"{serie['title']} [{serie['episodes']}]")
-        elif config["search_lang"] == "ANGIELSKI":
+        elif gvm.config["search_lang"] == "ANGIELSKI":
             _all_series.append(f"{serie['title_en']}, [{serie['episodes']}]")
 
-    choosed: int = _all_series.index(fzf(_all_series, "--header=WYSZUKAJ ANIME:")[0])
+    choosed: int = _all_series.index(open_menu(_all_series, "WYSZUKAJ ANIME:"))
 
     serie: dict = all_series_list[choosed]
 
@@ -220,13 +142,16 @@ def search_for_anime(serie=None, ep=None, players=None) -> List[any]:
 
 
 # Function to open MPV player
-def open_mpv(quality, URL):
+def open_mpv(URL):
+
+    player = "_internal/mpv/mpv.com" if system_name == "nt" else "mpv"
+
     try:
         process: Popen = Popen(
-            args=["mpv", f"--ytdl-format={quality}", URL], shell=False, stdout=DEVNULL
+            args=[player, URL], shell=False, stdout=DEVNULL, stderr=DEVNULL
         )
     except:
-        print("[ERROR] Błąd podczas uruchamiania MPV!")
+        print(f"[ERROR] Błąd podczas uruchamiania MPV!")
         exit()
 
     return process
@@ -234,23 +159,26 @@ def open_mpv(quality, URL):
 
 # Function to let user choose video quality
 def choose_quality() -> None:
-    quality_list: List[str] = ["NAJLEPSZA", "NAJSZYBSZA"]
-    quality_choose: str = fzf(quality_list, "--header=WYBIERZ JAKOŚĆ: ")[0]
+    quality_list: List[str] = ["NAJLEPSZA", "NAJSZYBSZA", "POZWÓL MI WYBRAĆ ZA KAŻDYM RAZEM"]
+    quality_choose: str = open_menu(quality_list, "WYBIERZ JAKOŚĆ: ")
     if quality_choose == quality_list[0]:
         update_config("quality", "NAJLEPSZA")
         save_config()
     elif quality_choose == quality_list[1]:
         update_config("quality", "NAJSZYBSZA")
         save_config()
+    elif quality_choose == quality_list[2]:
+        update_config("quality", "WYBÓR")
+        save_config()
 
 
 # Function to watch anime
-def watch(serie=None, ep=None, cont=False):
+def watch(serie=None, ep=None, cont=False, change_quality=False):
     if cont == True:
-        if config["last_url"] == None:
+        if gvm.config["last_url"] == None:
             print("[BŁĄD] Nie możesz kontynuować niczego")
             exit()
-        anime = [config["last_url"], config["last_info"], config["last_ep"]]
+        anime = [gvm.config["last_url"], gvm.config["last_info"], gvm.config["last_ep"]]
     else:
         anime = search_for_anime(serie, ep)
         update_config("last_url", anime[0])
@@ -258,26 +186,43 @@ def watch(serie=None, ep=None, cont=False):
         update_config("last_ep", anime[2])
         save_config()
 
-    if config["quality"] == "NAJLEPSZA":
-        mpv_quality = "best"
-    elif config["quality"] == "NAJSZYBSZA":
-        mpv_quality = "worst"
+    aviable_formats = get_all_formats(anime[0])
 
-    process = open_mpv(quality=mpv_quality, URL=anime[0])
+    mpv_url = ''
+
+
+    if gvm.config['quality'] == "WYBÓR" or change_quality:
+        choosed = choose_format(aviable_formats)
+        mpv_url = choosed[1]
+    elif gvm.config["quality"] == "NAJLEPSZA":
+        mpv_url = aviable_formats[-1][1]   # Url from last item from list
+    elif gvm.config["quality"] == "NAJSZYBSZA":
+        mpv_url = aviable_formats[0][1]   # Url from last item from list
+
+    process = open_mpv(URL=mpv_url)
 
     try:
-        if config["dc_status"] == "TAK":
+        if gvm.config["dc_status"] == "TAK":
             update_discord(
                 state=f"Ep: {anime[2]}", details=anime[1]["title"], time=time()
             )
-        elif config["dc_status"] == "NIE":
+        elif gvm.config["dc_status"] == "NIE":
             update_discord(state=f"Tajne!", details="Ogląda anime...", time=time())
     except:
         pass
 
-    info = [anime, mpv_quality, process]
+    info = [anime, process]
     watching_menu(info=info)
 
+
+def choose_format(formats):
+    ids = []
+    for format in formats:
+        ids.append(f"{format[0]}")
+
+    format_choose = open_menu(ids, "WYBIERZ JAKOŚĆ: ")
+
+    return formats[ids.index(format_choose)]
 
 # Function for main menu
 def main_menu() -> None:
@@ -287,11 +232,11 @@ def main_menu() -> None:
         pass
 
     try:
-        if config["search_lang"] == "ORYGINALNY":
-            continue_title = config["last_info"]["title"]
-        elif config["search_lang"] == "ANGIELSKI":
-            continue_title = config["last_info"]["title_en"]
-        continue_ep = config["last_ep"]
+        if gvm.config["search_lang"] == "ORYGINALNY":
+            continue_title = gvm.config["last_info"]["title"]
+        elif gvm.config["search_lang"] == "ANGIELSKI":
+            continue_title = gvm.config["last_info"]["title_en"]
+        continue_ep = gvm.config["last_ep"]
     except:
         continue_title = None
         continue_ep = None
@@ -299,13 +244,13 @@ def main_menu() -> None:
     tabs: List[str] = [
         "Wyszukaj anime",
         f"Kontynuuj: {continue_title} [Ep: {continue_ep}]",
-        f'Status aktywności: {config["dc_status"]}',
-        f'Język tytułów: {config["search_lang"]}',
-        f'Domyślna jakość: {config["quality"]}',
+        f'Status aktywności: {gvm.config["dc_status"]}',
+        f'Język tytułów: {gvm.config["search_lang"]}',
+        f'Domyślna jakość: {gvm.config["quality"]}',
         "Zamknij",
     ]
 
-    option = fzf(tabs, "--header=WYBIERZ:")[0]
+    option = open_menu(tabs, "WYBIERZ:")
 
     if option == tabs[0]:
         watch()
@@ -329,48 +274,13 @@ def main_menu() -> None:
         exit()
 
 
-# Function to load configuration
-def load_config():
-    if not path.exists(CONFIG_PATH):
-        with open(CONFIG_PATH, "w") as f:
-            default_config.update({"config_version": version})
-            json.dump(default_config, f)
-            f.close()
-
-    with open(CONFIG_PATH, "r") as f:
-        readed = json.load(f)
-
-        if readed["config_version"] != version:
-            print("[INFO] Wykryto config ze starej wersji! Podmienianie...")
-            f.close()
-            remove(CONFIG_PATH)
-            load_config()
-        else:
-            global config
-            config = readed
-            f.close()
-
-
-# Function to update configuration
-def update_config(var, value):
-    config.update({f"{var}": value})
-
-
-# Function to save configuration
-def save_config():
-    with open(CONFIG_PATH, "w") as f:
-        json.dump(config, f)
-        f.close()
-
-    load_config()
-
 
 # Function for watching menu
 def watching_menu(info) -> None:
     tabs: List[str] = [
         "Wróć do menu głównego",
         "Wróć do listy odcinków",
-        f'Zmień domyślną jakość: {config["quality"]}',
+        'Zmień jakość',
     ]
 
     min_ep = 1
@@ -383,32 +293,34 @@ def watching_menu(info) -> None:
     if actual_ep < max_ep:
         tabs.append("Następny odcinek")
 
-    option: str = fzf(tabs, "--header=WYBIERZ:")[0]
+    option: str = open_menu(tabs, "WYBIERZ:")
 
     if option == tabs[0]:
-        info[2].kill()
+        info[1].kill()
         main_menu()
 
     if option == tabs[1]:
-        info[2].kill()
+        info[1].kill()
         watch(serie=info[0][1])
 
     if option == tabs[2]:
-        info[2].kill()
-        choose_quality()
-        watch(cont=True)
+        info[1].kill()
+        watch(cont=True, change_quality=True)
 
     if option == "Poprzedni odcinek":
-        info[2].kill()
+        info[1].kill()
         watch(serie=info[0][1], ep=str(actual_ep - 1))
 
     if option == "Następny odcinek":
-        info[2].kill()
+        info[1].kill()
         watch(serie=info[0][1], ep=str(actual_ep + 1))
 
 
 # Start!
 if __name__ == "__main__":
+    if system_name == "nt" and not os.path.isfile('_internal/mpv/mpv.com'):
+        unzip()
+
     check_update()
     load_config()
     connect_discord()
