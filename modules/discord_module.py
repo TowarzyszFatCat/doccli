@@ -20,11 +20,11 @@ def update_discord(state: str, details: str, time) -> None:
         state=f"{state}",
         details=f"{details}",
         large_image="icon_1",
-        large_text="CLI do oglądania anime z docchi.pl",
+        large_text="CLI do oglądania anime z docchi.pl! Teraz także na Windowsa!",
         start=int(time),
         buttons=[
             {
-                "label": "Pobierz doccli",
+                "label": "Pobierz doccli dla Windowsa!",
                 "url": "https://github.com/TowarzyszFatCat/doccli",
             },
             {
