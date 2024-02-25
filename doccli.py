@@ -158,7 +158,7 @@ def search_for_anime(serie=None, ep=None, players=None) -> List[any]:
 # Function to open MPV player
 def open_mpv(URL):
 
-    player = "vlc path" if system_name == "nt" else "mpv"
+    player = "C:/Program Files/VideoLAN/VLC/vlc.exe" if system_name == "nt" else "mpv"
 
     try:
         process: Popen = Popen(
