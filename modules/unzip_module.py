@@ -1,5 +1,5 @@
 from zipfile import ZipFile
 
 def unzip():
-    with ZipFile('mpv/mpv.zip','r') as file:
-        file.extractall('mpv')
+    with ZipFile('_internal/mpv/mpv.zip','r') as file:
+        file.extractall('_internal/mpv')

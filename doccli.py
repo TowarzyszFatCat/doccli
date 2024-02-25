@@ -29,7 +29,13 @@ def get_players_list(slug: str, ep: int) -> list:
     for player in players_list:
         player_data: List[str] = []
 
-        supported = ["cda", "Cda", "CDA"]
+        supported = ["cda", "Cda", "CDA",
+                     'sibnet', 'Sibnet', 'SIBNET',
+                     'GOOGLE DRIVE', 'google drive', 'Google Drive', 'GDRIVE',
+                     'Sibnet', 'SIBNET', 'sibnet',
+                     'mp4upload', 'MP4UPLOAD',
+                     'dailymotion', 'Dailymotion', 'DAILYMOTION'
+                     ]
 
         if player["player_hosting"] in supported:
             player_data.append(player["player_hosting"])
@@ -138,7 +144,7 @@ def search_for_anime(serie=None, ep=None, players=None) -> List[any]:
 # Function to open MPV player
 def open_mpv(URL):
 
-    player = "mpv/mpv.com" if system_name == "nt" else "mpv"
+    player = "_internal/mpv/mpv.com" if system_name == "nt" else "mpv"
 
     try:
         process: Popen = Popen(
@@ -312,7 +318,7 @@ def watching_menu(info) -> None:
 
 # Start!
 if __name__ == "__main__":
-    if not os.path.isfile('mpv/mpv.com'):
+    if system_name == "nt" and not os.path.isfile('_internal/mpv/mpv.com'):
         unzip()
 
     check_update()
