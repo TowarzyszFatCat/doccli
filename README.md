@@ -3,6 +3,10 @@
 CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a>
 </h1>
 
+<h2 align="center">
+UPDATE v2.0! Dodano exe dla windowsa!
+</h2>
+
 ---
 
 https://github.com/TowarzyszFatCat/doccli/assets/68988781/30996888-de48-4891-9a88-60ede955e4c6
@@ -21,6 +25,7 @@ https://github.com/TowarzyszFatCat/doccli/assets/68988781/30996888-de48-4891-9a8
 - Funkcja następny/poprzedni odcinek
 - Szybka wyszukiwarka
 - Wznawianie oglądania
+- Automatyczny wybór jakości
 
 </td>
 <td>
@@ -43,7 +48,7 @@ https://github.com/TowarzyszFatCat/doccli/assets/68988781/30996888-de48-4891-9a8
 
 ## Windows:
 
-> Przejdź do zakładki RELEASES znajdującej się po prawej stronie i pobierz najnowszą wersję.
+Przejdź do zakładki RELEASES znajdującej się po prawej stronie i pobierz najnowszą wersję! Po pobraniu wypakuj gdziekolwiek.
 
 ---
 

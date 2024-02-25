@@ -1,6 +1,6 @@
 from os import path
 
-VERSION: str = "v1.4"
+VERSION: str = "v2.0"
 config = {}
 
 ROOT_DIR = path.dirname(path.abspath('doccli.py'))
