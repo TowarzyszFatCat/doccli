@@ -33,10 +33,13 @@ def get_all_formats(url):
         elif 'google' in url:
             for format in formats:
                 format_info = []
-                if format['format_id'] == 'source':
-                    format_info.append('Źródło')
-                    format_info.append(format['url'])
-                    aviable_formats.append(format_info)
+                try:
+                    if format['format_id'] == 'source':
+                        format_info.append('Źródło')
+                        format_info.append(format['url'])
+                        aviable_formats.append(format_info)
+                except:
+                    pass
 
         # For mp4upload
         elif 'mp4upload' in url:
