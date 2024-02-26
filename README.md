@@ -93,7 +93,7 @@ doccli
 
 <div align="center">
     
-[![Star History Chart](https://api.star-history.com/svg?repos=TowarzyszFatCat/doccli&type=Date)](https://star-history.com/#TowarzyszFatCat/doccli&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=TowarzyszFatCat/doccli&type=Date)](https://star-history.com/)
 
 </div>
 
