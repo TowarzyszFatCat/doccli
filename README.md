@@ -90,6 +90,15 @@ doccli
 ```
 
 ---
+
+<div align="center">
+    
+[![Star History Chart](https://api.star-history.com/svg?repos=TowarzyszFatCat/doccli&type=Date)](https://star-history.com/#TowarzyszFatCat/doccli&Date)
+
+</div>
+
+---
+
 ### Using mpv player: <a href="https://github.com/mpv-player/mpv">mpv</a>
 ### Inspired by: <a href="https://github.com/pystardust/ani-cli">ani-cli</a>
 
