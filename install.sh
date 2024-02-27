@@ -9,6 +9,7 @@ if [ "${PWD##*/}" == "doccli" ] ; then
 
   sudo chmod 777 ~/.doccli_src
   sudo chmod 777 ~/.doccli_src/*
+  sudo chmod 777 ~/.doccli_src/modules/*
   
   cd ~/.doccli_src && sudo python -m venv .venv
   cd ~/.doccli_src && sudo .venv/bin/pip install requests pypresence yt-dlp inquirerpy

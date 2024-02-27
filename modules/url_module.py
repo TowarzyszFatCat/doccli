@@ -25,7 +25,7 @@ def get_all_formats(url):
                 format_info = []
 
                 format_info.append('Źródło (długie ładowanie)')
-                format_info.append(format['http_headers']['Referer'])   # Sibnet link is in Referer!
+                format_info.append(format['http_headers']['Referer'])
                 aviable_formats.append(format_info)
 
 
