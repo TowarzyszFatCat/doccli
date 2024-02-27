@@ -4,7 +4,7 @@ import os.path
 
 from requests import get
 from os import name as system_name
-from time import sleep, time
+from time import time
 from subprocess import Popen, DEVNULL
 from typing import List
 
@@ -51,7 +51,7 @@ def get_players_list(slug: str, ep: int) -> list:
 
 
 # Function to let user choose an episode
-def choose_ep(serie: list) -> int:
+def choose_ep(serie: dict) -> int:
     _ep: List[str] = []
 
     for i in range(int(serie["episodes"])):
@@ -76,7 +76,6 @@ def choose_player(players) -> str:
 
     choosed_player: str = players[choosed]
     return choosed_player[1]
-
 
 
 # Function to handle Discord connection query
@@ -129,11 +128,11 @@ def all_series() -> dict:
 
 
 # Function to search for an anime
-def search_for_anime(serie=None, ep=None, players=None) -> List[any]:
-    if serie == None:
+def search_for_anime(serie=None, ep=None) -> List[any]:
+    if serie is None:
         serie: dict = all_series()
 
-    if ep == None:
+    if ep is None:
         ep: int = choose_ep(serie=serie)
 
     players: list = get_players_list(slug=serie["slug"], ep=ep)
@@ -142,17 +141,13 @@ def search_for_anime(serie=None, ep=None, players=None) -> List[any]:
 
 
 # Function to open MPV player
-def open_mpv(URL):
+def open_mpv(url) -> Popen:
 
-    player = "_internal/mpv/mpv.com" if system_name == "nt" else "mpv"
+    player: str = "_internal/mpv/mpv.com" if system_name == "nt" else "mpv"
 
-    try:
-        process: Popen = Popen(
-            args=[player, URL], shell=False, stdout=DEVNULL, stderr=DEVNULL
-        )
-    except:
-        print(f"[ERROR] Błąd podczas uruchamiania MPV!")
-        exit()
+    process: Popen = Popen(
+        args=[player, url], shell=False, stdout=DEVNULL, stderr=DEVNULL
+    )
 
     return process
 
@@ -174,8 +169,8 @@ def choose_quality() -> None:
 
 # Function to watch anime
 def watch(serie=None, ep=None, cont=False, change_quality=False):
-    if cont == True:
-        if gvm.config["last_url"] == None:
+    if cont:
+        if gvm.config["last_url"] is None:
             print("[BŁĄD] Nie możesz kontynuować niczego")
             exit()
         anime = [gvm.config["last_url"], gvm.config["last_info"], gvm.config["last_ep"]]
@@ -199,17 +194,19 @@ def watch(serie=None, ep=None, cont=False, change_quality=False):
     elif gvm.config["quality"] == "NAJSZYBSZA":
         mpv_url = aviable_formats[0][1]   # Url from last item from list
 
-    process = open_mpv(URL=mpv_url)
+    process = open_mpv(url=mpv_url)
 
-    try:
-        if gvm.config["dc_status"] == "TAK":
-            update_discord(
-                state=f"Ep: {anime[2]}", details=anime[1]["title"], time=time()
-            )
-        elif gvm.config["dc_status"] == "NIE":
+    if gvm.config["dc_status"] == "TAK":
+        try:
+            update_discord(state=f"Ep: {anime[2]}", details=anime[1]["title"], time=time())
+        except RuntimeError:
+            print("Błąd aktualizacji statusu!")
+
+    elif gvm.config["dc_status"] == "NIE":
+        try:
             update_discord(state=f"Tajne!", details="Ogląda anime...", time=time())
-    except:
-        pass
+        except RuntimeError:
+            print("Błąd aktualizacji statusu!")
 
     info = [anime, process]
     watching_menu(info=info)
@@ -217,29 +214,35 @@ def watch(serie=None, ep=None, cont=False, change_quality=False):
 
 def choose_format(formats):
     ids = []
-    for format in formats:
-        ids.append(f"{format[0]}")
+    for f in formats:
+        ids.append(f"{f[0]}")
 
     format_choose = open_menu(ids, "WYBIERZ JAKOŚĆ: ")
 
     return formats[ids.index(format_choose)]
 
+
 # Function for main menu
 def main_menu() -> None:
     try:
         update_discord(state="Używa doccli!", details="Menu główne", time=time())
-    except:
-        pass
+    except RuntimeError:
+        print("Błąd aktualizacji statusu!")
+
+    continue_title: str = ''
+    continue_ep: str
 
     try:
         if gvm.config["search_lang"] == "ORYGINALNY":
             continue_title = gvm.config["last_info"]["title"]
         elif gvm.config["search_lang"] == "ANGIELSKI":
             continue_title = gvm.config["last_info"]["title_en"]
+
         continue_ep = gvm.config["last_ep"]
-    except:
-        continue_title = None
-        continue_ep = None
+    except TypeError:
+        continue_title = '...'
+        continue_ep = '...'
+
 
     tabs: List[str] = [
         "Wyszukaj anime",
@@ -272,7 +275,6 @@ def main_menu() -> None:
 
     elif option == tabs[5]:
         exit()
-
 
 
 # Function for watching menu
