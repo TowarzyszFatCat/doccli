@@ -185,7 +185,6 @@ def watch(serie=None, ep=None, cont=False, change_quality=False):
 
     mpv_url = ''
 
-
     if gvm.config['quality'] == "WYBÓR" or change_quality:
         choosed = choose_format(aviable_formats)
         mpv_url = choosed[1]
@@ -242,7 +241,6 @@ def main_menu() -> None:
     except TypeError:
         continue_title = '...'
         continue_ep = '...'
-
 
     tabs: List[str] = [
         "Wyszukaj anime",
