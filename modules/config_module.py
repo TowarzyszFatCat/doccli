@@ -4,7 +4,7 @@ import modules.global_variables_module as gvm
 
 
 # Default configuration settings
-default_config = {
+default_config: dict = {
     "config_version": None,
     "dc_status": "TAK",
     "search_lang": "ORYGINALNY",
@@ -15,7 +15,7 @@ default_config = {
 }
 
 
-def load_config():
+def load_config() -> None:
     if not path.exists(gvm.CONFIG_PATH):
         with open(gvm.CONFIG_PATH, "w") as f:
             default_config.update({"config_version": gvm.VERSION})
@@ -35,14 +35,13 @@ def load_config():
             f.close()
 
 
-def update_config(var, value):
+def update_config(var, value) -> None:
     gvm.config.update({f"{var}": value})
 
 
-def save_config():
+def save_config() -> None:
     with open(gvm.CONFIG_PATH, "w") as f:
         json.dump(gvm.config, f)
         f.close()
 
     load_config()
-

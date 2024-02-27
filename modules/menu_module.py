@@ -1,6 +1,7 @@
 from InquirerPy import inquirer
 from os import system, name as system_name
 
+
 def clear() -> None:
     system("cls" if system_name == "nt" else "clear")
 

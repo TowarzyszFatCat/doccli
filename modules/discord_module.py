@@ -11,8 +11,8 @@ def connect_discord() -> None:
         )
         RPC.connect()
         RPC.clear(getpid())
-    except:
-        print("[ERROR] Błąd podczas łączenia z discordem!")
+    except KeyboardInterrupt:
+        print("Anulowano łączenie z discordem!")
 
 
 def update_discord(state: str, details: str, time) -> None:
@@ -33,5 +33,3 @@ def update_discord(state: str, details: str, time) -> None:
             },
         ],
     )
-
-

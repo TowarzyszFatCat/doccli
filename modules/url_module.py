@@ -1,66 +1,56 @@
 from yt_dlp import YoutubeDL
-from time import sleep
 
-def get_all_formats(url):
+
+def get_all_formats(url: str) -> list:
     with YoutubeDL({'quiet': True}) as ydl:
-        info_dict = ydl.extract_info(url, download=False)
-        formats = info_dict['formats']
+        info_dict: dict = ydl.extract_info(url, download=False)
+        formats: list = info_dict['formats']
 
-        aviable_formats = []
-
+        available_formats: list = []
 
         # For CDA
         if 'cda' in url:
-            for format in formats:
-                format_info = []
+            for f in formats:
+                format_info: list = [f['height'], f['url']]
 
-                format_info.append(format['height'])
-                format_info.append(format['url'])
-                aviable_formats.append(format_info)
+                available_formats.append(format_info)
 
 
         # For sibnet
         elif 'sibnet' in url:
-            for format in formats:
-                format_info = []
+            for f in formats:
+                format_info: list = ['Źródło (długie ładowanie)', f['http_headers']['Referer']]
 
-                format_info.append('Źródło (długie ładowanie)')
-                format_info.append(format['http_headers']['Referer'])
-                aviable_formats.append(format_info)
+                available_formats.append(format_info)
 
 
         # For google
         elif 'google' in url:
-            for format in formats:
-                format_info = []
-                try:
-                    if format['format_id'] == 'source':
-                        format_info.append('Źródło')
-                        format_info.append(format['url'])
-                        aviable_formats.append(format_info)
-                except:
-                    pass
+            for f in formats:
+                format_info: list = []
+
+                if f['format_id'] == 'source':
+                    format_info.append('Źródło')
+                    format_info.append(f['url'])
+                    available_formats.append(format_info)
+
 
         # For mp4upload
         elif 'mp4upload' in url:
-            for format in formats:
-                format_info = []
+            for f in formats:
+                format_info: list = ['Źródło (długie ładowanie)', f['http_headers']['Referer']]
 
-                format_info.append('Źródło (długie ładowanie)')
-                format_info.append(format['http_headers']['Referer'])
-                aviable_formats.append(format_info)
+                available_formats.append(format_info)
 
         # For dailymotion
         elif 'dailymotion' in url:
-            for format in formats:
-                format_info = []
+            for f in formats:
+                format_info: list = [f['height'], f['url']]
 
-                format_info.append(format['height'])
-                format_info.append(format['url'])
-                aviable_formats.append(format_info)
+                available_formats.append(format_info)
 
         else:
             print('Host nie jest wspierany!')
             exit()
 
-        return aviable_formats
+        return available_formats
