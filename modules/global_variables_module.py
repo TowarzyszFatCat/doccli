@@ -1,6 +1,6 @@
 from os import path, name as system_name, environ
 
-VERSION: str = "v2.0"
+VERSION: str = "v2.1"
 config: dict = {}
 
 ROOT_DIR = environ['HOME']

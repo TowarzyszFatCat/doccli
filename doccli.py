@@ -1,5 +1,5 @@
 # @TowarzyszFatCat
-# v1.4
+
 
 import os.path
 
