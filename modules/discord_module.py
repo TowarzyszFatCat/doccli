@@ -1,21 +1,30 @@
 from pypresence import Presence
 from os import getpid
 
+import logging
+logging.basicConfig(
+    filename="doccli.log", filemode="w", format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO
+    )
+
 RPC = Presence(client_id="1206583480771936318")
 
 
 def connect_discord() -> None:
     try:
-        print(
-            "[INFO] Łączenie z discordem... Jeżeli zajmuje to zbyt długo, możesz anulować łączenie za pomocą <CTRL C>"
-        )
+        print("Łączenie z discordem... Jeżeli zajmuje to zbyt długo, możesz anulować łączenie za pomocą <CTRL C>")
         RPC.connect()
         RPC.clear(getpid())
     except KeyboardInterrupt:
+
+        logging.exception(msg="Anulowano polaczenie z discordem!")
+
         print("Anulowano łączenie z discordem!")
 
 
 def update_discord(state: str, details: str, time) -> None:
+
+    logging.info("Proba aktualizacji statusu na discordzie.")
+
     RPC.update(
         state=f"{state}",
         details=f"{details}",
@@ -33,3 +42,5 @@ def update_discord(state: str, details: str, time) -> None:
             },
         ],
     )
+
+    logging.info(msg=f"Zaktualizowano! status={state}, detale={details}")
