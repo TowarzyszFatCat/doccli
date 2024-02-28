@@ -1,12 +1,23 @@
 from InquirerPy import inquirer
 from os import system, name as system_name
 
+import logging
+logging.basicConfig(
+    filename="doccli.log", filemode="w", format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO
+    )
+
 
 def clear() -> None:
+
+    logging.info(msg="Czyszczenie terminalu...")
+
     system("cls" if system_name == "nt" else "clear")
 
 
 def open_menu(choices, title: str = "") -> str:
+
+    logging.info(msg=f"Otwieranie menu z tytulem: {title}")
+
     clear()
     action = inquirer.fuzzy(
         message=title,

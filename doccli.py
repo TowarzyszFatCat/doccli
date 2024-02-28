@@ -1,7 +1,9 @@
 # @TowarzyszFatCat
 # v1.4
+
 import os.path
 
+import pypresence.exceptions
 from requests import get
 from os import name as system_name
 from time import time
@@ -16,6 +18,11 @@ from modules.menu_module import open_menu
 from modules.unzip_module import unzip
 
 import modules.global_variables_module as gvm
+
+import logging
+logging.basicConfig(
+    filename="doccli.log", filemode="w", format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO
+    )
 
 
 # Function to retrieve list of available players
@@ -185,7 +192,6 @@ def watch(serie=None, ep=None, cont=False, change_quality=False):
 
     mpv_url = ''
 
-
     if gvm.config['quality'] == "WYBÓR" or change_quality:
         choosed = choose_format(aviable_formats)
         mpv_url = choosed[1]
@@ -199,14 +205,14 @@ def watch(serie=None, ep=None, cont=False, change_quality=False):
     if gvm.config["dc_status"] == "TAK":
         try:
             update_discord(state=f"Ep: {anime[2]}", details=anime[1]["title"], time=time())
-        except RuntimeError:
-            print("Błąd aktualizacji statusu!")
+        except AssertionError:
+            logging.error(msg="Nie mozna zaaktualizowac statusu na discordzie!")
 
     elif gvm.config["dc_status"] == "NIE":
         try:
             update_discord(state=f"Tajne!", details="Ogląda anime...", time=time())
-        except RuntimeError:
-            print("Błąd aktualizacji statusu!")
+        except AssertionError:
+            logging.error(msg="Nie mozna zaaktualizowac statusu na discordzie!")
 
     info = [anime, process]
     watching_menu(info=info)
@@ -226,8 +232,8 @@ def choose_format(formats):
 def main_menu() -> None:
     try:
         update_discord(state="Używa doccli!", details="Menu główne", time=time())
-    except RuntimeError:
-        print("Błąd aktualizacji statusu!")
+    except AssertionError:
+        logging.error(msg="Nie mozna zaaktualizowac statusu na discordzie!")
 
     continue_title: str = ''
     continue_ep: str
@@ -242,7 +248,6 @@ def main_menu() -> None:
     except TypeError:
         continue_title = '...'
         continue_ep = '...'
-
 
     tabs: List[str] = [
         "Wyszukaj anime",
@@ -320,10 +325,19 @@ def watching_menu(info) -> None:
 
 # Start!
 if __name__ == "__main__":
+
+    logging.info(msg="Starting doccli...")
+
     if system_name == "nt" and not os.path.isfile('_internal/mpv/mpv.com'):
+        logging.info(msg="Windows detected! Unzipping mpv")
         unzip()
 
     check_update()
     load_config()
-    connect_discord()
+
+    try:
+        connect_discord()
+    except pypresence.exceptions.DiscordNotFound as e:
+        logging.exception(msg="Discord Not Found!", exc_info=True)
+
     main_menu()
