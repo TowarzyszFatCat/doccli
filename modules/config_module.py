@@ -4,7 +4,7 @@ import modules.global_variables_module as gvm
 
 import logging
 logging.basicConfig(
-    filename="doccli.log", filemode="w", format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO
+    filename=gvm.LOG_PATH, filemode="w", format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO
     )
 
 # Default configuration settings
@@ -27,7 +27,7 @@ def load_config() -> None:
 
         logging.info(msg="Nie wykryto configu!")
 
-        with open(gvm.CONFIG_PATH, "w") as f:
+        with open(gvm.CONFIG_PATH, "x") as f:
 
             logging.info(msg="Generowanie nowego configu!")
 

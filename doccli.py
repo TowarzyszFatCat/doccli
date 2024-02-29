@@ -21,7 +21,7 @@ import modules.global_variables_module as gvm
 
 import logging
 logging.basicConfig(
-    filename="doccli.log", filemode="w", format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO
+    filename=gvm.LOG_PATH, filemode="w", format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO
     )
 
 
