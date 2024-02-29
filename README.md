@@ -54,16 +54,16 @@ Pobierz z zakładki releases najnowszą wersję <a href="https://github.com/Towa
 ## Linux:
 
 ### Wymagagane paczki na linuxie:
-Aby korzystać z doccli na systemie linux musisz zainstalować `mpv`! Oraz posiadać pythona3.9 lub nowszego (powinien być domyślnie zainstalowany)
+Aby korzystać z doccli na systemie linux musisz zainstalować `mpv` i `yt-dlp`! Oraz posiadać pythona3.9 lub nowszego (powinien być domyślnie zainstalowany)
 
-Instalacja `mpv` na Arch:
+Instalacja `mpv` i `yt-dlp` na Arch:
 ```bash
-sudo pacman -S mpv
+sudo pacman -S mpv yt-dlp
 ```
 
-Instalacja `mpv` na Debian/Ubuntu/Pop:
+Instalacja `mpv` i `yt-dlp` na Debian/Ubuntu/Pop:
 ```bash
-sudo apt install mpv
+sudo apt install mpv yt-dlp
 ```
 
 ### Jak zainstalować na linuxie:
