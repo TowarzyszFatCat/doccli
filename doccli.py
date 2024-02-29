@@ -151,9 +151,10 @@ def search_for_anime(serie=None, ep=None) -> List[any]:
 def open_mpv(url) -> Popen:
 
     player: str = "_internal/mpv/mpv.com" if system_name == "nt" else "mpv"
+    hook: str = '--script-opts=ytdl_hook-ytdl_path=yt-dlp.exe' if system_name == "nt" else ""
 
     process: Popen = Popen(
-        args=[player, url], shell=False, stdout=DEVNULL, stderr=DEVNULL
+        args=[player, hook, url], shell=False#, stdout=DEVNULL, stderr=DEVNULL
     )
 
     return process
