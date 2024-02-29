@@ -154,7 +154,7 @@ def open_mpv(url) -> Popen:
     hook: str = '--script-opts=ytdl_hook-ytdl_path=yt-dlp.exe' if system_name == "nt" else ""
 
     process: Popen = Popen(
-        args=[player, hook, url], shell=False#, stdout=DEVNULL, stderr=DEVNULL
+        args=[player, hook, url], shell=False, stdout=DEVNULL, stderr=DEVNULL
     )
 
     return process
