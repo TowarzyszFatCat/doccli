@@ -40,6 +40,8 @@ https://github.com/TowarzyszFatCat/doccli/assets/68988781/8c6307f0-2fb5-4098-866
 </td>
 </tr>
 </table>
+---
+<h3 align="center">Aktualnie nie mam czasu na ulepszanie programu, w II połowie maja zabiorę się za naprawienie błędów i dodanie większej ilości wspieranych stron! Bądźcie cierpliwi :P</h3>
 
 ---
 <h1 align="center">
