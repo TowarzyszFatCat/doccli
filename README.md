@@ -62,12 +62,12 @@ Aby korzystać z doccli na systemie linux musisz zainstalować `mpv` i `yt-dlp`!
 
 Instalacja `mpv` i `yt-dlp` na Arch:
 ```bash
-sudo pacman -S mpv yt-dlp
+sudo pacman -S mpv yt-dlp python3-venv
 ```
 
 Instalacja `mpv` i `yt-dlp` na Debian/Ubuntu/Pop:
 ```bash
-sudo apt install mpv yt-dlp
+sudo apt install mpv yt-dlp python3-venv
 ```
 
 ### Jak zainstalować na linuxie:
@@ -78,7 +78,7 @@ git clone https://github.com/TowarzyszFatCat/doccli.git
 cd doccli
 ```
 ```bash
-sh install.sh
+bash install.sh
 ```
 Jeżeli wszystko przebiegło pomyślnie, możesz usunąć folder.
 
