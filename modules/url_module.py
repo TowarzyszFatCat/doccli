@@ -47,18 +47,16 @@ def get_all_formats(url: str) -> list:
 
 
         # For google
-        # elif 'google' in url:
-        #
-        #     logging.info(msg="Wykryto google drive")
-        #
-        #     for f in formats:
-        #         format_info: list = []
-        #
-        #         if f['format_id'] == 'source':
-        #             format_info.append('Źródło')
-        #             format_info.append(f['url'])
-        #             available_formats.append(format_info)
-        #
+        elif 'google' in url:
+
+            logging.info(msg="Wykryto google drive")
+
+            format_info: list = []
+
+            format_info.append('Źródło')
+            format_info.append(info_dict['webpage_url'])
+            available_formats.append(format_info)
+
         # # For mp4upload
         # elif 'mp4upload' in url:
         #

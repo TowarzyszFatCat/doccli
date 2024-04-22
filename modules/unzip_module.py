@@ -10,7 +10,7 @@ def unzip() -> None:
 
     logging.info(msg="Proba rozpakowania mpv")
 
-    with ZipFile('mpv/mpv.zip', 'r') as file:
+    with ZipFile('_internal/mpv/mpv.zip', 'r') as file:
         file.extractall('_internal/mpv')
 
         logging.info(msg="Wypakowano mpv")

@@ -27,8 +27,8 @@ def update_discord(state: str, details: str, time) -> None:
     logging.info("Proba aktualizacji statusu na discordzie.")
 
     RPC.update(
-        state=f"Nie pacz sie tu lebku",
-        details=f"Ogladam hentai",
+        state=f"{state}",
+        details=f"{details}",
         large_image="icon_1",
         large_text="CLI do oglądania anime z docchi.pl! Teraz także na Windowsa!",
         start=int(time),

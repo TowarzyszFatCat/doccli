@@ -37,7 +37,8 @@ def get_players_list(slug: str, ep: int) -> list:
         player_data: List[str] = []
 
         supported = ["cda", "Cda", "CDA",
-                     'sibnet', 'Sibnet', 'SIBNET'
+                     'sibnet', 'Sibnet', 'SIBNET',
+                     'google', 'GOOGLE DRIVE', 'Google Drive', 'google drive', 'Google'
                      ]
 
         if player["player_hosting"] in supported:
