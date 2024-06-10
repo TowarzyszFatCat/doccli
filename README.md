@@ -4,12 +4,12 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a>
 </h1>
 
 <h2 align="center">
-UPDATE v2.0! Dodano exe dla windowsa!
+UPDATE v2.5! Całkowite przepisanie aplikacji!
 </h2>
 
 ---
 
-https://github.com/TowarzyszFatCat/doccli/assets/68988781/8c6307f0-2fb5-4098-8660-0561105ff479
+
 
 ---
 
@@ -21,43 +21,28 @@ https://github.com/TowarzyszFatCat/doccli/assets/68988781/8c6307f0-2fb5-4098-866
 <tr>
 <td>
 
-- Discord Rich Presence (status na discordzie, można go włączyć lub wyłączyć)
+- Lista anime do obejrzenia
 - Funkcja następny/poprzedni odcinek
 - Szybka wyszukiwarka
-- Wznawianie oglądania
-- Automatyczny wybór jakości
 
 </td>
 <td>
 
-- Wsparcie mega.nz
-- Integracja z anilist (po obejrzeniu odcinka doda się do twoich obejrzanych itp.)
-- Historia oglądania
-- Kategorie
-- Customowy status na DC
-- Customowe opcje dla mpv
+- Status na discordzie
+- Wznawianie oglądania
+- Integracje
 
 </td>
 </tr>
 </table>
 
 ---
-
-<h3 align="center">Aktualnie nie mam czasu na ulepszanie programu. W II połowie maja zabiorę się za naprawienie błędów i dodanie większej ilości wspieranych stron! Bądźcie cierpliwi :P</h3>
-
----
 <h1 align="center">
     Jak zainstalować?
+
 </h1>
 
-## Windows:
-Pobierz z zakładki releases najnowszą wersję. Po pobraniu wypakuj gdziekolwiek.
-
----
-
-## Linux:
-
-### Wymagagane paczki na linuxie:
+### Wymagagane paczki:
 Aby korzystać z doccli na systemie linux musisz zainstalować `mpv` i `yt-dlp`! Oraz posiadać pythona3.9 lub nowszego (powinien być domyślnie zainstalowany)
 
 Instalacja `mpv` i `yt-dlp` na Arch:
@@ -70,7 +55,7 @@ Instalacja `mpv` i `yt-dlp` na Debian/Ubuntu/Pop:
 sudo apt install mpv yt-dlp python3-venv
 ```
 
-### Jak zainstalować na linuxie:
+### Instalacja:
 ```bash
 git clone https://github.com/TowarzyszFatCat/doccli.git
 ```
@@ -82,19 +67,21 @@ bash install.sh
 ```
 Jeżeli wszystko przebiegło pomyślnie, możesz usunąć folder.
 
-### Jak odinstalować na linuxie:
+### Jak odinstalować:
 ```bash
 sudo rm /usr/local/bin/doccli && sudo rm -rf ~/.doccli_src
 ```
 
-### Jak uruchomić na linuxie:
+### Jak uruchomić:
 #####
 ```bash
 doccli
 ```
 
 ---
-
+<p align="center">
+<a href="https://dcbadge.limes.pink/api/server/https://discord.gg/FgfSM7bSEK" target="_blank"><img src="https://dcbadge.limes.pink/api/server/https://discord.gg/FgfSM7bSEK" alt="Buy Me A Coffee" style="width: 250px !important;box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;-webkit-box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;" ></a>
+</p>
 <p align="center">
 <a href="https://www.buymeacoffee.com/towarzyszfatcat" target="_blank"><img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png" alt="Buy Me A Coffee" style="height: 50px !important;width: 250px !important;box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;-webkit-box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;" ></a>
 </p>
