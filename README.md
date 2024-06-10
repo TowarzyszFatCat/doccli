@@ -10,6 +10,8 @@ UPDATE v2.5! Całkowite przepisanie aplikacji!
 ---
 
 
+https://github.com/TowarzyszFatCat/doccli/assets/68988781/5264bff1-4746-4581-814e-3989f5eb4bf1
+
 
 ---
 
@@ -59,7 +61,6 @@ sudo apt install mpv yt-dlp python3-venv
 ```bash
 cd ~ && git clone https://github.com/TowarzyszFatCat/doccli.git && bash doccli/install.sh
 ```
-Jeżeli wszystko przebiegło pomyślnie, możesz usunąć folder.
 
 ### Jak odinstalować:
 ```bash
