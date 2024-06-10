@@ -1,11 +1,10 @@
 #!/bin/bash
 
-if [ "${PWD##*/}" == "doccli" ] ; then
-  sudo chmod +x doccli
-  sudo mv doccli /usr/local/bin
-  
-  sudo mkdir ~/.doccli_src
-  sudo mv * ~/.doccli_src
+if [ "${PWD##*/}" == "~" ] ; then
+  sudo chmod +x doccli/doccli
+  sudo mv doccli/doccli /usr/local/bin
+
+  sudo mv doccli ~/.doccli_src
 
   sudo chmod 777 ~/.doccli_src
   sudo chmod 777 ~/.doccli_src/*

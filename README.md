@@ -57,13 +57,7 @@ sudo apt install mpv yt-dlp python3-venv
 
 ### Instalacja:
 ```bash
-git clone https://github.com/TowarzyszFatCat/doccli.git
-```
-```bash
-cd doccli
-```
-```bash
-bash install.sh
+cd ~ && git clone https://github.com/TowarzyszFatCat/doccli.git && bash doccli/install.sh
 ```
 Jeżeli wszystko przebiegło pomyślnie, możesz usunąć folder.
 
