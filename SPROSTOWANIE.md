@@ -40,5 +40,5 @@ W tym projekcie zastosowano mechanizmy dostępu do treści po stronie klienta. D
 Kontakt
 </h2>
 
-Stwórz `issue` na GitHubie.
+Stwórz `issue` na GitHubie lub skontaktuj się ze mną na discordzie.
 </div>
