@@ -272,7 +272,7 @@ def w_default(SLUG, NUMBER, process):
         w_players(SLUG, NUMBER - 1 if NUMBER >= 2 else NUMBER)
     elif ans == choices[2]:
         process.kill()
-        w_list()
+        w_list(SLUG)
     elif ans == choices[3]:
         process.kill()
         m_welcome()
