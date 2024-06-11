@@ -35,14 +35,19 @@ def open_menu(choices, prompt='Prompt', border=True, qmark='', message='', point
 
 def m_welcome():
 
-    load_list()
+    load()
 
     choices = [
         "Wyszukaj",
-        "Wznów oglądanie [AKTUALNIE NIE DZIALA]",
-        "Moja lista",
-        "Zamknij"
     ]
+
+    if not continue_data:
+        choices.append("Nie masz nic do wznowienia")
+    else:
+        choices.append(f"Wznów {continue_data[0]['title']} / {continue_data[0]['title_en']}, Odc: {continue_data[1]}")
+
+    choices.append("Moja lista")
+    choices.append("Zamknij")
 
     prompt = 'Wybierz co chcesz zrobić: '
 
@@ -51,8 +56,10 @@ def m_welcome():
     if ans == choices[0]:
         m_find()
     elif ans == choices[1]:
-        pass
-        #m_continue()
+        if not continue_data:
+            m_welcome()
+        else:
+            w_players(continue_data[0]['slug'], continue_data[1])
     elif ans == choices[2]:
         m_mylist()
     elif ans == choices[3]:
@@ -182,19 +189,21 @@ def m_details(details):
     ans = open_menu(choices=choices, prompt=prompt, qmark=f'{details["title"]} / {details["title_en"]} [{episode_count}]', message=genres)
 
     if ans == choices[0]:
+        continue_data.append(details)
         w_first(details['slug'])
     elif ans == choices[1]:
+        continue_data.append(details)
         w_list(details['slug'])
     elif ans == choices[2]:
         if details in mylist:
             mylist.remove(details)
-            save_list()
-            load_list()
+            save()
+            load()
             m_details(details)
         else:
             mylist.append(details)
-            save_list()
-            load_list()
+            save()
+            load()
             m_details(details)
 
     elif ans == choices[3]:
@@ -202,6 +211,8 @@ def m_details(details):
 
 
 def w_first(SLUG):
+    continue_data.append(1)
+    save()
     w_players(SLUG, 1)
 
 def w_list(SLUG):
@@ -212,8 +223,9 @@ def w_list(SLUG):
     prompt = 'Wybierz odcinek: '
 
     ans = open_menu(choices=choices, prompt=prompt)
+    continue_data.append(ans+1)
+    save()
     w_players(SLUG, choices.index(ans + 1))
-
 
 
 def w_players(SLUG, NUMBER, err=''):
@@ -281,24 +293,36 @@ def w_default(SLUG, NUMBER, process):
 
 # SAVING SECTION
 
-home_dir = os.path.expanduser("~")
-config_dir = os.path.join(home_dir, ".config", "doccli")
-file_path = os.path.join(config_dir, "mylist.json")
+PATH_home = os.path.expanduser("~")
+PATH_config = os.path.join(PATH_home, ".config", "doccli")
+PATH_mylist = os.path.join(PATH_config, "mylist.json")
+PATH_continue = os.path.join(PATH_config, "continue.json")
 
 
-def load_list():
-    if not os.path.exists(config_dir):
-        os.makedirs(config_dir)
-    if not os.path.exists(file_path):
-        with open(file_path, 'w') as file:
+def load():
+    if not os.path.exists(PATH_config):
+        os.makedirs(PATH_config)
+
+    if not os.path.exists(PATH_mylist):
+        with open(PATH_mylist, 'w') as file:
+            file.write('[]')
+    if not os.path.exists(PATH_continue):
+        with open(PATH_continue, 'w') as file:
             file.write('[]')
 
-    with open(file_path, 'r') as json_file:
+    with open(PATH_mylist, 'r') as json_file:
         loaded_data = json.load(json_file)
         global mylist
         mylist = loaded_data
 
+    with open(PATH_continue, 'r') as json_file:
+        loaded_data = json.load(json_file)
+        global continue_data
+        continue_data = loaded_data
 
-def save_list():
-    with open(file_path, 'w') as json_file:
+
+def save():
+    with open(PATH_mylist, 'w') as json_file:
         json.dump(mylist, json_file, indent=4)
+    with open(PATH_continue, 'w') as json_file:
+        json.dump(continue_data, json_file, indent=4)
