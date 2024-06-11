@@ -41,7 +41,7 @@ def m_welcome():
         "Wyszukaj",
     ]
 
-    if not continue_data:
+    if continue_data[0] is None:
         choices.append("Nie masz nic do wznowienia")
     else:
         choices.append(f"Wznów {continue_data[0]['title']} / {continue_data[0]['title_en']}, Odc: {continue_data[1]}")
@@ -189,10 +189,10 @@ def m_details(details):
     ans = open_menu(choices=choices, prompt=prompt, qmark=f'{details["title"]} / {details["title_en"]} [{episode_count}]', message=genres)
 
     if ans == choices[0]:
-        continue_data.append(details)
+        continue_data[0] = details
         w_first(details['slug'])
     elif ans == choices[1]:
-        continue_data.append(details)
+        continue_data[0] = details
         w_list(details['slug'])
     elif ans == choices[2]:
         if details in mylist:
@@ -211,7 +211,7 @@ def m_details(details):
 
 
 def w_first(SLUG):
-    continue_data.append(1)
+    continue_data[1] = 1
     save()
     w_players(SLUG, 1)
 
@@ -223,7 +223,7 @@ def w_list(SLUG):
     prompt = 'Wybierz odcinek: '
 
     ans = open_menu(choices=choices, prompt=prompt)
-    continue_data.append(ans+1)
+    continue_data[1] = ans + 1
     save()
     w_players(SLUG, choices.index(ans + 1))
 
@@ -278,9 +278,13 @@ def w_default(SLUG, NUMBER, process):
 
     if ans == choices[0]:
         process.kill()
+        continue_data[1] = NUMBER + 1 if NUMBER < how_many_episodes else NUMBER
+        save()
         w_players(SLUG, NUMBER + 1 if NUMBER < how_many_episodes else NUMBER)
     elif ans == choices[1]:
         process.kill()
+        continue_data[1] = NUMBER + 1 if NUMBER < how_many_episodes else NUMBER
+        save()
         w_players(SLUG, NUMBER - 1 if NUMBER >= 2 else NUMBER)
     elif ans == choices[2]:
         process.kill()
@@ -308,7 +312,9 @@ def load():
             file.write('[]')
     if not os.path.exists(PATH_continue):
         with open(PATH_continue, 'w') as file:
-            file.write('[]')
+            global continue_data
+            continue_data = [None, None]
+            json.dump(continue_data, file, indent=4)
 
     with open(PATH_mylist, 'r') as json_file:
         loaded_data = json.load(json_file)
@@ -317,7 +323,6 @@ def load():
 
     with open(PATH_continue, 'r') as json_file:
         loaded_data = json.load(json_file)
-        global continue_data
         continue_data = loaded_data
 
 
