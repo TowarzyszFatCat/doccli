@@ -1,12 +1,15 @@
 import sys
 import time
 import json
-from InquirerPy import inquirer
+from InquirerPy import inquirer, prompt
 import os
 from os import system
-from docchi_api_connector import get_series_list, get_episodes_count_for_serie, get_players_list
+from docchi_api_connector import get_series_list, get_episodes_count_for_serie, get_players_list, get_details_for_serie
 from subprocess import Popen, DEVNULL
 from termcolor import colored
+import webbrowser
+from discord_integration import discord_data, update_rpc
+
 
 def clear():
     system("clear")
@@ -38,6 +41,8 @@ def m_welcome():
 
     load()
 
+    update_rpc("Menu główne", "Szuka anime do obejrzenia...")
+
     choices = [
         "Wyszukaj",
     ]
@@ -48,6 +53,7 @@ def m_welcome():
         choices.append(f"Wznów {continue_data[0]['title']} / {continue_data[0]['title_en']}, Odc: {continue_data[1]}")
 
     choices.append("Moja lista")
+    choices.append("Ustawienia")
     choices.append("Dołącz do discorda")
     choices.append("Zamknij")
 
@@ -65,15 +71,44 @@ def m_welcome():
     elif ans == choices[2]:
         m_mylist()
     elif ans == choices[3]:
-        m_discord()
+        m_settings()
     elif ans == choices[4]:
+        m_discord()
+    elif ans == choices[5]:
         sys.exit()
+
+def m_settings():
+    choices = [{
+            "type": "list",
+            "message": "Czy chcesz aby ludzie na discordzie widzieli co oglądasz?",
+            "choices": ["Tak", "Nie"],
+        }]
+
+    res = prompt(questions=choices)
+
+    if res[0] == "Nie":
+        settings[0] = False
+        save()
+        m_welcome()
+    if res[0] == "Tak":
+        clear()
+        settings[0] = True
+        choices2 = [{"type": "input", "message": "Wpisz co tylko zechcesz! Będzie to wyświetlane w II linijce statusu. Zostaw puste jeśli chcesz aby był wyświetlany domyślny status. [Minimalnie 2 znaki] (Domyślna wartość: 'Używa doccli!') \n", "name": "status_dc"}]
+        res2 = prompt(questions=choices2)
+
+        if not res2['status_dc'] == "" and len(res2['status_dc']) > 1:
+            settings[1] = res2['status_dc']
+            save()
+            m_welcome()
+        else:
+            save()
+            m_welcome()
+
 
 
 def m_discord():
-    print(colored('Zaproszenie:', "white"), colored('discord.gg/Y4RcwbE5CJ', "green"))
-    print('')
-    input(colored("Naciśnij enter by pominąć...", "yellow"))
+    webbrowser.open('https://discord.gg/Y4RcwbE5CJ')
+    m_welcome()
 
 def m_mylist():
     choices = ['Cofnij']
@@ -224,6 +259,7 @@ def w_first(SLUG):
     save()
     w_players(SLUG, 1)
 
+
 def w_list(SLUG):
     last_episode = get_episodes_count_for_serie(SLUG)
 
@@ -248,9 +284,17 @@ def w_players(SLUG, NUMBER, err=''):
 
     choices = [player[0] for player in players]
 
+    choices.append("Wróć do menu")
+
+    last_option = choices[-1]
+
     prompt = 'Wybierz źródło: '
 
     ans = open_menu(choices=choices, prompt=prompt, qmark=err)
+
+    if ans == last_option:
+        m_welcome()
+
     ans_index_in_choices = choices.index(ans)
 
     ans_index = players[ans_index_in_choices]
@@ -259,7 +303,7 @@ def w_players(SLUG, NUMBER, err=''):
 
 
 
-    # Wait 10 sec and check if started playing
+    # Wait 3 sec and check if started playing
     print("Rozpoczynanie odtwarzania...")
     time.sleep(3)                                      # CZAS ZALEZNY OD PREDKOSCI LACZA
     if process.poll() is not None:
@@ -267,13 +311,21 @@ def w_players(SLUG, NUMBER, err=''):
 
     w_default(SLUG, NUMBER, process)
 
+
 def mpv_play(URL):
     process = Popen(args=['mpv', URL], shell=False, stdout=DEVNULL, stderr=DEVNULL)
     return process
 
-def w_default(SLUG, NUMBER, process):
 
+def w_default(SLUG, NUMBER, process):
     how_many_episodes = get_episodes_count_for_serie(SLUG)
+
+    details = get_details_for_serie(SLUG)
+
+    if settings[0]:
+        update_rpc(f"Ogląda: {details['title']} [{str(NUMBER)}/{str(how_many_episodes)}]", settings[1])
+    else:
+        update_rpc(f"Ogląda anime", settings[1])
 
     choices = [
         "Następny odcinek",
@@ -284,23 +336,27 @@ def w_default(SLUG, NUMBER, process):
 
     prompt = 'Co chcesz zrobić? '
 
-    ans = open_menu(choices=choices, prompt=prompt,qmark=f'Odcinek: {NUMBER}/{how_many_episodes}')
+    ans = open_menu(choices=choices, prompt=prompt, qmark=f'Odcinek: {NUMBER}/{how_many_episodes}')
 
     if ans == choices[0]:
         process.kill()
+        update_rpc("Menu główne", "Szuka anime do obejrzenia...")
         continue_data[1] = NUMBER + 1 if NUMBER < how_many_episodes else NUMBER
         save()
         w_players(SLUG, NUMBER + 1 if NUMBER < how_many_episodes else NUMBER)
     elif ans == choices[1]:
         process.kill()
+        update_rpc("Menu główne", "Szuka anime do obejrzenia...")
         continue_data[1] = NUMBER + 1 if NUMBER < how_many_episodes else NUMBER
         save()
         w_players(SLUG, NUMBER - 1 if NUMBER >= 2 else NUMBER)
     elif ans == choices[2]:
         process.kill()
+        update_rpc("Menu główne", "Szuka anime do obejrzenia...")
         w_list(SLUG)
     elif ans == choices[3]:
         process.kill()
+        update_rpc("Menu główne", "Szuka anime do obejrzenia...")
         m_welcome()
 
 
@@ -311,6 +367,7 @@ PATH_home = os.path.expanduser("~")
 PATH_config = os.path.join(PATH_home, ".config", "doccli")
 PATH_mylist = os.path.join(PATH_config, "mylist.json")
 PATH_continue = os.path.join(PATH_config, "continue.json")
+PATH_settings = os.path.join(PATH_config, "settings.json")
 
 
 def load():
@@ -325,6 +382,11 @@ def load():
             global continue_data
             continue_data = [None, None]
             json.dump(continue_data, file, indent=4)
+    if not os.path.exists(PATH_settings):
+        with open(PATH_settings, 'w') as file:
+            global settings
+            settings = [True, "Używa doccli!"]
+            json.dump(settings, file, indent=4)
 
     with open(PATH_mylist, 'r') as json_file:
         loaded_data = json.load(json_file)
@@ -335,9 +397,15 @@ def load():
         loaded_data = json.load(json_file)
         continue_data = loaded_data
 
+    with open(PATH_settings, 'r') as json_file:
+        loaded_data = json.load(json_file)
+        settings = loaded_data
+
 
 def save():
     with open(PATH_mylist, 'w') as json_file:
         json.dump(mylist, json_file, indent=4)
     with open(PATH_continue, 'w') as json_file:
         json.dump(continue_data, json_file, indent=4)
+    with open(PATH_settings, 'w') as json_file:
+        json.dump(settings, json_file, indent=4)

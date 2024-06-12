@@ -1,8 +1,11 @@
 from menu_module import m_welcome
 from requests import get
 from termcolor import colored
+import webbrowser
+import threading
+from discord_integration import start_rpc
 
-VERSION = "v2.5.1"
+VERSION = "v2.6"
 
 def check_update() -> None:
 
@@ -22,4 +25,6 @@ def check_update() -> None:
 
 if __name__ == "__main__":
     check_update()
+    thread = threading.Thread(target=start_rpc)
+    thread.start()
     m_welcome()
