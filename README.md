@@ -27,12 +27,12 @@ https://github.com/TowarzyszFatCat/doccli/assets/68988781/5264bff1-4746-4581-814
 - Funkcja następny/poprzedni odcinek
 - Szybka wyszukiwarka z całą listą dostępnych anime
 - Wznawianie oglądania
+- Możliwość ustawienia własnego statusu na discordzie
 
 </td>
 <td>
 
-- Status na discordzie
-- Integracje
+- Inne integracje
 
 </td>
 </tr>
