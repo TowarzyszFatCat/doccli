@@ -6,6 +6,7 @@ import os
 from os import system
 from docchi_api_connector import get_series_list, get_episodes_count_for_serie, get_players_list
 from subprocess import Popen, DEVNULL
+from termcolor import colored
 
 def clear():
     system("clear")
@@ -47,6 +48,7 @@ def m_welcome():
         choices.append(f"Wznów {continue_data[0]['title']} / {continue_data[0]['title_en']}, Odc: {continue_data[1]}")
 
     choices.append("Moja lista")
+    choices.append("Dołącz do discorda")
     choices.append("Zamknij")
 
     prompt = 'Wybierz co chcesz zrobić: '
@@ -63,8 +65,15 @@ def m_welcome():
     elif ans == choices[2]:
         m_mylist()
     elif ans == choices[3]:
+        m_discord()
+    elif ans == choices[4]:
         sys.exit()
 
+
+def m_discord():
+    print(colored('Zaproszenie:', "white"), colored('discord.gg/Y4RcwbE5CJ', "green"))
+    print('')
+    input(colored("Naciśnij enter by pominąć...", "yellow"))
 
 def m_mylist():
     choices = ['Cofnij']
@@ -223,9 +232,10 @@ def w_list(SLUG):
     prompt = 'Wybierz odcinek: '
 
     ans = open_menu(choices=choices, prompt=prompt)
-    continue_data[1] = ans + 1
+    continue_data[1] = ans
     save()
-    w_players(SLUG, choices.index(ans + 1))
+
+    w_players(SLUG, ans)
 
 
 def w_players(SLUG, NUMBER, err=''):

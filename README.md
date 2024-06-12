@@ -25,13 +25,13 @@ https://github.com/TowarzyszFatCat/doccli/assets/68988781/5264bff1-4746-4581-814
 
 - Lista anime do obejrzenia
 - Funkcja następny/poprzedni odcinek
-- Szybka wyszukiwarka
+- Szybka wyszukiwarka z całą listą dostępnych anime
+- Wznawianie oglądania
 
 </td>
 <td>
 
 - Status na discordzie
-- Wznawianie oglądania
 - Integracje
 
 </td>
@@ -65,6 +65,11 @@ cd ~ && git clone https://github.com/TowarzyszFatCat/doccli.git && bash doccli/i
 ### Jak odinstalować:
 ```bash
 sudo rm /usr/local/bin/doccli && sudo rm -rf ~/.doccli_src
+```
+
+### Jak usunąć `moją listę` oraz `config`:
+```bash
+sudo rm ~/.config/doccli/*
 ```
 
 ### Jak uruchomić:

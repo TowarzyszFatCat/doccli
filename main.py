@@ -1,7 +1,8 @@
 from menu_module import m_welcome
 from requests import get
+from termcolor import colored
 
-VERSION = "v2.5"
+VERSION = "v2.5.1"
 
 def check_update() -> None:
 
@@ -11,10 +12,12 @@ def check_update() -> None:
 
     if response.json()["name"] != VERSION:
 
-        print(f"Wersja programu: {VERSION}")
-        print(f'Dostępna jest nowa: {response.json()["name"]}')
-        print(f"Możesz pobrać nową wersję na stronie programu!\n")
-        input("Naciśnij enter by pominąć...")
+        print(colored("Wersja programu:", "white"), colored(VERSION, "red"))
+        print(colored('Najnowsza wersja:', "white"), colored(f"{response.json()["name"]}", "green"))
+        print('')
+        print(colored("Dostępna jest nowa wersja doccli!", "white"))
+        print('')
+        input(colored("Naciśnij enter by pominąć...", "yellow"))
 
 
 if __name__ == "__main__":
