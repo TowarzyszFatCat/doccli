@@ -8,7 +8,7 @@ from docchi_api_connector import get_series_list, get_episodes_count_for_serie, 
 from subprocess import Popen, DEVNULL
 from termcolor import colored
 import webbrowser
-from discord_integration import discord_data, update_rpc
+from discord_integration import update_rpc, set_running
 
 
 def clear():
@@ -75,6 +75,7 @@ def m_welcome():
     elif ans == choices[4]:
         m_discord()
     elif ans == choices[5]:
+        set_running(False)
         sys.exit()
 
 def m_settings():
@@ -101,6 +102,7 @@ def m_settings():
             save()
             m_welcome()
         else:
+            settings[1] = 'Używa doccli!'
             save()
             m_welcome()
 

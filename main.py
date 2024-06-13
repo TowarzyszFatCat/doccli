@@ -3,7 +3,7 @@ from requests import get
 from termcolor import colored
 import webbrowser
 import threading
-from discord_integration import start_rpc
+from discord_integration import start_rpc, set_running
 
 VERSION = "v2.6"
 
@@ -25,6 +25,7 @@ def check_update() -> None:
 
 if __name__ == "__main__":
     check_update()
+    set_running(True)
     thread = threading.Thread(target=start_rpc)
     thread.start()
     m_welcome()
