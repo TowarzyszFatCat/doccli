@@ -9,9 +9,7 @@ UPDATE v2.5! Całkowite przepisanie aplikacji!
 
 ---
 
-
-https://github.com/TowarzyszFatCat/doccli/assets/68988781/5264bff1-4746-4581-814e-3989f5eb4bf1
-
+https://github.com/TowarzyszFatCat/doccli/assets/68988781/886b8226-77f2-4f28-ac57-c15b785cd64e
 
 ---
 
