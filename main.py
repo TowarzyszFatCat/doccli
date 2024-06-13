@@ -5,7 +5,7 @@ import webbrowser
 import threading
 from discord_integration import start_rpc, set_running
 
-VERSION = "v2.6"
+VERSION = "v2.6.1"
 
 def check_update() -> None:
 
