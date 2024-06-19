@@ -9,10 +9,18 @@ from subprocess import Popen, DEVNULL
 from termcolor import colored
 import webbrowser
 from discord_integration import update_rpc, set_running
+import platform
+
+# Windows MPV location
+WIN_home = os.path.expanduser('~')
+WIN_mpv = os.path.join(WIN_home, '.config', 'doccli', 'mpv', 'mpv.com')
 
 
 def clear():
-    system("clear")
+    if platform.system() == "Linux":
+        system("clear")
+    elif platform.system() == "Windows":
+        system("cls")
 
 
 def open_menu(choices, prompt='Prompt', border=True, qmark='', message='', pointer='>', cycle=True, height=10):
