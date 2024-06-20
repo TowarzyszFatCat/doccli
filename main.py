@@ -4,8 +4,10 @@ from termcolor import colored
 import webbrowser
 import threading
 from discord_integration import start_rpc, set_running
+import platform
+import os
 
-VERSION = "v2.6.1"
+VERSION = "v2.7"
 
 def check_update() -> None:
 
@@ -16,7 +18,7 @@ def check_update() -> None:
     if response.json()["name"] != VERSION:
 
         print(colored("Wersja programu:", "white"), colored(VERSION, "red"))
-        print(colored('Najnowsza wersja:', "white"), colored(f"{response.json()['name']}", "green"))
+        print(colored('Najnowsza wersja:', "white"), colored(f"{response.json()["name"]}", "green"))
         print('')
         print(colored("Dostępna jest nowa wersja doccli!", "white"))
         print('')
@@ -29,3 +31,4 @@ if __name__ == "__main__":
     thread = threading.Thread(target=start_rpc)
     thread.start()
     m_welcome()
+

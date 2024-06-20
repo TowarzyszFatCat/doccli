@@ -9,10 +9,15 @@ from subprocess import Popen, DEVNULL
 from termcolor import colored
 import webbrowser
 from discord_integration import update_rpc, set_running
+import platform
+from zipfile import ZipFile
 
 
 def clear():
-    system("clear")
+    if platform.system() == "Linux":
+        system("clear")
+    elif platform.system() == "Windows":
+        system("cls")
 
 
 def open_menu(choices, prompt='Prompt', border=True, qmark='', message='', pointer='>', cycle=True, height=10):
@@ -315,7 +320,7 @@ def w_players(SLUG, NUMBER, err=''):
 
 
 def mpv_play(URL):
-    process = Popen(args=['mpv', URL], shell=False, stdout=DEVNULL, stderr=DEVNULL)
+    process = Popen(args=['mpv' if platform.system() == "Linux" else WIN_mpv, URL], shell=False, stdout=DEVNULL, stderr=DEVNULL)
     return process
 
 
@@ -362,7 +367,6 @@ def w_default(SLUG, NUMBER, process):
         m_welcome()
 
 
-
 # SAVING SECTION
 
 PATH_home = os.path.expanduser("~")
@@ -370,6 +374,10 @@ PATH_config = os.path.join(PATH_home, ".config", "doccli")
 PATH_mylist = os.path.join(PATH_config, "mylist.json")
 PATH_continue = os.path.join(PATH_config, "continue.json")
 PATH_settings = os.path.join(PATH_config, "settings.json")
+
+# Windows MPV location
+WIN_home = os.path.expanduser('~')
+WIN_mpv = os.path.join(WIN_home, '.config', 'doccli', 'essentials', 'mpv.com')
 
 
 def load():
@@ -389,6 +397,24 @@ def load():
             global settings
             settings = [True, "Używa doccli!"]
             json.dump(settings, file, indent=4)
+
+    # Win install
+    if platform.system() == "Windows":
+        if not os.path.exists(WIN_mpv):
+            print(colored("Wykryto pierwsze uruchomienie programu!", "red"))
+            print("Wypakowywanie potrzebnych składników...")
+
+            try:
+                with ZipFile('doccli_windows_essentials.zip', 'r') as zfile:
+                    zfile.extractall(PATH_config)
+                print("Wypakowano!")
+                time.sleep(1)
+                os.remove('doccli_windows_essentials.zip')
+                time.sleep(1)
+            except:
+                print(colored("Coś poszło nie tak! Upewnij się że wypakowałeś WSZYSTKIE pliki! Nie można znaleźć pliku .zip", "red"))
+                time.sleep(5)
+                sys.exit()
 
     with open(PATH_mylist, 'r') as json_file:
         loaded_data = json.load(json_file)
