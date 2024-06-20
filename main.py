@@ -1,4 +1,4 @@
-from menu_module import m_welcome, windows_startup
+from menu_module import m_welcome
 from requests import get
 from termcolor import colored
 import webbrowser
@@ -7,7 +7,7 @@ from discord_integration import start_rpc, set_running
 import platform
 import os
 
-VERSION = "v2.6"
+VERSION = "v2.7"
 
 def check_update() -> None:
 
@@ -27,10 +27,6 @@ def check_update() -> None:
 
 if __name__ == "__main__":
     check_update()
-
-    if platform.system() == "Windows":
-        windows_startup()
-
     set_running(True)
     thread = threading.Thread(target=start_rpc)
     thread.start()

@@ -4,7 +4,9 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a>
 </h1>
 
 <h2 align="center">
-UPDATE v2.5! Całkowite przepisanie aplikacji!
+[ UPDATE v2.7 ]
+
+Dodano wsparcie doccli na systemie Windows!
 </h2>
 
 ---
@@ -39,8 +41,32 @@ https://github.com/TowarzyszFatCat/doccli/assets/68988781/5264bff1-4746-4581-814
 </table>
 
 ---
+
 <h1 align="center">
-    Jak zainstalować?
+    Instalacja na systemie Windows:
+
+</h1>
+
+> [!TIP]
+> Dla lepszego działania programu zalecane jest korzystanie z Windows Terminal.
+> W zwykłym terminalu (cmd) kolory mogą nie być wspierane! Link:
+> https://www.microsoft.com/store/productId/9N0DX20HK701?ocid=pdpshare
+
+<h3>Instalacja:</h3>
+
+- Przejdź do zakładki `Releases` lub <a href="https://github.com/TowarzyszFatCat/doccli/releases/latest">kliknij tutaj</a>,
+- Pobierz zip zawierający program,
+- Wypakuj za pomocą dowolnego narzędzia w dowolnym miejscu (najlepiej pulpit),
+- Po pierwszym uruchomieniu program zainstaluje się, a plik `doccli_windows_essentials.zip` powinien zniknąć.
+- Koniec!
+
+> [!NOTE]  
+> Pliki doccli możesz znaleźć w folderze domowym użytkownika `.config/doccli`
+
+
+---
+<h1 align="center">
+    Instalacja na systemie Linux:
 
 </h1>
 
