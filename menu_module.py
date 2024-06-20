@@ -320,7 +320,7 @@ def w_players(SLUG, NUMBER, err=''):
 
 
 def mpv_play(URL):
-    process = Popen(args=['mpv' if platform.system() == "Linux" else 'mpv.com', URL], shell=False, stdout=DEVNULL, stderr=DEVNULL)
+    process = Popen(args=['mpv' if platform.system() == "Linux" else WIN_mpv, URL], shell=False, stdout=DEVNULL, stderr=DEVNULL)
     return process
 
 
@@ -365,7 +365,6 @@ def w_default(SLUG, NUMBER, process):
         process.kill()
         update_rpc("Menu główne", "Szuka anime do obejrzenia...")
         m_welcome()
-
 
 
 # SAVING SECTION
