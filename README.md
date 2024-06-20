@@ -125,4 +125,3 @@ doccli
 
 ### Using mpv player: <a href="https://github.com/mpv-player/mpv">mpv</a>
 ### Inspired by: <a href="https://github.com/pystardust/ani-cli">ani-cli</a>
-
