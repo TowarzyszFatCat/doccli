@@ -57,7 +57,8 @@ https://github.com/TowarzyszFatCat/doccli/assets/68988781/5264bff1-4746-4581-814
 - Przejdź do zakładki `Releases` lub <a href="https://github.com/TowarzyszFatCat/doccli/releases/latest">kliknij tutaj</a>,
 - Pobierz zip zawierający program,
 - Wypakuj za pomocą dowolnego narzędzia w dowolnym miejscu (najlepiej pulpit),
-- Po pierwszym uruchomieniu program zainstaluje się, a plik `doccli_windows_essentials.zip` powinien zniknąć.
+- Po pierwszym uruchomieniu program zainstaluje się, a plik `doccli_windows_essentials.zip` powinien zniknąć,
+- Po udanej instalacji możesz przenieść `doccli.exe` w dowolne miejsce,
 - Koniec!
 
 > [!NOTE]  
