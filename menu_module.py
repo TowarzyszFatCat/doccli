@@ -10,10 +10,7 @@ from termcolor import colored
 import webbrowser
 from discord_integration import update_rpc, set_running
 import platform
-
-# Windows MPV location
-WIN_home = os.path.expanduser('~')
-WIN_mpv = os.path.join(WIN_home, '.config', 'doccli', 'mpv', 'mpv.com')
+from zipfile import ZipFile
 
 
 def clear():
@@ -323,7 +320,7 @@ def w_players(SLUG, NUMBER, err=''):
 
 
 def mpv_play(URL):
-    process = Popen(args=['mpv', URL], shell=False, stdout=DEVNULL, stderr=DEVNULL)
+    process = Popen(args=['mpv' if platform.system() == "Linux" else 'mpv.com', URL], shell=False, stdout=DEVNULL, stderr=DEVNULL)
     return process
 
 
@@ -379,6 +376,10 @@ PATH_mylist = os.path.join(PATH_config, "mylist.json")
 PATH_continue = os.path.join(PATH_config, "continue.json")
 PATH_settings = os.path.join(PATH_config, "settings.json")
 
+# Windows MPV location
+WIN_home = os.path.expanduser('~')
+WIN_mpv = os.path.join(WIN_home, '.config', 'doccli', 'mpv.com')
+
 
 def load():
     if not os.path.exists(PATH_config):
@@ -397,6 +398,16 @@ def load():
             global settings
             settings = [True, "Używa doccli!"]
             json.dump(settings, file, indent=4)
+
+    # Win install
+    if platform.system() == "Windows":
+        if not os.path.exists(WIN_mpv):
+            print("Wykryto pierwsze uruchomienie programu!")
+            print("Wypakowywanie potrzebnych składników...")
+            with ZipFile('doccli_windows_essentials.zip', 'r') as zfile:
+                zfile.extractall(PATH_config)
+            print("Wypakowano!")
+            time.sleep(2)
 
     with open(PATH_mylist, 'r') as json_file:
         loaded_data = json.load(json_file)
