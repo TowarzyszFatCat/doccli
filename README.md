@@ -4,9 +4,9 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a>
 </h1>
 
 <h2 align="center">
-[ UPDATE v2.7 ]
+[ UPDATE v2.7.1 ]
 
-Dodano wsparcie doccli na systemie Windows!
+Dodano zapisywanie historii oglądania!
 </h2>
 
 ---
@@ -26,6 +26,7 @@ https://github.com/TowarzyszFatCat/doccli/assets/68988781/5264bff1-4746-4581-814
 <td>
 
 - Lista anime do obejrzenia
+- Historia oglądania
 - Funkcja następny/poprzedni odcinek
 - Szybka wyszukiwarka z całą listą dostępnych anime
 - Wznawianie oglądania
@@ -34,7 +35,7 @@ https://github.com/TowarzyszFatCat/doccli/assets/68988781/5264bff1-4746-4581-814
 </td>
 <td>
 
-- Inne integracje
+- Wsparcie większej ilości źródeł
 
 </td>
 </tr>
@@ -43,7 +44,7 @@ https://github.com/TowarzyszFatCat/doccli/assets/68988781/5264bff1-4746-4581-814
 ---
 
 <h1 align="center">
-    Instalacja na systemie Windows:
+    Instalacja na systemie Windows [Najnowsza: v2.7]:
 
 </h1>
 
@@ -67,7 +68,7 @@ https://github.com/TowarzyszFatCat/doccli/assets/68988781/5264bff1-4746-4581-814
 
 ---
 <h1 align="center">
-    Instalacja na systemie Linux:
+    Instalacja na systemie Linux [Najnowsza: v2.7.1]:
 
 </h1>
 

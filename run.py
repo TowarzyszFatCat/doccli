@@ -1,4 +1,4 @@
-from menu_module import m_welcome
+from main_module import m_welcome
 from requests import get
 from termcolor import colored
 import webbrowser
@@ -7,7 +7,7 @@ from discord_integration import start_rpc, set_running
 import platform
 import os
 
-VERSION = "v2.7"
+VERSION = "v2.7.1"
 
 def check_update() -> None:
 

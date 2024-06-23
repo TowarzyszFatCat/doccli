@@ -40,7 +40,7 @@ This project uses client-side content access mechanisms. Hence, the copyright in
 <b>Do not harass the developer. Any personal information about the developer is intentionally not made public. Exploiting such information without consent in regards to this topic will lead to legal actions by the developer themselves.</b>
 
 
-<h2>
+<h3>
 Contacting the developer
 </h3>
 <br>

@@ -4,13 +4,14 @@ import json
 from InquirerPy import inquirer, prompt
 import os
 from os import system
-from docchi_api_connector import get_series_list, get_episodes_count_for_serie, get_players_list, get_details_for_serie
+from api_connector import get_series_list, get_episodes_count_for_serie, get_players_list, get_details_for_serie
 from subprocess import Popen, DEVNULL
 from termcolor import colored
 import webbrowser
 from discord_integration import update_rpc, set_running
 import platform
 from zipfile import ZipFile
+from datetime import datetime
 
 
 def clear():
@@ -58,6 +59,7 @@ def m_welcome():
         choices.append(f"Wznów {continue_data[0]['title']} / {continue_data[0]['title_en']}, Odc: {continue_data[1]}")
 
     choices.append("Moja lista")
+    choices.append("Historia oglądania")
     choices.append("Ustawienia")
     choices.append("Dołącz do discorda")
     choices.append("Zamknij")
@@ -76,10 +78,12 @@ def m_welcome():
     elif ans == choices[2]:
         m_mylist()
     elif ans == choices[3]:
-        m_settings()
+        m_history()
     elif ans == choices[4]:
-        m_discord()
+        m_settings()
     elif ans == choices[5]:
+        m_discord()
+    elif ans == choices[6]:
         set_running(False)
         sys.exit()
 
@@ -134,6 +138,23 @@ def m_mylist():
     else:
         index = choices.index(ans)
         m_details(mylist[index - 1])
+
+def m_history():
+    choices = ['Cofnij']
+
+    message = ''
+    if not history:
+        message = ("Nic tu nie ma!")
+
+    for element in history:
+        choices.append(element)
+
+    prompt = 'Wyszukaj: '
+    ans = open_menu(choices=choices, prompt=prompt, qmark=message)
+    if ans == choices[0]:
+        m_welcome()
+    else:
+        m_history()
 
 def m_find():
     choices = [
@@ -334,6 +355,12 @@ def w_default(SLUG, NUMBER, process):
     else:
         update_rpc(f"Ogląda anime", settings[1])
 
+    # Save to history
+    now = datetime.now()
+    dt_string = now.strftime("%d/%m/%Y %H:%M")
+    history.insert(0, f"[{dt_string}] {details['title']} / {details['title_en']} [Odc: {NUMBER}]")
+    save()
+
     choices = [
         "Następny odcinek",
         "Poprzedni odcinek",
@@ -374,6 +401,7 @@ PATH_config = os.path.join(PATH_home, ".config", "doccli")
 PATH_mylist = os.path.join(PATH_config, "mylist.json")
 PATH_continue = os.path.join(PATH_config, "continue.json")
 PATH_settings = os.path.join(PATH_config, "settings.json")
+PATH_history = os.path.join(PATH_config, "history.json")
 
 # Windows MPV location
 WIN_home = os.path.expanduser('~')
@@ -397,6 +425,9 @@ def load():
             global settings
             settings = [True, "Używa doccli!"]
             json.dump(settings, file, indent=4)
+    if not os.path.exists(PATH_history):
+        with open(PATH_history, 'w') as file:
+            file.write('[]')
 
     # Win install
     if platform.system() == "Windows":
@@ -429,6 +460,11 @@ def load():
         loaded_data = json.load(json_file)
         settings = loaded_data
 
+    with open(PATH_history, 'r') as json_file:
+        loaded_data = json.load(json_file)
+        global history
+        history = loaded_data
+
 
 def save():
     with open(PATH_mylist, 'w') as json_file:
@@ -437,3 +473,5 @@ def save():
         json.dump(continue_data, json_file, indent=4)
     with open(PATH_settings, 'w') as json_file:
         json.dump(settings, json_file, indent=4)
+    with open(PATH_history, 'w') as json_file:
+        json.dump(history, json_file, indent=4)
