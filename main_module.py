@@ -292,14 +292,19 @@ def w_list(SLUG):
     last_episode = get_episodes_count_for_serie(SLUG)
 
     choices = list(range(1, last_episode + 1))
+    choices.append('Cofnij')
 
     prompt = 'Wybierz odcinek: '
 
     ans = open_menu(choices=choices, prompt=prompt)
-    continue_data[1] = ans
-    save()
+    if ans == "Cofnij":
+        m_details(get_details_for_serie(SLUG))
 
-    w_players(SLUG, ans)
+    else:
+        continue_data[1] = ans
+        save()
+
+        w_players(SLUG, ans)
 
 
 def w_players(SLUG, NUMBER, err=''):
