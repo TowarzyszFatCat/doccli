@@ -9,7 +9,7 @@ def get_players_list(SLUG, NUMBER):
     if request.status_code == 200:
         return request.json()
     else:
-        print(request.status_code)
+        return request.status_code
 
 
 # Get list of how much episodes series contains
@@ -18,7 +18,7 @@ def get_episodes_count_for_serie(SLUG):
     if request.status_code == 200:
         return len(request.json())
     else:
-        print(request.status_code)
+        return request.status_code
 
 
 # Get all hentais list
@@ -27,7 +27,7 @@ def get_hentai_list():  # XD
     if request.status_code == 200:
         return request.json()
     else:
-        print(request.status_code)
+        return request.status_code
 
 
 # Get all series list
@@ -36,7 +36,7 @@ def get_series_list():
     if request.status_code == 200:
         return request.json()
     else:
-        print(request.status_code)
+        return request.status_code
 
 
 # Get detail info about the Series
@@ -45,4 +45,4 @@ def get_details_for_serie(SLUG):
     if request.status_code == 200:
         return request.json()
     else:
-        print(request.status_code)
+        return request.status_code

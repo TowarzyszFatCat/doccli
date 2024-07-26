@@ -246,7 +246,8 @@ def m_details(details):
     else:
         choices.append("Dodaj do mojej listy")
 
-    choices.append("Cofnij")
+    choices.append("Cofnij do wyszukiwarki")
+    choices.append("Menu główne")
 
     prompt = 'Wybierz co chcesz zrobić: '
 
@@ -280,6 +281,8 @@ def m_details(details):
 
     elif ans == choices[3]:
         m_find()
+    elif ans == choices[4]:
+        m_welcome()
 
 
 def w_first(SLUG):
@@ -290,6 +293,12 @@ def w_first(SLUG):
 
 def w_list(SLUG):
     last_episode = get_episodes_count_for_serie(SLUG)
+
+    if last_episode == 404:
+        clear()
+        print(colored("Nie znaleziono strony [Błąd 404]", "red"))
+        time.sleep(3)
+        m_details(get_details_for_serie(SLUG))
 
     choices = list(range(1, last_episode + 1))
     choices.append('Cofnij')
@@ -309,6 +318,13 @@ def w_list(SLUG):
 
 def w_players(SLUG, NUMBER, err=''):
     players = []
+
+    # Check if site is fine
+    if get_players_list(SLUG, NUMBER) == 404:
+        clear()
+        print(colored("Nie znaleziono strony [Błąd 404]", "red"))
+        time.sleep(3)
+        m_details(get_details_for_serie(SLUG))
 
     for player in get_players_list(SLUG, NUMBER):
         player_info = [player['player_hosting'], player['player']]
