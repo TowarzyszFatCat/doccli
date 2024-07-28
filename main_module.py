@@ -362,7 +362,7 @@ def w_players(SLUG, NUMBER, err=''):
 
 
 def mpv_play(URL):
-    process = Popen(args=['mpv' if platform.system() == "Linux" else WIN_mpv, URL], shell=False, stdout=DEVNULL, stderr=DEVNULL)
+    process = Popen(args=['mpv' if platform.system() == "Linux" else WIN_mpv, "--save-position-on-quit", URL], shell=False, stdout=DEVNULL, stderr=DEVNULL)
     return process
 
 
@@ -394,23 +394,23 @@ def w_default(SLUG, NUMBER, process):
     ans = open_menu(choices=choices, prompt=prompt, qmark=f'Odcinek: {NUMBER}/{how_many_episodes}')
 
     if ans == choices[0]:
-        process.kill()
+        process.terminate()
         update_rpc("Menu główne", "Szuka anime do obejrzenia...")
         continue_data[1] = NUMBER + 1 if NUMBER < how_many_episodes else NUMBER
         save()
         w_players(SLUG, NUMBER + 1 if NUMBER < how_many_episodes else NUMBER)
     elif ans == choices[1]:
-        process.kill()
+        process.terminate()
         update_rpc("Menu główne", "Szuka anime do obejrzenia...")
         continue_data[1] = NUMBER + 1 if NUMBER < how_many_episodes else NUMBER
         save()
         w_players(SLUG, NUMBER - 1 if NUMBER >= 2 else NUMBER)
     elif ans == choices[2]:
-        process.kill()
+        process.terminate()
         update_rpc("Menu główne", "Szuka anime do obejrzenia...")
         w_list(SLUG)
     elif ans == choices[3]:
-        process.kill()
+        process.terminate()
         update_rpc("Menu główne", "Szuka anime do obejrzenia...")
         m_welcome()
 
