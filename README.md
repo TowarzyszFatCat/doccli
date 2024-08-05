@@ -4,9 +4,9 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a>
 </h1>
 
 <h2 align="center">
-[ UPDATE v2.7.3 ]
+[ UPDATE v2.7.4 ]
 
-Dodano wznawianie odcinków!
+Dodano statystyki doccli!
 </h2>
 
 ---
@@ -29,8 +29,9 @@ https://github.com/TowarzyszFatCat/doccli/assets/68988781/5264bff1-4746-4581-814
 - Historia oglądania
 - Funkcja następny/poprzedni odcinek
 - Szybka wyszukiwarka z całą listą dostępnych anime
-- Wznawianie oglądania
+- Wznawianie oglądania 
 - Możliwość ustawienia własnego statusu na discordzie
+- Statystyki
 
 </td>
 <td>
@@ -68,7 +69,7 @@ https://github.com/TowarzyszFatCat/doccli/assets/68988781/5264bff1-4746-4581-814
 
 ---
 <h1 align="center">
-    Instalacja na systemie Linux [Najnowsza: v2.7.3]:
+    Instalacja na systemie Linux [Najnowsza: v2.7.4]:
 
 </h1>
 

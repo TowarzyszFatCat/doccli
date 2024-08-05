@@ -1,3 +1,4 @@
+import pathlib
 import sys
 import time
 import json
@@ -11,7 +12,7 @@ import webbrowser
 from discord_integration import update_rpc, set_running
 import platform
 from zipfile import ZipFile
-from datetime import datetime
+from datetime import datetime, date
 
 
 def clear():
@@ -61,6 +62,7 @@ def m_welcome():
     choices.append("Moja lista")
     choices.append("Historia oglądania")
     choices.append("Ustawienia")
+    choices.append("Statystyki doccli")
     choices.append("Dołącz do discorda")
     choices.append("Zamknij")
 
@@ -82,15 +84,17 @@ def m_welcome():
     elif ans == choices[4]:
         m_settings()
     elif ans == choices[5]:
-        m_discord()
+        m_stats()
     elif ans == choices[6]:
+        m_discord()
+    elif ans == choices[7]:
         set_running(False)
         sys.exit()
 
 def m_settings():
     choices = [{
             "type": "list",
-            "message": "Czy chcesz aby ludzie na discordzie widzieli co oglądasz?",
+            "message": "Czy chcesz aby znajomi na discordzie widzieli co oglądasz?",
             "choices": ["Tak", "Nie"],
         }]
 
@@ -177,6 +181,34 @@ def m_find():
     elif ans == choices[3]:
         m_welcome()
 
+def m_stats():
+
+    ep_played = 0
+    q_mylist = 0
+
+    for ep in history:
+        ep_played += 1
+
+    for quantity in mylist:
+        q_mylist += 1
+
+    ti_c = pathlib.Path(PATH_config).stat().st_mtime
+    dt_c = datetime.fromtimestamp(ti_c).strftime("%d/%m/%Y, %H:%M:%S")
+
+    creation_dt = date.fromtimestamp(ti_c)
+    now_dt = date.today()
+    delta_dt = now_dt - creation_dt
+
+
+    print(colored("Używasz doccli już od:", "white"), colored(delta_dt.days, "green"), colored("dni!", "white"))
+    print(colored("Pierwsze uruchomienie doccli:", "white"), colored(dt_c, "green"))
+    print('')
+    print(colored("Odtworzone odcinki:", "white"), colored(ep_played, "red"))
+    print(colored("Pozycje zapisane na liście:", "white"), colored(q_mylist, "red"))
+    print('')
+    input(colored("Naciśnij enter aby wrócić do menu głównego...", "yellow"))
+
+    m_welcome()
 
 def f_title():
     all_series_json = get_series_list()
@@ -383,6 +415,7 @@ def w_default(SLUG, NUMBER, process):
     save()
 
     choices = [
+        "Zmień źródło",
         "Następny odcinek",
         "Poprzedni odcinek",
         "Lista odcinków",
@@ -396,20 +429,25 @@ def w_default(SLUG, NUMBER, process):
     if ans == choices[0]:
         process.terminate()
         update_rpc("Menu główne", "Szuka anime do obejrzenia...")
-        continue_data[1] = NUMBER + 1 if NUMBER < how_many_episodes else NUMBER
-        save()
-        w_players(SLUG, NUMBER + 1 if NUMBER < how_many_episodes else NUMBER)
+        w_players(SLUG, NUMBER)
+
     elif ans == choices[1]:
         process.terminate()
         update_rpc("Menu główne", "Szuka anime do obejrzenia...")
         continue_data[1] = NUMBER + 1 if NUMBER < how_many_episodes else NUMBER
         save()
-        w_players(SLUG, NUMBER - 1 if NUMBER >= 2 else NUMBER)
+        w_players(SLUG, NUMBER + 1 if NUMBER < how_many_episodes else NUMBER)
     elif ans == choices[2]:
         process.terminate()
         update_rpc("Menu główne", "Szuka anime do obejrzenia...")
-        w_list(SLUG)
+        continue_data[1] = NUMBER + 1 if NUMBER < how_many_episodes else NUMBER
+        save()
+        w_players(SLUG, NUMBER - 1 if NUMBER >= 2 else NUMBER)
     elif ans == choices[3]:
+        process.terminate()
+        update_rpc("Menu główne", "Szuka anime do obejrzenia...")
+        w_list(SLUG)
+    elif ans == choices[4]:
         process.terminate()
         update_rpc("Menu główne", "Szuka anime do obejrzenia...")
         m_welcome()
