@@ -86,7 +86,7 @@ Instalacja `mpv` i `yt-dlp` na Debian/Ubuntu/Pop:
 sudo apt install mpv yt-dlp python3-venv
 ```
 
-### Instalacja:
+### Instalacja w jednej komendzie:
 ```bash
 cd ~ && git clone https://github.com/TowarzyszFatCat/doccli.git && bash doccli/install.sh
 ```
@@ -96,7 +96,12 @@ cd ~ && git clone https://github.com/TowarzyszFatCat/doccli.git && bash doccli/i
 sudo rm /usr/local/bin/doccli && sudo rm -rf ~/.doccli_src
 ```
 
-### Jak usunąć `moją listę` oraz `config`:
+### Aktualizacja w jednej komendzie (połączenie powyższych komend :P):
+```bash
+sudo rm /usr/local/bin/doccli && sudo rm -rf ~/.doccli_src && cd ~ && git clone https://github.com/TowarzyszFatCat/doccli.git && bash doccli/install.sh
+```
+
+### Jak usunąć `moją listę` oraz `config` (niezalecane, chyba że wymaga tego aktualizacja):
 ```bash
 sudo rm ~/.config/doccli/*
 ```
