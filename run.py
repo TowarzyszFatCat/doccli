@@ -18,7 +18,7 @@ def check_update() -> None:
     if response.json()["name"] != VERSION:
 
         print(colored("Wersja programu:", "white"), colored(VERSION, "red"))
-        print(colored('Najnowsza wersja:', "white"), colored(f"{response.json()["name"]}", "green"))
+        print(colored('Najnowsza wersja:', "white"), colored(f"{response.json()['name']}", "green"))
         print('')
         print(colored("Dostępna jest nowa wersja doccli!", "white"))
         print('')
