@@ -4,9 +4,9 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a>
 </h1>
 
 <h2 align="center">
-[ UPDATE v2.7.4 ]
+[ UPDATE v2.8 ]
 
-Dodano statystyki doccli!
+Dodano wyświelanie okładek!
 </h2>
 
 ---
@@ -32,6 +32,7 @@ https://github.com/TowarzyszFatCat/doccli/assets/68988781/5264bff1-4746-4581-814
 - Wznawianie oglądania 
 - Możliwość ustawienia własnego statusu na discordzie
 - Statystyki
+- Podgląd okładki
 
 </td>
 <td>
@@ -69,7 +70,7 @@ https://github.com/TowarzyszFatCat/doccli/assets/68988781/5264bff1-4746-4581-814
 
 ---
 <h1 align="center">
-    Instalacja na systemie Linux [Najnowsza: v2.7.4]:
+    Instalacja na systemie Linux [Najnowsza: v2.8]:
 
 </h1>
 
@@ -78,13 +79,22 @@ Aby korzystać z doccli na systemie linux musisz zainstalować `mpv` i `yt-dlp`!
 
 Instalacja `mpv` i `yt-dlp` na Arch:
 ```bash
-sudo pacman -S mpv yt-dlp python3-venv
+sudo pacman -S mpv yt-dlp
 ```
 
 Instalacja `mpv` i `yt-dlp` na Debian/Ubuntu/Pop:
 ```bash
-sudo apt install mpv yt-dlp python3-venv
+sudo apt install mpv yt-dlp
 ```
+
+
+> [!WARNING]  
+> Na niektórych dystrybucjach wymagana jest także instalacja `python3-venv` przed instalacją doccli!
+
+
+### Opcjonalne paczki:
+Aby wyświetlać okładki wymagana jest instalacja `timg`
+
 
 ### Instalacja w jednej komendzie:
 ```bash
@@ -100,6 +110,10 @@ sudo rm /usr/local/bin/doccli && sudo rm -rf ~/.doccli_src
 ```bash
 sudo rm /usr/local/bin/doccli && sudo rm -rf ~/.doccli_src && cd ~ && git clone https://github.com/TowarzyszFatCat/doccli.git && bash doccli/install.sh
 ```
+
+> [!IMPORTANT]  
+> Jeżeli aktualizujesz doccli z wersji v2.7.X do v2.8 zwróć uwagę na opcjonalne paczki!
+
 
 ### Jak usunąć `moją listę` oraz `config` (niezalecane, chyba że wymaga tego aktualizacja):
 ```bash

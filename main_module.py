@@ -13,6 +13,8 @@ from discord_integration import update_rpc, set_running
 import platform
 from zipfile import ZipFile
 from datetime import datetime, date
+import requests
+import shutil
 
 
 def clear():
@@ -21,9 +23,24 @@ def clear():
     elif platform.system() == "Windows":
         system("cls")
 
+def get_terminal_size():
+    columns, rows = os.get_terminal_size()
+    return columns, rows
 
-def open_menu(choices, prompt='Prompt', border=True, qmark='', message='', pointer='>', cycle=True, height=10):
+
+def open_menu(choices, prompt='Prompt', border=True, qmark='', message='', pointer='>', cycle=True, height=10, image=None):
     clear()
+
+    if image:
+        if shutil.which('timg') is None:
+            print(colored("[UWAGA]", "yellow"), colored("Aby wyświetlać okładki wymagana jest instalacja", "white"), colored("timg", "green"), '\n')
+        else:
+            response = requests.get(image)
+            image_path = "/tmp/cover.jpg"
+            with open(image_path, 'wb') as file:
+                file.write(response.content)
+            os.system(f"timg -C -g {get_terminal_size()[0]}x{get_terminal_size()[1] - height - 4} {image_path}")
+
 
     action = inquirer.fuzzy(
         message=message,    # Message above border
@@ -68,7 +85,7 @@ def m_welcome():
 
     prompt = 'Wybierz co chcesz zrobić: '
 
-    ans = open_menu(choices=choices, prompt=prompt)
+    ans = open_menu(choices=choices, prompt=prompt, height=8)
 
     if ans == choices[0]:
         m_find()
@@ -170,7 +187,7 @@ def m_find():
 
     prompt = 'Wybierz jak chcesz wyszukać: '
 
-    ans = open_menu(choices=choices, prompt=prompt)
+    ans = open_menu(choices=choices, prompt=prompt, height=4)
 
     if ans == choices[0]:
         f_title()
@@ -291,7 +308,7 @@ def m_details(details):
 
     episode_count = get_episodes_count_for_serie(details['slug'])
 
-    ans = open_menu(choices=choices, prompt=prompt, qmark=f'{details["title"]} / {details["title_en"]} [{episode_count}]', message=genres)
+    ans = open_menu(choices=choices, prompt=prompt, qmark=f'{details["title"]} / {details["title_en"]} [{episode_count}]', message=genres, height=5, image=details['cover'])
 
     if ans == choices[0]:
         continue_data[0] = details
@@ -394,6 +411,13 @@ def w_players(SLUG, NUMBER, err=''):
 
 
 def mpv_play(URL):
+    if shutil.which('mpv') is None:
+        print(colored("[BŁĄD]", "red"), colored("Aby program działał wymagana jest instalacja", "white"), colored("mpv", "green"), '\n')
+        sys.exit()
+    if shutil.which('yt-dlp') is None:
+        print(colored("[BŁĄD]", "red"), colored("Aby program działał wymagana jest instalacja", "white"), colored("yt-dlp", "green"), '\n')
+        sys.exit()
+
     process = Popen(args=['mpv' if platform.system() == "Linux" else WIN_mpv, "--save-position-on-quit", URL], shell=False, stdout=DEVNULL, stderr=DEVNULL)
     return process
 
@@ -424,7 +448,7 @@ def w_default(SLUG, NUMBER, process):
 
     prompt = 'Co chcesz zrobić? '
 
-    ans = open_menu(choices=choices, prompt=prompt, qmark=f'Odcinek: {NUMBER}/{how_many_episodes}')
+    ans = open_menu(choices=choices, prompt=prompt, qmark=f'Odcinek: {NUMBER}/{how_many_episodes}', height=5)
 
     if ans == choices[0]:
         process.terminate()
