@@ -12,7 +12,8 @@ Dodano wyświelanie okładek!
 ---
 
 
-https://github.com/TowarzyszFatCat/doccli/assets/68988781/5264bff1-4746-4581-814e-3989f5eb4bf1
+[showcase.webm](https://github.com/user-attachments/assets/f720fdad-4643-47ee-8e7f-2f9a2a6fca55)
+
 
 
 ---
