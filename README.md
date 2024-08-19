@@ -69,9 +69,9 @@ sudo apt install mpv yt-dlp
 
 
 ### Opcjonalne paczki:
-- Wyświetlanie okładek: `timg`
+- Wyświetlanie okładek: `timg` [ <a href="https://github.com/hzeller/timg">link do timg</a> ]
 
-- Dla wsparcia źródeł z mega.nz: `megatools`
+- Dla wsparcia źródeł z mega.nz: `megatools`  [ <a href="https://megatools.megous.com/">link do megatools</a> ]
 
 
 ### Instalacja w jednej komendzie:
