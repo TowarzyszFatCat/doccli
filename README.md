@@ -4,9 +4,9 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a>
 </h1>
 
 <h2 align="center">
-[ UPDATE v2.8 ]
+[ UPDATE v2.9 ]
 
-Dodano wyświelanie okładek!
+Dodano wsparcie mega.nz!
 </h2>
 
 ---
@@ -45,33 +45,8 @@ Dodano wyświelanie okładek!
 </table>
 
 ---
-
 <h1 align="center">
-    Instalacja na systemie Windows [Najnowsza: v2.7]:
-
-</h1>
-
-> [!TIP]
-> Dla lepszego działania programu zalecane jest korzystanie z Windows Terminal.
-> W zwykłym terminalu (cmd) kolory mogą nie być wspierane! Link:
-> https://www.microsoft.com/store/productId/9N0DX20HK701?ocid=pdpshare
-
-<h3>Instalacja:</h3>
-
-- Przejdź do zakładki `Releases` lub <a href="https://github.com/TowarzyszFatCat/doccli/releases/latest">kliknij tutaj</a>,
-- Pobierz zip zawierający program,
-- Wypakuj za pomocą dowolnego narzędzia w dowolnym miejscu (najlepiej pulpit),
-- Po pierwszym uruchomieniu program zainstaluje się, a plik `doccli_windows_essentials.zip` powinien zniknąć,
-- Po udanej instalacji możesz przenieść `doccli.exe` w dowolne miejsce,
-- Koniec!
-
-> [!NOTE]  
-> Pliki doccli możesz znaleźć w folderze domowym użytkownika `.config/doccli`
-
-
----
-<h1 align="center">
-    Instalacja na systemie Linux [Najnowsza: v2.8]:
+    Instalacja:
 
 </h1>
 
@@ -94,7 +69,8 @@ sudo apt install mpv yt-dlp
 
 
 ### Opcjonalne paczki:
-Aby wyświetlać okładki wymagana jest instalacja `timg`
+Wyświetlanie okładek: `timg`
+Dla wsparcia źródeł z mega.nz: `megatools`
 
 
 ### Instalacja w jednej komendzie:
@@ -102,18 +78,18 @@ Aby wyświetlać okładki wymagana jest instalacja `timg`
 cd ~ && git clone https://github.com/TowarzyszFatCat/doccli.git && bash doccli/install.sh
 ```
 
+### Aktualizacja w jednej komendzie:
+```bash
+sudo rm /usr/local/bin/doccli && sudo rm -rf ~/.doccli_src && cd ~ && git clone https://github.com/TowarzyszFatCat/doccli.git && bash doccli/install.sh
+```
+
 ### Jak odinstalować:
 ```bash
 sudo rm /usr/local/bin/doccli && sudo rm -rf ~/.doccli_src
 ```
 
-### Aktualizacja w jednej komendzie (połączenie powyższych komend :P):
-```bash
-sudo rm /usr/local/bin/doccli && sudo rm -rf ~/.doccli_src && cd ~ && git clone https://github.com/TowarzyszFatCat/doccli.git && bash doccli/install.sh
-```
-
 > [!IMPORTANT]  
-> Jeżeli aktualizujesz doccli z wersji v2.7.X do v2.8 zwróć uwagę na opcjonalne paczki!
+> Jeżeli aktualizujesz doccli z wersji v2.7.X do wyższej zwróć uwagę na opcjonalne paczki!
 
 
 ### Jak usunąć `moją listę` oraz `config` (niezalecane, chyba że wymaga tego aktualizacja):

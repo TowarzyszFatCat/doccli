@@ -7,7 +7,7 @@ from discord_integration import start_rpc, set_running
 import platform
 import os
 
-VERSION = "v2.8"
+VERSION = "v2.9"
 
 def check_update() -> None:
 

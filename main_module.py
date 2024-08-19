@@ -404,7 +404,7 @@ def w_players(SLUG, NUMBER, err=''):
     # Wait 3 sec and check if started playing
     print("Rozpoczynanie odtwarzania...")
     time.sleep(3)                                      # CZAS ZALEZNY OD PREDKOSCI LACZA
-    if process.poll() is not None:
+    if process == None or process.poll() is not None:
         w_players(SLUG, NUMBER, err='Wybrane źródło nie jest dostępne, lub nie jest wspierane! Możesz to złgosić na discordzie.')
 
     w_default(SLUG, NUMBER, process)
@@ -417,9 +417,38 @@ def mpv_play(URL):
     if shutil.which('yt-dlp') is None:
         print(colored("[BŁĄD]", "red"), colored("Aby program działał wymagana jest instalacja", "white"), colored("yt-dlp", "green"), '\n')
         sys.exit()
+    if "mega" in URL:
+        if shutil.which('megatools') is None:
+            print(colored("[UWAGA]", "yellow"), colored("Aby oglądać z tego źródła wymagana jest instalacja", "white"), colored("megatools", "green"), '\n')
+            sys.exit()
 
-    process = Popen(args=['mpv' if platform.system() == "Linux" else WIN_mpv, "--save-position-on-quit", URL], shell=False, stdout=DEVNULL, stderr=DEVNULL)
-    return process
+
+        video_extensions = ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.webm']
+        download_path = '/tmp/'
+        files_in_directory = os.listdir(download_path)
+
+        for file in files_in_directory:
+            if file.lower().endswith(tuple(video_extensions)):
+                file_path = os.path.join(download_path, file)
+                os.remove(file_path)
+
+        mega_url = URL.replace('embed', 'file')
+        before_files = set(os.listdir(download_path))
+        os.system(f'megadl {mega_url} --path {download_path}')
+        after_files = set(os.listdir(download_path))
+        new_files = after_files - before_files
+        video_files = [file for file in new_files if file.lower().endswith(tuple(video_extensions))]
+
+        try:
+            process = Popen(args=['mpv' if platform.system() == "Linux" else WIN_mpv, "--save-position-on-quit", f'/tmp/{video_files[0]}'], shell=False, stdout=DEVNULL, stderr=DEVNULL)
+            return process
+        except IndexError:
+            return
+
+
+    else:
+        process = Popen(args=['mpv' if platform.system() == "Linux" else WIN_mpv, "--save-position-on-quit", URL], shell=False, stdout=DEVNULL, stderr=DEVNULL)
+        return process
 
 
 def w_default(SLUG, NUMBER, process):

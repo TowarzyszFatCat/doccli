@@ -1,7 +1,7 @@
 import time
 
 import pypresence.exceptions
-from pypresence import Presence
+from pypresence import Presence, ActivityType
 
 discord_data = ["Menu główne", "Ładowanie..."]
 start_time = None
@@ -28,5 +28,5 @@ def set_running(bool):
 
 def start_rpc():
     while running:
-        RPC.update(state=discord_data[1], details=discord_data[0], large_image='icon_1', large_text="Doccli - oglądaj anime bezpośrednio ze swojego terminalu!", buttons=[{"label": "GitHub", "url": "https://github.com/TowarzyszFatCat/doccli"}, {"label": "Discord Projektu", "url": "https://discord.gg/FgfSM7bSEK"}], start=start_time)
+        RPC.update(activity_type=ActivityType.WATCHING, state=discord_data[1], details=discord_data[0], large_image='icon_1', large_text="Doccli - oglądaj anime bezpośrednio ze swojego terminalu!", buttons=[{"label": "GitHub", "url": "https://github.com/TowarzyszFatCat/doccli"}, {"label": "Discord Projektu", "url": "https://discord.gg/FgfSM7bSEK"}], start=start_time)
         time.sleep(5)
