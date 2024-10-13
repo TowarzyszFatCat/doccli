@@ -51,16 +51,16 @@ Dodano wsparcie mega.nz!
 </h1>
 
 ### Wymagagane paczki:
-Aby korzystać z doccli na systemie linux musisz zainstalować `mpv` i `yt-dlp`! Oraz posiadać pythona3.9 lub nowszego (powinien być domyślnie zainstalowany)
+Aby korzystać z doccli na systemie linux musisz zainstalować `mpv` i `yt-dlp`! Oraz posiadać pythona3.9 (z modułem pip oraz venv) lub nowszego (powinien być domyślnie zainstalowany)
 
-Instalacja `mpv` i `yt-dlp` na Arch:
+Instalacja wymaganych paczek na Arch:
 ```bash
-sudo pacman -S mpv yt-dlp
+sudo pacman -S mpv yt-dlp python3-pip python3-venv
 ```
 
-Instalacja `mpv` i `yt-dlp` na Debian/Ubuntu/Pop:
+Instalacja wymaganych paczek na Debian/Ubuntu/Pop:
 ```bash
-sudo apt install mpv yt-dlp
+sudo apt install mpv yt-dlp python3-pip python3-venv
 ```
 
 
