@@ -18,7 +18,7 @@ import shutil
 
 
 def clear():
-    if platform.system() == "Linux":
+    if platform.system() == "Linux" or platform.system() == "Darwin":
         system("clear")
     elif platform.system() == "Windows":
         system("cls")
@@ -440,14 +440,14 @@ def mpv_play(URL):
         video_files = [file for file in new_files if file.lower().endswith(tuple(video_extensions))]
 
         try:
-            process = Popen(args=['mpv' if platform.system() == "Linux" else WIN_mpv, "--save-position-on-quit", f'/tmp/{video_files[0]}'], shell=False, stdout=DEVNULL, stderr=DEVNULL)
+            process = Popen(args=['mpv' if platform.system() == "Linux" or platform.system() == "Darwin" else WIN_mpv, "--save-position-on-quit", f'/tmp/{video_files[0]}'], shell=False, stdout=DEVNULL, stderr=DEVNULL)
             return process
         except IndexError:
             return
 
 
     else:
-        process = Popen(args=['mpv' if platform.system() == "Linux" else WIN_mpv, "--save-position-on-quit", URL], shell=False, stdout=DEVNULL, stderr=DEVNULL)
+        process = Popen(args=['mpv' if platform.system() == "Linux" or platform.system() == "Darwin" else WIN_mpv, "--save-position-on-quit", URL], shell=False, stdout=DEVNULL, stderr=DEVNULL)
         return process
 
 
