@@ -29,7 +29,7 @@ Dodano wsparcie mega.nz!
 - Lista anime do obejrzenia
 - Historia oglądania
 - Funkcja następny/poprzedni odcinek
-- Szybka wyszukiwarka z całą listą dostępnych anime
+- Szybka wyszukiwarka
 - Wznawianie oglądania 
 - Możliwość ustawienia własnego statusu na discordzie
 - Statystyki
@@ -51,7 +51,9 @@ Dodano wsparcie mega.nz!
 </h1>
 
 ### Wymagagane paczki:
-Aby korzystać z doccli na systemie linux musisz zainstalować `mpv` i `yt-dlp`! Oraz posiadać pythona3.9 (z modułem pip oraz venv) lub nowszego (powinien być domyślnie zainstalowany)
+- `mpv`
+- `yt-dlp`
+- `python3.9+` (z modułem pip oraz venv)
 
 Instalacja wymaganych paczek na Arch:
 ```bash
@@ -62,10 +64,6 @@ Instalacja wymaganych paczek na Debian/Ubuntu/Pop:
 ```bash
 sudo apt install mpv yt-dlp python3-pip python3-venv
 ```
-
-
-> [!WARNING]  
-> Na niektórych dystrybucjach wymagana jest także instalacja `python3-venv` przed instalacją doccli!
 
 
 ### Opcjonalne paczki:
@@ -80,17 +78,17 @@ cd ~ && git clone https://github.com/TowarzyszFatCat/doccli.git && bash doccli/i
 ```
 
 ### Aktualizacja w jednej komendzie:
+> [!IMPORTANT]  
+> Jeżeli aktualizujesz doccli z wersji v2.7.X do wyższej zwróć uwagę na opcjonalne paczki!
 ```bash
 sudo rm /usr/local/bin/doccli && sudo rm -rf ~/.doccli_src && cd ~ && git clone https://github.com/TowarzyszFatCat/doccli.git && bash doccli/install.sh
 ```
+
 
 ### Jak odinstalować:
 ```bash
 sudo rm /usr/local/bin/doccli && sudo rm -rf ~/.doccli_src
 ```
-
-> [!IMPORTANT]  
-> Jeżeli aktualizujesz doccli z wersji v2.7.X do wyższej zwróć uwagę na opcjonalne paczki!
 
 
 ### Jak usunąć `moją listę` oraz `config` (niezalecane, chyba że wymaga tego aktualizacja):
@@ -106,10 +104,10 @@ doccli
 
 ---
 <p align="center">
-<a href="https://discord.gg/FgfSM7bSEK" target="_blank"><img src="https://dcbadge.limes.pink/api/server/https://discord.gg/FgfSM7bSEK" alt="Link do discorda" style="width: 250px !important;box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;-webkit-box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;" ></a>
+<a href="https://discord.gg/FgfSM7bSEK" target="_blank"><img src="https://dcbadge.limes.pink/api/server/https://discord.gg/FgfSM7bSEK" alt="Link do discorda" style="width: 200px !important;box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;-webkit-box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;" ></a>
 </p>
 <p align="center">
-<a href="https://www.buymeacoffee.com/towarzyszfatcat" target="_blank"><img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png" alt="Buy Me A Coffee" style="height: 50px !important;width: 250px !important;box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;-webkit-box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;" ></a>
+<a href="https://www.buymeacoffee.com/towarzyszfatcat" target="_blank"><img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png" alt="Buy Me A Coffee" style="height: 30px !important;width: 130px !important;box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;-webkit-box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;" ></a>
 </p>
 
 
