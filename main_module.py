@@ -18,10 +18,7 @@ import shutil
 
 
 def clear():
-    if platform.system() == "Linux" or platform.system() == "Darwin":
-        system("clear")
-    elif platform.system() == "Windows":
-        system("cls")
+    system("clear")
 
 def get_terminal_size():
     columns, rows = os.get_terminal_size()
@@ -440,14 +437,14 @@ def mpv_play(URL):
         video_files = [file for file in new_files if file.lower().endswith(tuple(video_extensions))]
 
         try:
-            process = Popen(args=['mpv' if platform.system() == "Linux" or platform.system() == "Darwin" else WIN_mpv, "--save-position-on-quit", f'/tmp/{video_files[0]}'], shell=False, stdout=DEVNULL, stderr=DEVNULL)
+            process = Popen(args=['mpv', "--save-position-on-quit", f'/tmp/{video_files[0]}'], shell=False, stdout=DEVNULL, stderr=DEVNULL)
             return process
         except IndexError:
             return
 
 
     else:
-        process = Popen(args=['mpv' if platform.system() == "Linux" or platform.system() == "Darwin" else WIN_mpv, "--save-position-on-quit", URL], shell=False, stdout=DEVNULL, stderr=DEVNULL)
+        process = Popen(args=['mpv', "--save-position-on-quit", URL], shell=False, stdout=DEVNULL, stderr=DEVNULL)
         return process
 
 
@@ -515,10 +512,6 @@ PATH_continue = os.path.join(PATH_config, "continue.json")
 PATH_settings = os.path.join(PATH_config, "settings.json")
 PATH_history = os.path.join(PATH_config, "history.json")
 
-# Windows MPV location
-WIN_home = os.path.expanduser('~')
-WIN_mpv = os.path.join(WIN_home, '.config', 'doccli', 'essentials', 'mpv.com')
-
 
 def load():
     if not os.path.exists(PATH_config):
@@ -540,24 +533,6 @@ def load():
     if not os.path.exists(PATH_history):
         with open(PATH_history, 'w') as file:
             file.write('[]')
-
-    # Win install
-    if platform.system() == "Windows":
-        if not os.path.exists(WIN_mpv):
-            print(colored("Wykryto pierwsze uruchomienie programu!", "red"))
-            print("Wypakowywanie potrzebnych składników...")
-
-            try:
-                with ZipFile('doccli_windows_essentials.zip', 'r') as zfile:
-                    zfile.extractall(PATH_config)
-                print("Wypakowano!")
-                time.sleep(1)
-                os.remove('doccli_windows_essentials.zip')
-                time.sleep(1)
-            except:
-                print(colored("Coś poszło nie tak! Upewnij się że wypakowałeś WSZYSTKIE pliki! Nie można znaleźć pliku .zip", "red"))
-                time.sleep(5)
-                sys.exit()
 
     with open(PATH_mylist, 'r') as json_file:
         loaded_data = json.load(json_file)
