@@ -107,6 +107,22 @@ def m_welcome():
 
 def m_settings():
     choices = [{
+        "type": "list",
+        "message": "Czy chcesz aby openingi i endingi były automatycznie pomijane?",
+        "choices": ["Tak", "Nie"],
+    }]
+
+    skip = prompt(questions=choices)
+
+    if skip[0] == "Tak":
+        settings[2] = True
+        save()
+    elif skip[0] == "Nie":
+        settings[2] = False
+        save()
+
+
+    choices = [{
             "type": "list",
             "message": "Czy chcesz aby znajomi na discordzie widzieli co oglądasz?",
             "choices": ["Tak", "Nie"],
@@ -528,7 +544,7 @@ def load():
     if not os.path.exists(PATH_settings):
         with open(PATH_settings, 'w') as file:
             global settings
-            settings = [True, "Używa doccli!"]
+            settings = [True, "Używa doccli!", True]
             json.dump(settings, file, indent=4)
     if not os.path.exists(PATH_history):
         with open(PATH_history, 'w') as file:
@@ -546,6 +562,11 @@ def load():
     with open(PATH_settings, 'r') as json_file:
         loaded_data = json.load(json_file)
         settings = loaded_data
+
+        # New update bypass
+        if len(settings) != 3:
+            settings.append(True)
+            save()
 
     with open(PATH_history, 'r') as json_file:
         loaded_data = json.load(json_file)
