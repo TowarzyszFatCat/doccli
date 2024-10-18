@@ -70,4 +70,4 @@ def get_skip_times(MALID, EP):
                     skip_times[2] = times['startTime']
                     skip_times[3] = times['endTime']
 
-    print(skip_times)
+    return skip_times

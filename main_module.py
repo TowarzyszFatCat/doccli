@@ -410,13 +410,13 @@ def w_players(SLUG, NUMBER, err=''):
 
     ans_index = players[ans_index_in_choices]
 
+    skip_times = [-1, -1, -1, -1]
+
     if settings[2]:
         details = get_details_for_serie(SLUG)
         skip_times = get_skip_times(details['mal_id'], NUMBER)
-    else:
-        skip_times = [-1, -1, -1, -1]
 
-    process = mpv_play(ans_index[1], skip_times)
+    process = mpv_play(ans_index[1], SKIP_TIMES=skip_times)
 
 
     # Wait 3 sec and check if started playing
@@ -468,7 +468,7 @@ def mpv_play(URL, SKIP_TIMES):
         process = Popen(args=['mpv',
                               "--save-position-on-quit",
                               "--chapters-file=/tmp/tempfile",
-                              f"--script-opts=skip-op_start={SKIP_TIMES[0]},skip-op_end={SKIP_TIMES[1]},skip-ed_start={SKIP_TIMES[2]},skip-ed_end={SKIP_TIMES[3]}",
+                              f"--script-opts=doccli_skip-opening_start={SKIP_TIMES[0]},doccli_skip-opening_end={SKIP_TIMES[1]},doccli_skip-ending_start={SKIP_TIMES[2]},doccli_skip-ending_end={SKIP_TIMES[3]}",
                               URL],
                         shell=False,
                         stdout=DEVNULL,
