@@ -4,9 +4,10 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a>
 </h1>
 
 <h2 align="center">
-[ UPDATE v2.9 ]
+[ UPDATE v2.10 ]
 
-Dodano wsparcie mega.nz!
+Dodano funkcję automatycznego pomijania intr i outr w ustawieniach!
+
 </h2>
 
 ---
@@ -26,19 +27,21 @@ Dodano wsparcie mega.nz!
 <tr>
 <td>
 
-- Lista anime do obejrzenia
-- Historia oglądania
-- Funkcja następny/poprzedni odcinek
-- Szybka wyszukiwarka
-- Wznawianie oglądania 
-- Możliwość ustawienia własnego statusu na discordzie
-- Statystyki
-- Podgląd okładki
+- Lista anime do obejrzenia,
+- Historia oglądania,
+- Funkcja następny/poprzedni odcinek,
+- Szybka wyszukiwarka,
+- Wznawianie oglądania,
+- Możliwość ustawienia własnego statusu na discordzie,
+- Statystyki,
+- Podgląd okładki,
+- Pomijanie intr/outr.
 
 </td>
 <td>
 
-- Wsparcie większej ilości źródeł
+- Wsparcie większej ilości źródeł,
+- Wyświetlanie markerów intr i outr w odtwarzaczu.
 
 </td>
 </tr>
@@ -121,5 +124,5 @@ doccli
 
 ---
 
-### Using mpv player: <a href="https://github.com/mpv-player/mpv">mpv</a>
+### Using: <a href="https://github.com/mpv-player/mpv">mpv</a>, <a href="https://api.aniskip.com/api-docs">aniskip-api</a>
 ### Inspired by: <a href="https://github.com/pystardust/ani-cli">ani-cli</a>
