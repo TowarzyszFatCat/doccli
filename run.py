@@ -1,8 +1,12 @@
+import time
+
 from main_module import m_welcome
 from requests import get
 from termcolor import colored
 import threading
 from discord_integration import start_rpc, set_running
+
+from api_connector import get_skip_times
 
 VERSION = "v2.9"
 

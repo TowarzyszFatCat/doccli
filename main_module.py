@@ -5,7 +5,7 @@ import json
 from InquirerPy import inquirer, prompt
 import os
 from os import system
-from api_connector import get_series_list, get_episodes_count_for_serie, get_players_list, get_details_for_serie
+from api_connector import get_series_list, get_episodes_count_for_serie, get_players_list, get_details_for_serie, get_skip_times
 from subprocess import Popen, DEVNULL
 from termcolor import colored
 import webbrowser
@@ -410,8 +410,13 @@ def w_players(SLUG, NUMBER, err=''):
 
     ans_index = players[ans_index_in_choices]
 
-    process = mpv_play(ans_index[1])
+    if settings[2]:
+        details = get_details_for_serie(SLUG)
+        skip_times = get_skip_times(details['mal_id'], NUMBER)
+    else:
+        skip_times = [-1, -1, -1, -1]
 
+    process = mpv_play(ans_index[1], skip_times)
 
 
     # Wait 3 sec and check if started playing
@@ -423,7 +428,7 @@ def w_players(SLUG, NUMBER, err=''):
     w_default(SLUG, NUMBER, process)
 
 
-def mpv_play(URL):
+def mpv_play(URL, SKIP_TIMES):
     if shutil.which('mpv') is None:
         print(colored("[BŁĄD]", "red"), colored("Aby program działał wymagana jest instalacja", "white"), colored("mpv", "green"), '\n')
         sys.exit()
@@ -460,7 +465,14 @@ def mpv_play(URL):
 
 
     else:
-        process = Popen(args=['mpv', "--save-position-on-quit", URL], shell=False, stdout=DEVNULL, stderr=DEVNULL)
+        process = Popen(args=['mpv',
+                              "--save-position-on-quit",
+                              "--chapters-file=/tmp/tempfile",
+                              f"--script-opts=skip-op_start={SKIP_TIMES[0]},skip-op_end={SKIP_TIMES[1]},skip-ed_start={SKIP_TIMES[2]},skip-ed_end={SKIP_TIMES[3]}",
+                              URL],
+                        shell=False,
+                        stdout=DEVNULL,
+                        stderr=DEVNULL)
         return process
 
 
