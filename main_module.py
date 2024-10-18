@@ -458,7 +458,14 @@ def mpv_play(URL, SKIP_TIMES):
         video_files = [file for file in new_files if file.lower().endswith(tuple(video_extensions))]
 
         try:
-            process = Popen(args=['mpv', "--save-position-on-quit", f'/tmp/{video_files[0]}'], shell=False, stdout=DEVNULL, stderr=DEVNULL)
+            process = Popen(args=['mpv',
+                                  "--save-position-on-quit",
+                                  "--chapters-file=/tmp/doccli_chapters",
+                                  f"--script-opts=doccli_skip-opening_start={SKIP_TIMES[0]},doccli_skip-opening_end={SKIP_TIMES[1]},doccli_skip-ending_start={SKIP_TIMES[2]},doccli_skip-ending_end={SKIP_TIMES[3]}",
+                                  f'/tmp/{video_files[0]}'],
+                            shell=False,
+                            stdout=DEVNULL,
+                            stderr=DEVNULL)
             return process
         except IndexError:
             return
@@ -467,7 +474,7 @@ def mpv_play(URL, SKIP_TIMES):
     else:
         process = Popen(args=['mpv',
                               "--save-position-on-quit",
-                              "--chapters-file=/tmp/tempfile",
+                              "--chapters-file=/tmp/doccli_chapters",
                               f"--script-opts=doccli_skip-opening_start={SKIP_TIMES[0]},doccli_skip-opening_end={SKIP_TIMES[1]},doccli_skip-ending_start={SKIP_TIMES[2]},doccli_skip-ending_end={SKIP_TIMES[3]}",
                               URL],
                         shell=False,
