@@ -3,6 +3,8 @@
 sudo chmod +x doccli/doccli
 sudo mv doccli/doccli /usr/local/bin
 
+mkdir -p ~/.config/mpv/scripts
+sudo mv doccli_skip.lua ~/.config/mpv/scripts
 sudo mv doccli ~/.doccli_src
 
 sudo chmod 777 ~/.doccli_src

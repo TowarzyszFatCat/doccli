@@ -5,7 +5,7 @@ import json
 from InquirerPy import inquirer, prompt
 import os
 from os import system
-from api_connector import get_series_list, get_episodes_count_for_serie, get_players_list, get_details_for_serie
+from api_connector import get_series_list, get_episodes_count_for_serie, get_players_list, get_details_for_serie, get_skip_times
 from subprocess import Popen, DEVNULL
 from termcolor import colored
 import webbrowser
@@ -106,6 +106,22 @@ def m_welcome():
         sys.exit()
 
 def m_settings():
+    choices = [{
+        "type": "list",
+        "message": "Czy chcesz aby openingi i endingi były automatycznie pomijane?",
+        "choices": ["Tak", "Nie"],
+    }]
+
+    skip = prompt(questions=choices)
+
+    if skip[0] == "Tak":
+        settings[2] = True
+        save()
+    elif skip[0] == "Nie":
+        settings[2] = False
+        save()
+
+
     choices = [{
             "type": "list",
             "message": "Czy chcesz aby znajomi na discordzie widzieli co oglądasz?",
@@ -394,8 +410,13 @@ def w_players(SLUG, NUMBER, err=''):
 
     ans_index = players[ans_index_in_choices]
 
-    process = mpv_play(ans_index[1])
+    skip_times = [-1, -1, -1, -1]
 
+    if settings[2]:
+        details = get_details_for_serie(SLUG)
+        skip_times = get_skip_times(details['mal_id'], NUMBER)
+
+    process = mpv_play(ans_index[1], SKIP_TIMES=skip_times)
 
 
     # Wait 3 sec and check if started playing
@@ -407,7 +428,7 @@ def w_players(SLUG, NUMBER, err=''):
     w_default(SLUG, NUMBER, process)
 
 
-def mpv_play(URL):
+def mpv_play(URL, SKIP_TIMES):
     if shutil.which('mpv') is None:
         print(colored("[BŁĄD]", "red"), colored("Aby program działał wymagana jest instalacja", "white"), colored("mpv", "green"), '\n')
         sys.exit()
@@ -437,14 +458,28 @@ def mpv_play(URL):
         video_files = [file for file in new_files if file.lower().endswith(tuple(video_extensions))]
 
         try:
-            process = Popen(args=['mpv', "--save-position-on-quit", f'/tmp/{video_files[0]}'], shell=False, stdout=DEVNULL, stderr=DEVNULL)
+            process = Popen(args=['mpv',
+                                  "--save-position-on-quit",
+                                  "--chapters-file=/tmp/doccli_chapters",
+                                  f"--script-opts=doccli_skip-opening_start={SKIP_TIMES[0]},doccli_skip-opening_end={SKIP_TIMES[1]},doccli_skip-ending_start={SKIP_TIMES[2]},doccli_skip-ending_end={SKIP_TIMES[3]}",
+                                  f'/tmp/{video_files[0]}'],
+                            shell=False,
+                            stdout=DEVNULL,
+                            stderr=DEVNULL)
             return process
         except IndexError:
             return
 
 
     else:
-        process = Popen(args=['mpv', "--save-position-on-quit", URL], shell=False, stdout=DEVNULL, stderr=DEVNULL)
+        process = Popen(args=['mpv',
+                              "--save-position-on-quit",
+                              "--chapters-file=/tmp/doccli_chapters",
+                              f"--script-opts=doccli_skip-opening_start={SKIP_TIMES[0]},doccli_skip-opening_end={SKIP_TIMES[1]},doccli_skip-ending_start={SKIP_TIMES[2]},doccli_skip-ending_end={SKIP_TIMES[3]}",
+                              URL],
+                        shell=False,
+                        stdout=DEVNULL,
+                        stderr=DEVNULL)
         return process
 
 
@@ -528,7 +563,7 @@ def load():
     if not os.path.exists(PATH_settings):
         with open(PATH_settings, 'w') as file:
             global settings
-            settings = [True, "Używa doccli!"]
+            settings = [True, "Używa doccli!", True]
             json.dump(settings, file, indent=4)
     if not os.path.exists(PATH_history):
         with open(PATH_history, 'w') as file:
@@ -546,6 +581,11 @@ def load():
     with open(PATH_settings, 'r') as json_file:
         loaded_data = json.load(json_file)
         settings = loaded_data
+
+        # New update bypass
+        if len(settings) != 3:
+            settings.append(True)
+            save()
 
     with open(PATH_history, 'r') as json_file:
         loaded_data = json.load(json_file)

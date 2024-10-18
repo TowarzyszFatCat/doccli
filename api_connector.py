@@ -1,7 +1,7 @@
 from requests import get
 
 
-### DOCCHI
+### DOCCHI API
 
 # Get list of players for episode
 def get_players_list(SLUG, NUMBER):
@@ -46,3 +46,28 @@ def get_details_for_serie(SLUG):
         return request.json()
     else:
         return request.status_code
+
+
+### AniSkip API
+def get_skip_times(MALID, EP):
+    #            OPS OPE ENS ENE
+    skip_times = [-1, -1, -1, -1]
+
+    request = get(f'https://api.aniskip.com/v2/skip-times/{MALID}/{EP}?types=op&types=ed&types=mixed-op&types=mixed-ed&types=recap&episodeLength=0')
+    if request.status_code == 200:
+        ans = request.json()
+
+        if ans['found'] == True:
+            for i in ans['results']:
+                # Handle openings
+                if i['skipType'] == 'op':
+                    times = i['interval']
+                    skip_times[0] = times['startTime']
+                    skip_times[1] = times['endTime']
+                # Handle endings
+                if i['skipType'] == 'ed':
+                    times = i['interval']
+                    skip_times[2] = times['startTime']
+                    skip_times[3] = times['endTime']
+
+    return skip_times
