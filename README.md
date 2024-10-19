@@ -49,7 +49,7 @@ Dodano funkcję automatycznego pomijania intr i outr w ustawieniach!
 
 ---
 <h1 align="center">
-    Instalacja:
+    Instalacja Linux:
 
 </h1>
 
@@ -104,6 +104,32 @@ sudo rm ~/.config/doccli/*
 ```bash
 doccli
 ```
+
+---
+<h1 align="center">
+    Instalacja Windows (WSL):
+
+</h1>
+
+### 1. Instalacja WSL
+- `wsl --install` w dowolnym terminalu (terminal/cmd/powershell)
+- WSL poprosi o utworzenie konta użytkownika
+(Po instalacji WSL wymagany może być restart urządzenia.)
+
+> [!NOTE]
+> Zalecam używanie aplikacji Windows Terminal zamiast cmd/powershell dla lepszego doświadczenia
+> 
+> Link: https://www.microsoft.com/store/productId/9N0DX20HK701
+
+### 2. Instalacja doccli i składników w jednej komendzie
+```bash
+sudo apt update && sudo apt upgrade && sudo apt install mpv yt-dlp timg megatools python3-pip python3-venv && cd ~ && git clone https://github.com/TowarzyszFatCat/doccli.git && bash doccli/install.sh
+```
+^ możliwe że nie będzie się dało wkleić komendy w powershell i cmd :P
+
+### 3. Używanie doccli
+- `wsl` - w dowolnym terminalu
+- `doccli`
 
 ---
 <p align="center">
