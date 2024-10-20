@@ -581,11 +581,10 @@ def load():
     with open(PATH_settings, 'r') as json_file:
         loaded_data = json.load(json_file)
         settings = loaded_data
-
         # New update bypass
         if len(settings) != 3:
             settings.append(True)
-            save()
+
 
     with open(PATH_history, 'r') as json_file:
         loaded_data = json.load(json_file)
