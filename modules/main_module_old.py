@@ -5,13 +5,11 @@ import json
 from InquirerPy import inquirer, prompt
 import os
 from os import system
-from api_connector import get_series_list, get_episodes_count_for_serie, get_players_list, get_details_for_serie, get_skip_times
+from apis.docchi_old import get_series_list, get_episodes_count_for_serie, get_players_list, get_details_for_serie, get_skip_times
 from subprocess import Popen, DEVNULL
 from termcolor import colored
 import webbrowser
-from discord_integration import update_rpc, set_running
-import platform
-from zipfile import ZipFile
+from apis.discord_old import update_rpc, set_running
 from datetime import datetime, date
 import requests
 import shutil
@@ -76,7 +74,7 @@ def m_welcome():
     choices.append("Moja lista")
     choices.append("Historia oglądania")
     choices.append("Ustawienia")
-    choices.append("Statystyki doccli")
+    choices.append("Statystyki doccli_old")
     choices.append("Dołącz do discorda")
     choices.append("Zamknij")
 
@@ -137,7 +135,7 @@ def m_settings():
     if res[0] == "Tak":
         clear()
         settings[0] = True
-        choices2 = [{"type": "input", "message": "Wpisz co tylko zechcesz! Będzie to wyświetlane w II linijce statusu. Zostaw puste jeśli chcesz aby był wyświetlany domyślny status. [Minimalnie 2 znaki] (Domyślna wartość: 'Używa doccli!') \n", "name": "status_dc"}]
+        choices2 = [{"type": "input", "message": "Wpisz co tylko zechcesz! Będzie to wyświetlane w II linijce statusu. Zostaw puste jeśli chcesz aby był wyświetlany domyślny status. [Minimalnie 2 znaki] (Domyślna wartość: 'Używa doccli_old!') \n", "name": "status_dc"}]
         res2 = prompt(questions=choices2)
 
         if not res2['status_dc'] == "" and len(res2['status_dc']) > 1:
@@ -145,7 +143,7 @@ def m_settings():
             save()
             m_welcome()
         else:
-            settings[1] = 'Używa doccli!'
+            settings[1] = 'Używa doccli_old!'
             save()
             m_welcome()
 
@@ -230,8 +228,8 @@ def m_stats():
     delta_dt = now_dt - creation_dt
 
 
-    print(colored("Używasz doccli już od:", "white"), colored(delta_dt.days, "green"), colored("dni!", "white"))
-    print(colored("Pierwsze uruchomienie doccli:", "white"), colored(dt_c, "green"))
+    print(colored("Używasz doccli_old już od:", "white"), colored(delta_dt.days, "green"), colored("dni!", "white"))
+    print(colored("Pierwsze uruchomienie doccli_old:", "white"), colored(dt_c, "green"))
     print('')
     print(colored("Odtworzone odcinki:", "white"), colored(ep_played, "red"))
     print(colored("Pozycje zapisane na liście:", "white"), colored(q_mylist, "red"))
@@ -541,7 +539,7 @@ def w_default(SLUG, NUMBER, process):
 # SAVING SECTION
 
 PATH_home = os.path.expanduser("~")
-PATH_config = os.path.join(PATH_home, ".config", "doccli")
+PATH_config = os.path.join(PATH_home, ".config", "doccli_old")
 PATH_mylist = os.path.join(PATH_config, "mylist.json")
 PATH_continue = os.path.join(PATH_config, "continue.json")
 PATH_settings = os.path.join(PATH_config, "settings.json")
@@ -563,7 +561,7 @@ def load():
     if not os.path.exists(PATH_settings):
         with open(PATH_settings, 'w') as file:
             global settings
-            settings = [True, "Używa doccli!", True]
+            settings = [True, "Używa doccli_old!", True]
             json.dump(settings, file, indent=4)
     if not os.path.exists(PATH_history):
         with open(PATH_history, 'w') as file:

@@ -1,12 +1,8 @@
-import time
-
-from main_module import m_welcome
+from modules.main_module_old import m_welcome
 from requests import get
 from termcolor import colored
 import threading
-from discord_integration import start_rpc, set_running
-
-from api_connector import get_skip_times
+from apis.discord_old import start_rpc, set_running
 
 VERSION = "v2.10"
 
@@ -21,7 +17,7 @@ def check_update() -> None:
         print(colored("Wersja programu:", "white"), colored(VERSION, "red"))
         print(colored('Najnowsza wersja:', "white"), colored(f"{response.json()['name']}", "green"))
         print('')
-        print(colored("Dostępna jest nowa wersja doccli!", "white"))
+        print(colored("Dostępna jest nowa wersja doccli_old!", "white"))
         print('')
         input(colored("Naciśnij enter by pominąć...", "yellow"))
 
