@@ -1,13 +1,14 @@
 import requests.exceptions
 from requests import get
+from termcolor import colored
 
 def check_service_availability() -> str:
     try:
         req = get(f"https://api.docchi.pl/v1/")
         if req.status_code == 200:
-            return "ONLINE"
+            return colored("ONLINE",color="green")
     except:
-        return "OFFLINE"
+        return colored("OFFLINE",color="red")
 
 
 # Get list of players for episode
