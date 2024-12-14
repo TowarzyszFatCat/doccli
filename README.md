@@ -53,6 +53,18 @@ Dodano funkcję automatycznego pomijania intr i outr w ustawieniach!
 
 </h1>
 
+## Arch Linux:
+
+[doccli](https://aur.archlinux.org/packages/doccli) jest dostępny jako pakiet w [AUR](https://aur.archlinux.org). Można go zainstalować za pomocą [helpera AUR](https://wiki.archlinux.org/title/AUR_helpers).
+
+Przykład ([paru](https://github.com/Morganamilo/paru)):
+
+```bash
+paru -S doccli
+```
+
+## Ręczna:
+
 ### Wymagagane paczki:
 - `mpv`
 - `yt-dlp`
