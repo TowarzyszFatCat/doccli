@@ -11,7 +11,23 @@ DOCCLI_LOGO_ASCII="""
 '----------------------------------'
 """
 
+TRENDING_LOGO_ASCII="""
+.___________________________________________________.
+| _   _    _       ____ _____   _    ____ ___ _____ |
+|| \ | |  / \     / ___|__  /  / \  / ___|_ _| ____||
+||  \| | / _ \   | |     / /  / _ \ \___ \| ||  _|  |
+|| |\  |/ ___ \  | |___ / /_ / ___ \ ___) | || |___ |
+||_| \_/_/   \_\  \____/____/_/   \_\____/___|_____||
+'---------------------------------------------------'
+"""
+
+
 def doccli_logo_centered():
     terminal_width = os.get_terminal_size().columns
     art_lines = DOCCLI_LOGO_ASCII.splitlines()
+    return "\n".join(line.center(terminal_width) for line in art_lines)
+
+def trending_logo_centered():
+    terminal_width = os.get_terminal_size().columns
+    art_lines = TRENDING_LOGO_ASCII.splitlines()
     return "\n".join(line.center(terminal_width) for line in art_lines)

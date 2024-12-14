@@ -6,7 +6,9 @@ def check_service_availability() -> str:
     try:
         req = get(f"https://api.docchi.pl/v1/")
         if req.status_code == 200:
-            return colored("ONLINE",color="green")
+            return colored("ONLINE", color="green")
+        else:
+            return colored("OFFLINE", color="red")
     except:
         return colored("OFFLINE",color="red")
 

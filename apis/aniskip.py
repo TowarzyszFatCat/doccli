@@ -1,12 +1,14 @@
-from requests import get
+import requests
 from termcolor import colored
 
 
 def check_service_availability() -> str:
     try:
-        req = get(f"https://api.aniskip.com/v2/")
+        req = requests.head(f"https://api.aniskip.com/v2/skip-times/44511/1?types=op&episodeLength=0")
         if req.status_code == 200:
-            return colored("ONLINE",color="green")
+            return colored("ONLINE", color="green")
+        else:
+            return colored("OFFLINE", color="red")
     except:
         return colored("OFFLINE",color="red")
 
