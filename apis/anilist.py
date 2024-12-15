@@ -9,6 +9,7 @@ def get_trending_anime():
     query ($page: Int, $perPage: Int) {
       Page(page: $page, perPage: $perPage) {
         media(sort: TRENDING_DESC, type: ANIME) {
+          id
           idMal
           title {
             romaji
@@ -17,9 +18,11 @@ def get_trending_anime():
           coverImage {
             large
           }
-          genres
           averageScore
           popularity
+          genres
+          episodes
+          status
         }
       }
     }

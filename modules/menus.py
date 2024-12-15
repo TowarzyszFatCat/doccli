@@ -1,24 +1,54 @@
 from apis import anilist
-from utils import trending_logo_centered, fuzzy_menu, gen_rating, clear_terminal
+from utils import trending_logo_centered_70p, fuzzy_menu, gen_rating, clear_terminal, run_fzf
+from time import sleep
 
 def trending_menu():
     trending_anime = anilist.get_trending_anime()
     
-    mal_ids = []
-    choices = []
-    index = 0
+    mal_ids = []    # MalID wszystkich pozycji.
+    choices = []    # Wybory jako tablica
+    all_details = []
+    i = 0
     
     for anime in trending_anime:
-        index += 1
+        i += 1
         mal_ids.append(anime['idMal'])
-        choices.append(str(index) + '. ' + anime['title']['english'] + ' | ' + gen_rating(anime['averageScore']))
+        item = str(i) + '. ' + str(anime['title']['romaji'])
+        choices.append(item)
+
+        anime_details = []
+        anime_details.append(anime['coverImage']['large'])
+        anime_details.append(' ')
+        anime_details.append("MalID: ")
+        anime_details.append(str(anime['idMal']))
+        anime_details.append("Tytuł (JP): ")
+        anime_details.append(str(anime['title']['romaji']))
+        anime_details.append("Tytuł (EN): ")
+        anime_details.append(str(anime['title']['english']))
+        anime_details.append("Odcinki: ")
+        anime_details.append(str(anime['episodes']))
+        anime_details.append("Popularność: ")
+        anime_details.append(str(anime['popularity']))
+        anime_details.append("Opinie: ")
+        anime_details.append(gen_rating(anime['averageScore']))
+        anime_details.append("Status: ")
+        anime_details.append(str(anime['status']))
+
+        genres = ''
+        for genre in anime['genres']:
+            genres += genre + ", "
+
+        anime_details.append("Gatunki: ")
+        anime_details.append(genres)
 
 
-    fuzzy_menu(message=trending_logo_centered(),
-                instruction="Wybierz anime: ",
-                long_instruction="Lista top 25 najbardziej popularnych anime na dzień dzisiejszy",
-                choices=choices
-               )
+        all_details.append(anime_details)
+
+
+    ans = run_fzf(header=trending_logo_centered_70p(), all_details=all_details,choices=choices)
+    choosed_mal_id = mal_ids[choices.index(ans)]    # MalId wybranej przez użytkownika pozycji.
+
+    print(choosed_mal_id)
 
 
 clear_terminal()

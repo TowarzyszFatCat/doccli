@@ -27,7 +27,14 @@ def doccli_logo_centered():
     art_lines = DOCCLI_LOGO_ASCII.splitlines()
     return "\n".join(line.center(terminal_width) for line in art_lines)
 
-def trending_logo_centered():
+def doccli_logo_centered_70p():
     terminal_width = os.get_terminal_size().columns
+    usable_width = int(terminal_width * 0.65)
+    art_lines = DOCCLI_LOGO_ASCII.splitlines()
+    return "\n".join(line.center(usable_width) for line in art_lines)
+
+def trending_logo_centered_70p():
+    terminal_width = os.get_terminal_size().columns
+    usable_width = int(terminal_width * 0.65)
     art_lines = TRENDING_LOGO_ASCII.splitlines()
-    return "\n".join(line.center(terminal_width) for line in art_lines)
+    return "\n".join(line.center(usable_width) for line in art_lines)
