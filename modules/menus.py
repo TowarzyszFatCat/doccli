@@ -1,5 +1,5 @@
 from apis import anilist
-from utils import trending_logo_centered_70p, fuzzy_menu, gen_rating, clear_terminal, run_fzf
+from utils import trending_logo_centered_60p, fuzzy_menu, gen_rating, clear_terminal, run_fzf
 from time import sleep
 
 def trending_menu():
@@ -45,7 +45,7 @@ def trending_menu():
         all_details.append(anime_details)
 
 
-    ans = run_fzf(header=trending_logo_centered_70p(), all_details=all_details,choices=choices)
+    ans = run_fzf(header=trending_logo_centered_60p(), all_details=all_details,choices=choices)
     choosed_mal_id = mal_ids[choices.index(ans)]    # MalId wybranej przez użytkownika pozycji.
 
     print(choosed_mal_id)

@@ -41,8 +41,8 @@ def run_fzf(header, all_details, choices):
     try:
         terminal_size = shutil.get_terminal_size()
         columns, rows = terminal_size.columns, terminal_size.lines
-        height_50_percent = int(rows * 0.5)
-        width_20_percent = int(columns * 0.2)
+        height = int(rows)
+        width = int(columns * 0.35)
 
         result = subprocess.run(
             [
@@ -58,8 +58,10 @@ def run_fzf(header, all_details, choices):
                 "--layout=reverse",
                 "--border",
                 f"--header={header}",
-                f"--preview=timg -g {width_20_percent}x{height_50_percent} " + "/tmp/doccli_fzf/{1}_" + " && bat -p --color=always /tmp/doccli_fzf/{1}",
-                "--preview-window=left:30%:wrap",
+                f"--preview=chafa --size={width}x{height} /tmp/doccli_fzf/{{1}}_",
+                f"--bind=ctrl-i:preview(batcat -p --color=always /tmp/doccli_fzf/{{1}})",
+                f"--bind=ctrl-c:preview(chafa --size={width}x{height} /tmp/doccli_fzf/{{1}}_)",
+                "--preview-window=left:40%:wrap",
                 "--cycle"
             ],
             text=True,
