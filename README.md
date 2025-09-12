@@ -35,6 +35,7 @@ Dodano funkcję pobierania pojedyńczych odcinków (TEST)
 - Możliwość ustawienia własnego statusu na discordzie,
 - Statystyki,
 - Podgląd okładki,
+- Pobieranie pojedyńczych odcinków [TEST],
 - Pomijanie intr/outr.
 
 </td>
