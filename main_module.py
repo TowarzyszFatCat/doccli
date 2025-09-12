@@ -425,7 +425,7 @@ def w_players(SLUG, NUMBER, err=''):
     if process == None or process.poll() is not None:
         w_players(SLUG, NUMBER, err='Wybrane źródło nie jest dostępne, lub nie jest wspierane! Możesz to złgosić na discordzie.')
 
-    w_default(SLUG, NUMBER, process)
+    w_default(SLUG, NUMBER, process, ans_index[1])
 
 
 def mpv_play(URL, SKIP_TIMES):
@@ -483,7 +483,7 @@ def mpv_play(URL, SKIP_TIMES):
         return process
 
 
-def w_default(SLUG, NUMBER, process):
+def w_default(SLUG, NUMBER, process, URL=''):
     how_many_episodes = get_episodes_count_for_serie(SLUG)
 
     details = get_details_for_serie(SLUG)
@@ -504,6 +504,7 @@ def w_default(SLUG, NUMBER, process):
         "Następny odcinek",
         "Poprzedni odcinek",
         "Lista odcinków",
+        "Pobierz odcinek",
         "Menu główne"
     ]
 
@@ -533,6 +534,15 @@ def w_default(SLUG, NUMBER, process):
         update_rpc("Menu główne", "Szuka anime do obejrzenia...")
         w_list(SLUG)
     elif ans == choices[4]:
+        process.terminate()
+        clear()
+        print(colored("[INFO]", "green"), colored("Pobieranie odcinka do aktualnego folderu...", "white"), '\n')
+        os.system(f"yt-dlp {URL}")
+        time.sleep(2)
+        clear()
+        update_rpc("Menu główne", "Szuka anime do obejrzenia...")
+        w_list(SLUG)
+    elif ans == choices[5]:
         process.terminate()
         update_rpc("Menu główne", "Szuka anime do obejrzenia...")
         m_welcome()
