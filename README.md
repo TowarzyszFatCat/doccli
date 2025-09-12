@@ -4,9 +4,9 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a>
 </h1>
 
 <h2 align="center">
-[ UPDATE v2.10 ]
+[ UPDATE v2.10.1 ]
 
-Dodano funkcję automatycznego pomijania intr i outr w ustawieniach!
+Dodano funkcję pobierania pojedyńczych odcinków (TEST)
 
 </h2>
 
