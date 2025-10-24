@@ -4,9 +4,10 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a>
 </h1>
 
 <h2 align="center">
-[ UPDATE v2.10.1 ]
+[ UPDATE v2.11 ]
 
-Dodano funkcję pobierania pojedyńczych odcinków (TEST)
+Pierwsza integracja z Anilist - Menu z anime na czasie
+oraz wyświetlanie bezpośrednich linków do źródeł.
 
 </h2>
 
@@ -36,7 +37,8 @@ Dodano funkcję pobierania pojedyńczych odcinków (TEST)
 - Statystyki,
 - Podgląd okładki,
 - Pobieranie pojedyńczych odcinków [TEST],
-- Pomijanie intr/outr.
+- Pomijanie intr/outr,
+- Anime na czasie.
 
 </td>
 <td>
@@ -54,7 +56,7 @@ Dodano funkcję pobierania pojedyńczych odcinków (TEST)
 
 </h1>
 
-## Arch Linux:
+## Arch Linux (nieaktualna wersja, zalecam ręczną instalację):
 
 [doccli](https://aur.archlinux.org/packages/doccli) jest dostępny jako pakiet w [AUR](https://aur.archlinux.org). Można go zainstalować za pomocą [helpera AUR](https://wiki.archlinux.org/title/AUR_helpers).
 

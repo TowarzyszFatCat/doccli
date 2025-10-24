@@ -6,9 +6,9 @@ from termcolor import colored
 import threading
 from discord_integration import start_rpc, set_running
 
-from api_connector import get_skip_times
+from docchi_api_connector import get_skip_times
 
-VERSION = "v2.10.1"
+VERSION = "v2.11"
 
 def check_update() -> None:
 

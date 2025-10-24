@@ -1,8 +1,5 @@
 from requests import get
 
-
-### DOCCHI API
-
 # Get list of players for episode
 def get_players_list(SLUG, NUMBER):
     request = get(f"https://api.docchi.pl/v1/episodes/find/{SLUG}/{NUMBER}")

@@ -5,7 +5,8 @@ import json
 from InquirerPy import inquirer, prompt
 import os
 from os import system
-from api_connector import get_series_list, get_episodes_count_for_serie, get_players_list, get_details_for_serie, get_skip_times
+from docchi_api_connector import get_series_list, get_episodes_count_for_serie, get_players_list, get_details_for_serie, get_skip_times
+from anilist_connector import get_trending_anime_malids
 from subprocess import Popen, DEVNULL
 from termcolor import colored
 import webbrowser
@@ -66,6 +67,7 @@ def m_welcome():
 
     choices = [
         "Wyszukaj",
+        "Anime na czasie"
     ]
 
     if continue_data[0] is None:
@@ -87,21 +89,23 @@ def m_welcome():
     if ans == choices[0]:
         m_find()
     elif ans == choices[1]:
+        m_trending()
+    elif ans == choices[2]:
         if not continue_data:
             m_welcome()
         else:
             w_players(continue_data[0]['slug'], continue_data[1])
-    elif ans == choices[2]:
-        m_mylist()
     elif ans == choices[3]:
-        m_history()
+        m_mylist()
     elif ans == choices[4]:
-        m_settings()
+        m_history()
     elif ans == choices[5]:
-        m_stats()
+        m_settings()
     elif ans == choices[6]:
-        m_discord()
+        m_stats()
     elif ans == choices[7]:
+        m_discord()
+    elif ans == choices[9]:
         set_running(False)
         sys.exit()
 
@@ -296,6 +300,46 @@ def f_malid():
 
     m_details(details=ans_details)
 
+def m_trending():
+    trending_anime_malids = get_trending_anime_malids()
+    all_anime_list = get_series_list()
+
+    top_anime = []
+
+    for anime in all_anime_list:
+
+        anime_data = []
+
+        if anime['mal_id'] in trending_anime_malids:
+            order = trending_anime_malids.index(anime['mal_id'])
+            anime_data.append(order)
+            slug = anime['slug']
+            anime_data.append(slug)
+            title = anime['title']
+            anime_data.append(title)
+            title_en = anime['title_en']
+            anime_data.append(title_en)
+
+            top_anime.append(anime_data)
+
+
+    top_anime.sort(key=lambda x: x[0])
+    top_anime_choices = []
+
+    for anime in top_anime:
+        top_anime_choices.append(str(anime[0] + 1) + ". " + anime[2]+ " / " +anime[3])
+
+    choices = top_anime_choices
+
+    prompt = 'Wybierz: '
+
+    ans = open_menu(choices=choices, prompt=prompt)
+    ans_index = top_anime_choices.index(ans)
+    ans_slug = top_anime[ans_index][1]
+
+    m_details(get_details_for_serie(SLUG=ans_slug))
+
+
 
 def m_details(details):
     choices = [
@@ -308,7 +352,7 @@ def m_details(details):
     else:
         choices.append("Dodaj do mojej listy")
 
-    choices.append("Cofnij do wyszukiwarki")
+    choices.append("Wyszukiwarka")
     choices.append("Menu główne")
 
     prompt = 'Wybierz co chcesz zrobić: '
@@ -390,10 +434,9 @@ def w_players(SLUG, NUMBER, err=''):
 
     for player in get_players_list(SLUG, NUMBER):
         player_info = [player['player_hosting'], player['player']]
-
         players.append(player_info)
 
-    choices = [player[0] for player in players]
+    choices = [str(player[0]).ljust(20) + "   | Link źródła: " + player[1] for player in players]
 
     choices.append("Wróć do menu")
 
@@ -423,7 +466,7 @@ def w_players(SLUG, NUMBER, err=''):
     print("Rozpoczynanie odtwarzania...")
     time.sleep(3)                                      # CZAS ZALEZNY OD PREDKOSCI LACZA
     if process == None or process.poll() is not None:
-        w_players(SLUG, NUMBER, err='Wybrane źródło nie jest dostępne, lub nie jest wspierane! Możesz to złgosić na discordzie.')
+        w_players(SLUG, NUMBER, err='Wybrane źródło nie jest dostępne, lub nie jest wspierane! Sprawdź czy źródło działa używając linku bezpośredniego. Możesz zgłosić niedziałające źródła na discordzie.')
 
     w_default(SLUG, NUMBER, process, ans_index[1])
 
