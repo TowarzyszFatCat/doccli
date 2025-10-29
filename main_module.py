@@ -7,6 +7,7 @@ import os
 from os import system
 from docchi_api_connector import get_series_list, get_episodes_count_for_serie, get_players_list, get_details_for_serie, get_skip_times
 from anilist_connector import get_trending_anime_malids
+from menus_decor import MAIN_MENU, SZUKAJ, NA_CZASIE, MOJA_LISTA, HISTORIA
 from subprocess import Popen, DEVNULL
 from termcolor import colored
 import webbrowser
@@ -41,7 +42,7 @@ def open_menu(choices, prompt='Prompt', border=True, qmark='', message='', point
 
 
     action = inquirer.fuzzy(
-        message=message,    # Message above border
+        message=center_text(message),    # Message above border
         choices=choices,
         border=border,
         qmark=qmark,    # Before message above border
@@ -84,7 +85,7 @@ def m_welcome():
 
     prompt = 'Wybierz co chcesz zrobić: '
 
-    ans = open_menu(choices=choices, prompt=prompt, height=8)
+    ans = open_menu(choices=choices, prompt=prompt, height=8, message=MAIN_MENU)
 
     if ans == choices[0]:
         m_find()
@@ -162,15 +163,11 @@ def m_discord():
 def m_mylist():
     choices = ['Cofnij']
 
-    message = ''
-    if not mylist:
-        message = ("Nic tu nie ma!")
-
     for element in mylist:
         choices.append(f"{element['title']} | {element['title_en']}")
 
     prompt = 'Wybierz anime: '
-    ans = open_menu(choices=choices, prompt=prompt, qmark=message)
+    ans = open_menu(choices=choices, prompt=prompt, message=MOJA_LISTA)
     if ans == choices[0]:
         m_welcome()
     else:
@@ -180,15 +177,11 @@ def m_mylist():
 def m_history():
     choices = ['Cofnij']
 
-    message = ''
-    if not history:
-        message = ("Nic tu nie ma!")
-
     for element in history:
         choices.append(element)
 
     prompt = 'Wyszukaj: '
-    ans = open_menu(choices=choices, prompt=prompt, qmark=message)
+    ans = open_menu(choices=choices, prompt=prompt, message=HISTORIA)
     if ans == choices[0]:
         m_welcome()
     else:
@@ -204,7 +197,7 @@ def m_find():
 
     prompt = 'Wybierz jak chcesz wyszukać: '
 
-    ans = open_menu(choices=choices, prompt=prompt, height=4)
+    ans = open_menu(choices=choices, prompt=prompt, height=4, message=SZUKAJ)
 
     if ans == choices[0]:
         f_title()
@@ -256,7 +249,7 @@ def f_title():
 
     prompt = 'Szukaj: '
 
-    ans = open_menu(choices=choices, prompt=prompt)
+    ans = open_menu(choices=choices, prompt=prompt, message=SZUKAJ)
     ans_index = all_series_names.index(ans)
     ans_details = all_series_json[ans_index]
 
@@ -275,7 +268,7 @@ def f_title_EN():
 
     prompt = 'Szukaj: '
 
-    ans = open_menu(choices=choices, prompt=prompt)
+    ans = open_menu(choices=choices, prompt=prompt, message=SZUKAJ)
     ans_index = all_series_names.index(ans)
     ans_details = all_series_json[ans_index]
 
@@ -294,7 +287,7 @@ def f_malid():
 
     prompt = 'Szukaj: '
 
-    ans = open_menu(choices=choices, prompt=prompt)
+    ans = open_menu(choices=choices, prompt=prompt, message=SZUKAJ)
     ans_index = all_series_ids.index(ans)
     ans_details = all_series_json[ans_index]
 
@@ -333,7 +326,7 @@ def m_trending():
 
     prompt = 'Wybierz: '
 
-    ans = open_menu(choices=choices, prompt=prompt)
+    ans = open_menu(choices=choices, prompt=prompt, message=NA_CZASIE)
     ans_index = top_anime_choices.index(ans)
     ans_slug = top_anime[ans_index][1]
 
@@ -589,6 +582,12 @@ def w_default(SLUG, NUMBER, process, URL=''):
         process.terminate()
         update_rpc("Menu główne", "Szuka anime do obejrzenia...")
         m_welcome()
+
+
+def center_text(text: str) -> str:
+    terminal_width = os.get_terminal_size().columns
+    art_lines = text.splitlines()
+    return "\n".join(line.center(terminal_width) for line in art_lines)
 
 
 # SAVING SECTION
