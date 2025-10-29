@@ -105,7 +105,7 @@ def m_welcome():
         m_stats()
     elif ans == choices[7]:
         m_discord()
-    elif ans == choices[9]:
+    elif ans == choices[8]:
         set_running(False)
         sys.exit()
 
