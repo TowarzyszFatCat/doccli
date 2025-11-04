@@ -6,7 +6,7 @@ from InquirerPy import inquirer, prompt
 import os
 from os import system
 from docchi_api_connector import get_series_list, get_episodes_count_for_serie, get_players_list, get_details_for_serie, get_skip_times
-from anilist_connector import get_trending_anime_malids
+from anilist_connector import get_trending_anime_malids, get_stars_by_mal_id
 from menus_decor import MAIN_MENU, SZUKAJ, NA_CZASIE, MOJA_LISTA, HISTORIA
 from subprocess import Popen, DEVNULL
 from termcolor import colored
@@ -42,7 +42,7 @@ def open_menu(choices, prompt='Prompt', border=True, qmark='', message='', point
 
 
     action = inquirer.fuzzy(
-        message=center_text(message),    # Message above border
+        message=message if message.startswith('[') else center_text(message),    # Message above border
         choices=choices,
         border=border,
         qmark=qmark,    # Before message above border
@@ -353,15 +353,15 @@ def m_details(details):
 
     prompt = 'Wybierz co chcesz zrobić: '
 
-    genres = "   [ "
+    genres = "[ "
     for genre in details['genres']:
-        genres += genre + ", "
+        genres += genre + ","
 
-    genres += "]"
+    genres += " ]"
 
     episode_count = get_episodes_count_for_serie(details['slug'])
 
-    ans = open_menu(choices=choices, prompt=prompt, qmark=f'{details["title"]} / {details["title_en"]} [{episode_count}]', message=genres, height=5, image=details['cover'])
+    ans = open_menu(choices=choices, prompt=prompt, qmark=f'{details["title"]} / {details["title_en"]} \n [Ilość odcinków: {episode_count}] [Ocena: {get_stars_by_mal_id(str(details["mal_id"]))}]', message=genres, height=5, image=details['cover'])
 
     if ans == choices[0]:
         continue_data[0] = details
