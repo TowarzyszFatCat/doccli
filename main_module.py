@@ -317,7 +317,7 @@ def m_trending():
 
 
     top_anime.sort(key=lambda x: x[0])
-    top_anime_choices = []
+    top_anime_choices = ["Cofnij"]
 
     for anime in top_anime:
         top_anime_choices.append(str(anime[0] + 1) + ". " + anime[2]+ " / " +anime[3])
@@ -328,9 +328,12 @@ def m_trending():
 
     ans = open_menu(choices=choices, prompt=prompt, message=NA_CZASIE)
     ans_index = top_anime_choices.index(ans)
-    ans_slug = top_anime[ans_index][1]
+    ans_slug = top_anime[ans_index - 1][1]
 
-    m_details(get_details_for_serie(SLUG=ans_slug))
+    if ans == choices[0]:
+        m_welcome()
+    else:
+        m_details(get_details_for_serie(SLUG=ans_slug))
 
 
 
