@@ -4,11 +4,9 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a>
 </h1>
 
 <h2 align="center">
-[ UPDATE v2.11 ]
+[ UPDATE v2.12 ]
 
-Pierwsza integracja z Anilist - Menu z anime na czasie
-oraz wyświetlanie bezpośrednich linków do źródeł.
-
+Dekoracje, skala ocen w menu z detalami, poprawki błędów.
 </h2>
 
 ---

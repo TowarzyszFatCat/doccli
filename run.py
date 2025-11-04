@@ -8,7 +8,7 @@ from discord_integration import start_rpc, set_running
 
 from docchi_api_connector import get_skip_times
 
-VERSION = "v2.11"
+VERSION = "v2.12"
 
 def check_update() -> None:
 
