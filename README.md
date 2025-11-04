@@ -36,7 +36,8 @@ Dekoracje, skala ocen w menu z detalami, poprawki błędów.
 - Podgląd okładki,
 - Pobieranie pojedyńczych odcinków [TEST],
 - Pomijanie intr/outr,
-- Anime na czasie.
+- Anime na czasie,
+- Wyświetlanie ocen z Anilist.
 
 </td>
 <td>
