@@ -4,9 +4,9 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a>
 </h1>
 
 <h2 align="center">
-[ UPDATE v2.12 ]
+<u><b>Co nowego w UPDATE v2.2 ?</b><br></br></u>
 
-Dekoracje, skala ocen w menu z detalami, poprawki błędów.
+Pobieranie pełnych sezonów!
 </h2>
 
 ---
@@ -34,7 +34,7 @@ Dekoracje, skala ocen w menu z detalami, poprawki błędów.
 - Możliwość ustawienia własnego statusu na discordzie,
 - Statystyki,
 - Podgląd okładki,
-- Pobieranie pojedyńczych odcinków [TEST],
+- Pobieranie pełnych sezonów,
 - Pomijanie intr/outr,
 - Anime na czasie,
 - Wyświetlanie ocen z Anilist.
@@ -54,16 +54,6 @@ Dekoracje, skala ocen w menu z detalami, poprawki błędów.
     Instalacja Linux:
 
 </h1>
-
-## Arch Linux (nieaktualna wersja, zalecam ręczną instalację):
-
-[doccli](https://aur.archlinux.org/packages/doccli) jest dostępny jako pakiet w [AUR](https://aur.archlinux.org). Można go zainstalować za pomocą [helpera AUR](https://wiki.archlinux.org/title/AUR_helpers).
-
-Przykład ([paru](https://github.com/Morganamilo/paru)):
-
-```bash
-paru -S doccli
-```
 
 ## Ręczna:
 
@@ -117,6 +107,16 @@ sudo rm ~/.config/doccli/*
 #####
 ```bash
 doccli
+```
+
+## Arch Linux (NIEAKTUALNE):
+
+[doccli](https://aur.archlinux.org/packages/doccli) jest dostępny jako pakiet w [AUR](https://aur.archlinux.org). Można go zainstalować za pomocą [helpera AUR](https://wiki.archlinux.org/title/AUR_helpers).
+
+Przykład ([paru](https://github.com/Morganamilo/paru)):
+
+```bash
+paru -S doccli
 ```
 
 ---

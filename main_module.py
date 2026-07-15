@@ -1,6 +1,8 @@
 import pathlib
 import sys
 import time
+import re
+import subprocess
 import json
 from InquirerPy import inquirer, prompt
 import os
@@ -340,7 +342,8 @@ def m_trending():
 def m_details(details):
     choices = [
         "Oglądaj od pierwszego odcinka",
-        "Lista odcinków"
+        "Lista odcinków",
+        "Pobierz cały sezon"
     ]
 
     if details in mylist:
@@ -361,7 +364,7 @@ def m_details(details):
 
     episode_count = get_episodes_count_for_serie(details['slug'])
 
-    ans = open_menu(choices=choices, prompt=prompt, qmark=f'{details["title"]} / {details["title_en"]} \n [Ilość odcinków: {episode_count}] [Ocena: {get_stars_by_mal_id(str(details["mal_id"]))}]', message=genres, height=5, image=details['cover'])
+    ans = open_menu(choices=choices, prompt=prompt, qmark=f'{details["title"]} / {details["title_en"]} \n [Ilość odcinków: {episode_count}] [Ocena: {get_stars_by_mal_id(str(details["mal_id"]))}]', message=genres, height=6, image=details['cover'])
 
     if ans == choices[0]:
         continue_data[0] = details
@@ -370,6 +373,8 @@ def m_details(details):
         continue_data[0] = details
         w_list(details['slug'])
     elif ans == choices[2]:
+        w_download_season(details['slug'], details['title'])
+    elif ans == choices[3]:
         if details in mylist:
             mylist.remove(details)
             save()
@@ -380,10 +385,9 @@ def m_details(details):
             save()
             load()
             m_details(details)
-
-    elif ans == choices[3]:
-        m_find()
     elif ans == choices[4]:
+        m_find()
+    elif ans == choices[5]:
         m_welcome()
 
 
@@ -417,6 +421,67 @@ def w_list(SLUG):
 
         w_players(SLUG, ans)
 
+def w_download_season(SLUG, TITLE):
+    how_many_episodes = get_episodes_count_for_serie(SLUG)
+
+    if how_many_episodes == 404:
+        clear()
+        print(colored("Nie znaleziono strony [Błąd 404]", "red"))
+        time.sleep(3)
+        m_details(get_details_for_serie(SLUG))
+
+    current_dir = os.getcwd()
+    safe_title = re.sub(r'[\\/*?:"<>|]', "", TITLE).strip()
+    series_dir = os.path.join(current_dir, "doccli_downloads", safe_title)
+    
+    os.makedirs(series_dir, exist_ok=True)
+
+    clear()
+    print(colored(f"[INFO] Przygotowywanie do pobrania {TITLE} ({how_many_episodes} odcinków)...", "cyan"))
+    print(colored(f"[INFO] Lokalizacja zapisu: {series_dir}", "yellow"))
+    
+    for ep_number in range(1, how_many_episodes + 1):
+        players = get_players_list(SLUG, ep_number)
+        
+        if players == 404 or not players:
+            print(colored(f"\n[BŁĄD] Nie znaleziono źródeł dla odcinka {ep_number}. Pomijam...", "red"))
+            continue
+
+        print(colored(f"\n[INFO] Rozpoczynam pobieranie odcinka {ep_number}/{how_many_episodes}...", "cyan"))
+        
+        file_name_template = os.path.join(series_dir, f"{safe_title} - Odcinek {ep_number:02d}.%(ext)s")
+        downloaded = False
+        total_sources = len(players)
+
+        for index, player in enumerate(players, 1):
+            target_url = player['player']
+            
+            print(f"\r\033[K" + colored(f"[*] Sprawdzam źródło {index}/{total_sources}...", "yellow"), end="", flush=True)
+            
+            command = [
+                "yt-dlp",
+                "-q",
+                "--progress",
+                "--no-warnings",
+                target_url,
+                "-o",
+                file_name_template
+            ]
+            
+            result = subprocess.run(command, stderr=subprocess.DEVNULL)
+            
+            if result.returncode == 0:
+                downloaded = True
+                print("\n" + colored(f"[+] Sukces! Pobrano odcinek {ep_number}.", "green"))
+                break
+
+        if not downloaded:
+            print("\n" + colored(f"[BŁĄD] Żadne ze źródeł dla odcinka {ep_number} nie zadziałało.", "red"))
+        
+    print(colored(f"\n[ZAKOŃCZONO] Proces pobierania serii {TITLE} dobiegł końca!", "green"))
+    input(colored("Naciśnij Enter, aby wrócić...", "yellow"))
+    
+    m_details(get_details_for_serie(SLUG))
 
 def w_players(SLUG, NUMBER, err=''):
     players = []
@@ -464,7 +529,7 @@ def w_players(SLUG, NUMBER, err=''):
     if process == None or process.poll() is not None:
         w_players(SLUG, NUMBER, err='Wybrane źródło nie jest dostępne, lub nie jest wspierane! Sprawdź czy źródło działa używając linku bezpośredniego. Możesz zgłosić niedziałające źródła na discordzie.')
 
-    w_default(SLUG, NUMBER, process, ans_index[1])
+    w_default(SLUG, NUMBER, process)
 
 
 def mpv_play(URL, SKIP_TIMES):
@@ -522,7 +587,7 @@ def mpv_play(URL, SKIP_TIMES):
         return process
 
 
-def w_default(SLUG, NUMBER, process, URL=''):
+def w_default(SLUG, NUMBER, process):
     how_many_episodes = get_episodes_count_for_serie(SLUG)
 
     details = get_details_for_serie(SLUG)
@@ -543,7 +608,6 @@ def w_default(SLUG, NUMBER, process, URL=''):
         "Następny odcinek",
         "Poprzedni odcinek",
         "Lista odcinków",
-        "Pobierz odcinek",
         "Menu główne"
     ]
 
@@ -562,26 +626,20 @@ def w_default(SLUG, NUMBER, process, URL=''):
         continue_data[1] = NUMBER + 1 if NUMBER < how_many_episodes else NUMBER
         save()
         w_players(SLUG, NUMBER + 1 if NUMBER < how_many_episodes else NUMBER)
+        
     elif ans == choices[2]:
         process.terminate()
         update_rpc("Menu główne", "Szuka anime do obejrzenia...")
-        continue_data[1] = NUMBER + 1 if NUMBER < how_many_episodes else NUMBER
+        continue_data[1] = NUMBER - 1 if NUMBER >= 2 else NUMBER
         save()
         w_players(SLUG, NUMBER - 1 if NUMBER >= 2 else NUMBER)
+        
     elif ans == choices[3]:
         process.terminate()
         update_rpc("Menu główne", "Szuka anime do obejrzenia...")
         w_list(SLUG)
+        
     elif ans == choices[4]:
-        process.terminate()
-        clear()
-        print(colored("[INFO]", "green"), colored("Pobieranie odcinka do aktualnego folderu...", "white"), '\n')
-        os.system(f"yt-dlp {URL}")
-        time.sleep(2)
-        clear()
-        update_rpc("Menu główne", "Szuka anime do obejrzenia...")
-        w_list(SLUG)
-    elif ans == choices[5]:
         process.terminate()
         update_rpc("Menu główne", "Szuka anime do obejrzenia...")
         m_welcome()
