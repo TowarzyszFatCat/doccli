@@ -2,6 +2,7 @@ import pathlib
 import sys
 import time
 import re
+import tempfile
 import subprocess
 import json
 from InquirerPy import inquirer, prompt
@@ -20,9 +21,39 @@ from datetime import datetime, date
 import requests
 import shutil
 
+# Zmienne przechowujące pobrane bazy
+SERIES_CACHE = None
+TRENDING_CACHE = None
+
+def preload_series_cache():
+    global SERIES_CACHE, TRENDING_CACHE
+    # Pobiera listy tylko przy pierwszym uruchomieniu
+    if SERIES_CACHE is None or TRENDING_CACHE is None:
+        clear()
+        print(colored("[INFO] Łączenie z serwerami Docchi oraz AniList...", "cyan"))
+        print(colored("[INFO] Pobieranie bazy tytułów i trendów...", "cyan"))
+        SERIES_CACHE = get_series_list()
+        TRENDING_CACHE = get_trending_anime_malids()
+        time.sleep(1)
+
+
+def get_cached_series_list():
+    global SERIES_CACHE
+    if SERIES_CACHE is None:
+         preload_series_cache()
+    return SERIES_CACHE
+
+
+def get_cached_trending_list():
+    global TRENDING_CACHE
+    if TRENDING_CACHE is None:
+         preload_series_cache()
+    return TRENDING_CACHE
+
 
 def clear():
-    system("clear")
+    system("cls" if os.name == "nt" else "clear")
+
 
 def get_terminal_size():
     columns, rows = os.get_terminal_size()
@@ -37,7 +68,7 @@ def open_menu(choices, prompt='Prompt', border=True, qmark='', message='', point
             print(colored("[UWAGA]", "yellow"), colored("Aby wyświetlać okładki wymagana jest instalacja", "white"), colored("timg", "green"), '\n')
         else:
             response = requests.get(image)
-            image_path = "/tmp/cover.jpg"
+            image_path = os.path.join(tempfile.gettempdir(), "cover.jpg")
             with open(image_path, 'wb') as file:
                 file.write(response.content)
             os.system(f"timg -C -g {get_terminal_size()[0]}x{get_terminal_size()[1] - height - 4} {image_path}")
@@ -65,6 +96,8 @@ def open_menu(choices, prompt='Prompt', border=True, qmark='', message='', point
 def m_welcome():
 
     load()
+
+    preload_series_cache()
 
     update_rpc("Menu główne", "Szuka anime do obejrzenia...")
 
@@ -112,6 +145,7 @@ def m_welcome():
         set_running(False)
         sys.exit()
 
+
 def m_settings():
     choices = [{
         "type": "list",
@@ -157,10 +191,10 @@ def m_settings():
             m_welcome()
 
 
-
 def m_discord():
     webbrowser.open('https://discord.gg/Y4RcwbE5CJ')
     m_welcome()
+
 
 def m_mylist():
     choices = ['Cofnij']
@@ -176,6 +210,7 @@ def m_mylist():
         index = choices.index(ans)
         m_details(mylist[index - 1])
 
+
 def m_history():
     choices = ['Cofnij']
 
@@ -188,6 +223,7 @@ def m_history():
         m_welcome()
     else:
         m_history()
+
 
 def m_find():
     choices = [
@@ -202,13 +238,14 @@ def m_find():
     ans = open_menu(choices=choices, prompt=prompt, height=4, message=SZUKAJ)
 
     if ans == choices[0]:
-        f_title()
+        perform_search('title')
     elif ans == choices[1]:
-        f_title_EN()
+        perform_search('title_en')
     elif ans == choices[2]:
-        f_malid()
+        perform_search('mal_id')
     elif ans == choices[3]:
         m_welcome()
+
 
 def m_stats():
 
@@ -239,104 +276,56 @@ def m_stats():
 
     m_welcome()
 
-def f_title():
-    all_series_json = get_series_list()
 
-    all_series_names = []
-
-    for serie in all_series_json:
-        all_series_names.append(serie['title'])
-
-    choices = all_series_names
+def perform_search(search_key):
+    all_series_json = get_cached_series_list()
+    
+    # Dynamiczne wyciąganie odpowiedniego klucza
+    choices = [serie[search_key] for serie in all_series_json]
 
     prompt = 'Szukaj: '
-
     ans = open_menu(choices=choices, prompt=prompt, message=SZUKAJ)
-    ans_index = all_series_names.index(ans)
+    
+    ans_index = choices.index(ans)
     ans_details = all_series_json[ans_index]
 
     m_details(details=ans_details)
 
-
-def f_title_EN():
-    all_series_json = get_series_list()
-
-    all_series_names = []
-
-    for serie in all_series_json:
-        all_series_names.append(serie['title_en'])
-
-    choices = all_series_names
-
-    prompt = 'Szukaj: '
-
-    ans = open_menu(choices=choices, prompt=prompt, message=SZUKAJ)
-    ans_index = all_series_names.index(ans)
-    ans_details = all_series_json[ans_index]
-
-    m_details(details=ans_details)
-
-
-def f_malid():
-    all_series_json = get_series_list()
-
-    all_series_ids = []
-
-    for serie in all_series_json:
-        all_series_ids.append(serie['mal_id'])
-
-    choices = all_series_ids
-
-    prompt = 'Szukaj: '
-
-    ans = open_menu(choices=choices, prompt=prompt, message=SZUKAJ)
-    ans_index = all_series_ids.index(ans)
-    ans_details = all_series_json[ans_index]
-
-    m_details(details=ans_details)
 
 def m_trending():
-    trending_anime_malids = get_trending_anime_malids()
-    all_anime_list = get_series_list()
+    # Pobieranie danych z błyskawicznego Cache'u zamiast z API
+    trending_anime_malids = get_cached_trending_list()
+    all_anime_list = get_cached_series_list()
 
     top_anime = []
 
     for anime in all_anime_list:
-
-        anime_data = []
-
         if anime['mal_id'] in trending_anime_malids:
             order = trending_anime_malids.index(anime['mal_id'])
-            anime_data.append(order)
             slug = anime['slug']
-            anime_data.append(slug)
             title = anime['title']
-            anime_data.append(title)
             title_en = anime['title_en']
-            anime_data.append(title_en)
+            
+            # Dodajemy wszystko w jednej linii, odchudzając kod
+            top_anime.append([order, slug, title, title_en])
 
-            top_anime.append(anime_data)
-
-
+    # Sortowanie względem miejsca w trendach
     top_anime.sort(key=lambda x: x[0])
-    top_anime_choices = ["Cofnij"]
-
+    
+    choices = ["Cofnij"]
     for anime in top_anime:
-        top_anime_choices.append(str(anime[0] + 1) + ". " + anime[2]+ " / " +anime[3])
-
-    choices = top_anime_choices
+        choices.append(f"{anime[0] + 1}. {anime[2]} / {anime[3]}")
 
     prompt = 'Wybierz: '
 
     ans = open_menu(choices=choices, prompt=prompt, message=NA_CZASIE)
-    ans_index = top_anime_choices.index(ans)
-    ans_slug = top_anime[ans_index - 1][1]
-
+    
     if ans == choices[0]:
         m_welcome()
     else:
+        ans_index = choices.index(ans)
+        ans_slug = top_anime[ans_index - 1][1]
         m_details(get_details_for_serie(SLUG=ans_slug))
-
 
 
 def m_details(details):
@@ -421,6 +410,7 @@ def w_list(SLUG):
 
         w_players(SLUG, ans)
 
+
 def w_download_season(SLUG, TITLE):
     how_many_episodes = get_episodes_count_for_serie(SLUG)
 
@@ -483,6 +473,7 @@ def w_download_season(SLUG, TITLE):
     
     m_details(get_details_for_serie(SLUG))
 
+
 def w_players(SLUG, NUMBER, err=''):
     players = []
 
@@ -539,34 +530,42 @@ def mpv_play(URL, SKIP_TIMES):
     if shutil.which('yt-dlp') is None:
         print(colored("[BŁĄD]", "red"), colored("Aby program działał wymagana jest instalacja", "white"), colored("yt-dlp", "green"), '\n')
         sys.exit()
+        
+    temp_dir = tempfile.gettempdir()
+    chapters_file = os.path.join(temp_dir, "doccli_chapters")
+
     if "mega" in URL:
         if shutil.which('megatools') is None:
             print(colored("[UWAGA]", "yellow"), colored("Aby oglądać z tego źródła wymagana jest instalacja", "white"), colored("megatools", "green"), '\n')
             sys.exit()
 
-
         video_extensions = ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.webm']
-        download_path = '/tmp/'
-        files_in_directory = os.listdir(download_path)
+        files_in_directory = os.listdir(temp_dir)
 
         for file in files_in_directory:
             if file.lower().endswith(tuple(video_extensions)):
-                file_path = os.path.join(download_path, file)
-                os.remove(file_path)
+                file_path = os.path.join(temp_dir, file)
+                try:
+                    os.remove(file_path)
+                except OSError:
+                    pass # Omijamy błędy usuwania, np. zablokowane pliki na Windowsie
 
         mega_url = URL.replace('embed', 'file')
-        before_files = set(os.listdir(download_path))
-        os.system(f'megadl {mega_url} --path {download_path}')
-        after_files = set(os.listdir(download_path))
+        before_files = set(os.listdir(temp_dir))
+        
+        # Uwaga: megadl na Windowsie wymaga dodania go do zmiennych środowiskowych PATH
+        os.system(f'megadl {mega_url} --path {temp_dir}')
+        
+        after_files = set(os.listdir(temp_dir))
         new_files = after_files - before_files
         video_files = [file for file in new_files if file.lower().endswith(tuple(video_extensions))]
 
         try:
             process = Popen(args=['mpv',
                                   "--save-position-on-quit",
-                                  "--chapters-file=/tmp/doccli_chapters",
+                                  f"--chapters-file={chapters_file}",
                                   f"--script-opts=doccli_skip-opening_start={SKIP_TIMES[0]},doccli_skip-opening_end={SKIP_TIMES[1]},doccli_skip-ending_start={SKIP_TIMES[2]},doccli_skip-ending_end={SKIP_TIMES[3]}",
-                                  f'/tmp/{video_files[0]}'],
+                                  os.path.join(temp_dir, video_files[0])],
                             shell=False,
                             stdout=DEVNULL,
                             stderr=DEVNULL)
@@ -574,11 +573,10 @@ def mpv_play(URL, SKIP_TIMES):
         except IndexError:
             return
 
-
     else:
         process = Popen(args=['mpv',
                               "--save-position-on-quit",
-                              "--chapters-file=/tmp/doccli_chapters",
+                              f"--chapters-file={chapters_file}",
                               f"--script-opts=doccli_skip-opening_start={SKIP_TIMES[0]},doccli_skip-opening_end={SKIP_TIMES[1]},doccli_skip-ending_start={SKIP_TIMES[2]},doccli_skip-ending_end={SKIP_TIMES[3]}",
                               URL],
                         shell=False,
@@ -703,9 +701,6 @@ def load():
         if len(settings) != 3:
             settings.append(True)
             save()
-
-
-    
 
 
 def save():
