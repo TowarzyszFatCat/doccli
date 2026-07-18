@@ -4,9 +4,11 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a>
 </h1>
 
 <h2 align="center">
-<u><b>Co nowego w UPDATE v2.2 ?</b><br></br></u>
+<u><b>Co nowego w UPDATE v2.20.1 ?</b><br></br></u>
 
-Pobieranie pełnych sezonów!
+Pobieranie pełnych sezonów!<br>
+Przyspieszenie działania wyszukiwarek oraz menu na czasie!<br>
+Naprawa błędów odtwarzania z niektórych źródeł.
 </h2>
 
 ---
