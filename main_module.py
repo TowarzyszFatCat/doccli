@@ -9,7 +9,7 @@ import climage
 from InquirerPy import inquirer, prompt
 import os
 from os import system
-from docchi_api_connector import get_series_list, get_episodes_count_for_serie, get_players_list, get_details_for_serie #, get_skip_times
+from docchi_api_connector import get_series_list, get_episodes_count_for_serie, get_players_list, get_details_for_serie, extract_lycoris_direct_link #, get_skip_times
 from anilist_connector import get_trending_anime_malids, get_stars_by_mal_id
 from menus_decor import MAIN_MENU, SZUKAJ, NA_CZASIE, MOJA_LISTA, HISTORIA
 from subprocess import Popen, DEVNULL
@@ -488,6 +488,11 @@ def w_download_season(SLUG, TITLE):
 
         for index, player in enumerate(players, 1):
             target_url = player['player']
+
+            if "lycoris" in target_url.lower():
+                extracted = extract_lycoris_direct_link(target_url)
+                if extracted:
+                    target_url = extracted
             
             print(f"\r\033[K" + colored(f"[*] Sprawdzam źródło {index}/{total_sources}...", "yellow"), end="", flush=True)
             
@@ -579,6 +584,14 @@ def mpv_play(URL): #, SKIP_TIMES
         
     temp_dir = tempfile.gettempdir()
     chapters_file = os.path.join(temp_dir, "doccli_chapters")
+
+    if "lycoris" in URL.lower():
+        direct_url = extract_lycoris_direct_link(URL)
+        if direct_url:
+            URL = direct_url
+            print(colored("[+] Sukces! Znaleziono bezpośredni link wideo.", "green"))
+        else:
+            print(colored("[-] Nie udało się zdekodować linku. Próbuję odtworzyć domyślnie...", "yellow"))
 
     if "mega" in URL:
         if shutil.which('megatools') is None:
