@@ -22,6 +22,7 @@ from datetime import datetime, date
 import requests
 from PIL import Image
 import shutil
+from concurrent.futures import ThreadPoolExecutor
 
 # Zmienne przechowujące pobrane bazy
 SERIES_CACHE = None
@@ -536,9 +537,57 @@ def w_players(SLUG, NUMBER, err=''):
         player_info = [player['player_hosting'], player['player']]
         players.append(player_info)
 
-    choices = [str(player[0]).ljust(20) + "   | Link źródła: " + player[1] for player in players]
+
+
+    print(colored("Trwa analizowanie i sprawdzanie źródeł na żywo...", "cyan"))
+    
+    def check_link(player):
+        hosting_name, url = player[0], player[1]
+        url_lower = url.lower()
+        
+        if "lycoris" in url_lower:
+            return "ok" if extract_lycoris_direct_link(url) else "error"
+            
+        elif "mega" in url_lower:
+            return "mega" if shutil.which('megatools') is not None else "error"
+            
+        else:
+            try:
+                res = subprocess.run(
+                    ["yt-dlp", "-q", "--simulate", "--no-warnings", url],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=5 # Limit 5 sekund
+                )
+                return "ok" if res.returncode == 0 else "error"
+            except:
+                return "error"
+
+    # Jednoczesne sprawdzanie wszystkich linków naraz
+    with ThreadPoolExecutor(max_workers=15) as executor:
+        results = list(executor.map(check_link, players))
+
+    choices = []
+    
+
+    for player, status in zip(players, results):
+        hosting_name = str(player[0])
+        source_link = player[1]
+
+
+        if status == "ok":
+            prefix = "✅ "  # Działa
+        elif status == "mega":
+            prefix = "🟡 "  # Mega
+        else:
+            prefix = "❌ "  # Nie działa
+            
+        display_line = (prefix + hosting_name).ljust(25) + " | Link źródła: " + source_link
+
+        choices.append(display_line)
 
     choices.append("Wróć do menu")
+
 
     last_option = choices[-1]
 
@@ -550,16 +599,9 @@ def w_players(SLUG, NUMBER, err=''):
         m_welcome()
 
     ans_index_in_choices = choices.index(ans)
-
     ans_index = players[ans_index_in_choices]
 
-    # skip_times = [-1, -1, -1, -1]
-
-    # if settings[2]:
-    #     details = get_details_for_serie(SLUG)
-    #     skip_times = get_skip_times(details['mal_id'], NUMBER)
-
-    process = mpv_play(ans_index[1]) # , SKIP_TIMES=skip_times
+    process = mpv_play(ans_index[1])
 
 
     # Wait 3 sec and check if started playing
