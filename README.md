@@ -7,6 +7,7 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a>
 <u><b>Co nowego w UPDATE v2.20 - v2.21 ?</b><br></br></u>
 
 W pełni natywne wsparcie na Windowsie z automatycznym instalatorem!<br>
+Sprawdzanie dostępności źródeł!</br>
 Pobieranie pełnych sezonów!<br>
 Przyspieszenie działania wyszukiwarek oraz menu na czasie!<br>
 Naprawa błędów odtwarzania z niektórych źródeł.
@@ -87,7 +88,7 @@ sudo apt install mpv yt-dlp python3-pip python3-venv
 ```
 
 ### Opcjonalne paczki:
-- Wyświetlanie okładek: `timg` [ <a href="https://github.com/hzeller/timg">link do timg</a> ]
+- Wyświetlanie okładek w lepszej rozdzielczości (tylko niektóre terminale): `timg` [ <a href="https://github.com/hzeller/timg">link do timg</a> ]
 - Dla wsparcia źródeł z mega.nz: `megatools`  [ <a href="https://megatools.megous.com/">link do megatools</a> ]
 
 ### Instalacja w jednej komendzie:
