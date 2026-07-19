@@ -4,8 +4,9 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a>
 </h1>
 
 <h2 align="center">
-<u><b>Co nowego w UPDATE v2.20.1 ?</b><br></br></u>
+<u><b>Co nowego w UPDATE v2.20 - v2.21 ?</b><br></br></u>
 
+W pełni natywne wsparcie na Windowsie z automatycznym instalatorem!<br>
 Pobieranie pełnych sezonów!<br>
 Przyspieszenie działania wyszukiwarek oraz menu na czasie!<br>
 Naprawa błędów odtwarzania z niektórych źródeł.
@@ -13,10 +14,7 @@ Naprawa błędów odtwarzania z niektórych źródeł.
 
 ---
 
-
 [showcase.webm](https://github.com/user-attachments/assets/f720fdad-4643-47ee-8e7f-2f9a2a6fca55)
-
-
 
 ---
 
@@ -37,7 +35,7 @@ Naprawa błędów odtwarzania z niektórych źródeł.
 - Statystyki,
 - Podgląd okładki,
 - Pobieranie pełnych sezonów,
-- Pomijanie intr/outr,
+- Pomijanie intr/outr, (TYMCZASOWO NIEDOSTĘPNE)
 - Anime na czasie,
 - Wyświetlanie ocen z Anilist.
 
@@ -53,16 +51,30 @@ Naprawa błędów odtwarzania z niektórych źródeł.
 
 ---
 <h1 align="center">
-    Instalacja Linux:
-
+    Instalacja Windows:
 </h1>
 
-## Ręczna:
+Dzięki nowemu instalatorowi korzystanie z Doccli na systemie Windows jest teraz banalnie proste i nie wymaga używania WSL.
 
-### Wymagagane paczki:
+### Jak zainstalować:
+1. Pobierz najnowszą wersję Doccli (plik `.zip`) z zakładki **[Releases](https://github.com/TowarzyszFatCat/doccli/releases)**.
+2. Wypakuj pliki w dowolne miejsce (np. do folderu Pobrane).
+3. Wejdź do wypakowanego folderu i uruchom plik `install.bat`.
+4. Instalator automatycznie pobierze wymagane narzędzia (`mpv`, `yt-dlp`), skonfiguruje pythona, a na koniec **utworzy skrót z ikoną na Twoim Pulpicie**.
+5. Po udanej instalacji, pobrany folder usunie się sam.
+
+### Jak odinstalować:
+Naciśnij kombinację klawiszy `Win + R`, wpisz `%LOCALAPPDATA%\Doccli` i wciśnij Enter. W otwartym folderze znajdziesz plik `uninstall.bat`, który usunie program i skróty z Twojego komputera.
+
+---
+<h1 align="center">
+    Instalacja Linux:
+</h1>
+
+### Wymagane paczki:
 - `mpv`
 - `yt-dlp`
-- `python3.9+` (z modułem pip oraz venv)
+- `python3.12+` (z modułem pip oraz venv)
 
 Instalacja wymaganych paczek na Arch:
 ```bash
@@ -74,31 +86,24 @@ Instalacja wymaganych paczek na Debian/Ubuntu/Pop:
 sudo apt install mpv yt-dlp python3-pip python3-venv
 ```
 
-
 ### Opcjonalne paczki:
 - Wyświetlanie okładek: `timg` [ <a href="https://github.com/hzeller/timg">link do timg</a> ]
-
 - Dla wsparcia źródeł z mega.nz: `megatools`  [ <a href="https://megatools.megous.com/">link do megatools</a> ]
-
 
 ### Instalacja w jednej komendzie:
 ```bash
-cd ~ && git clone https://github.com/TowarzyszFatCat/doccli.git && bash doccli/install.sh
+cd ~ && git clone [https://github.com/TowarzyszFatCat/doccli.git](https://github.com/TowarzyszFatCat/doccli.git) && bash doccli/install.sh
 ```
 
 ### Aktualizacja w jednej komendzie:
-> [!IMPORTANT]  
-> Jeżeli aktualizujesz doccli z wersji v2.7.X do wyższej zwróć uwagę na opcjonalne paczki!
 ```bash
-sudo rm /usr/local/bin/doccli && sudo rm -rf ~/.doccli_src && cd ~ && git clone https://github.com/TowarzyszFatCat/doccli.git && bash doccli/install.sh
+sudo rm /usr/local/bin/doccli && sudo rm -rf ~/.doccli_src && cd ~ && git clone [https://github.com/TowarzyszFatCat/doccli.git](https://github.com/TowarzyszFatCat/doccli.git) && bash doccli/install.sh
 ```
-
 
 ### Jak odinstalować:
 ```bash
 sudo rm /usr/local/bin/doccli && sudo rm -rf ~/.doccli_src
 ```
-
 
 ### Jak usunąć `moją listę` oraz `config` (niezalecane, chyba że wymaga tego aktualizacja):
 ```bash
@@ -106,46 +111,18 @@ sudo rm ~/.config/doccli/*
 ```
 
 ### Jak uruchomić:
-#####
 ```bash
 doccli
 ```
-
-## Arch Linux (NIEAKTUALNE):
-
-[doccli](https://aur.archlinux.org/packages/doccli) jest dostępny jako pakiet w [AUR](https://aur.archlinux.org). Można go zainstalować za pomocą [helpera AUR](https://wiki.archlinux.org/title/AUR_helpers).
-
-Przykład ([paru](https://github.com/Morganamilo/paru)):
-
-```bash
-paru -S doccli
-```
-
 ---
-<h1 align="center">
-    Instalacja Windows (WSL):
 
+<h1 align="center">
+    Zgłaszanie błędów i propozycje
 </h1>
 
-### 1. Instalacja WSL
-- `wsl --install` w dowolnym terminalu (terminal/cmd/powershell)
-- WSL poprosi o utworzenie konta użytkownika
-(Po instalacji WSL wymagany może być restart urządzenia.)
-
-> [!NOTE]
-> Zalecam używanie aplikacji Windows Terminal zamiast cmd/powershell dla lepszego doświadczenia
-> 
-> Link: https://www.microsoft.com/store/productId/9N0DX20HK701
-
-### 2. Instalacja doccli i składników w jednej komendzie
-```bash
-sudo apt update && sudo apt upgrade && sudo apt install mpv yt-dlp timg megatools python3-pip python3-venv && cd ~ && git clone https://github.com/TowarzyszFatCat/doccli.git && bash doccli/install.sh
-```
-^ możliwe że nie będzie się dało wkleić komendy w powershell i cmd :P
-
-### 3. Używanie doccli
-- `wsl` - w dowolnym terminalu
-- `doccli`
+Znalazłeś błąd podczas oglądania? A może masz pomysł na nową, fajną funkcję? Daj mi znać! 
+* **Najlepszym i preferowanym sposobem** na zgłoszenie problemu jest otwarcie nowego wątku w zakładce **[Issues na GitHubie](https://github.com/TowarzyszFatCat/doccli/issues)**. 
+* Błędy możesz również zgłaszać na serwerze **[Discord](https://discord.gg/FgfSM7bSEK)**, na specjalnie przeznaczonym do tego kanale.
 
 ---
 <p align="center">
@@ -155,12 +132,11 @@ sudo apt update && sudo apt upgrade && sudo apt install mpv yt-dlp timg megatool
 <a href="https://www.buymeacoffee.com/towarzyszfatcat" target="_blank"><img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png" alt="Buy Me A Coffee" style="height: 30px !important;width: 130px !important;box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;-webkit-box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;" ></a>
 </p>
 
-
 ---
 
 <div align="center">
     
-[![Star History Chart](https://api.star-history.com/svg?repos=TowarzyszFatCat/doccli&type=Date)](https://star-history.com/)
+[![Star History Chart](https://api.star-history.com/chart?repos=TowarzyszFatCat/doccli&type=date&legend=top-left&sealed_token=qg_zmNfPDW9EpJa3On6tSAKqsvSm4-TkgALKRHmIO0b9jutCjLD2HcI6V6JNCrgJfpzL7Wk_yFSnEfcVazhTWkH5Dcb4YbBP7yb8zML1OfJKWp_rdLqr8w)](https://www.star-history.com/?repos=TowarzyszFatCat%2Fdoccli&type=date&legend=top-left)
 
 </div>
 

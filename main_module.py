@@ -5,10 +5,11 @@ import re
 import tempfile
 import subprocess
 import json
+import climage
 from InquirerPy import inquirer, prompt
 import os
 from os import system
-from docchi_api_connector import get_series_list, get_episodes_count_for_serie, get_players_list, get_details_for_serie, get_skip_times
+from docchi_api_connector import get_series_list, get_episodes_count_for_serie, get_players_list, get_details_for_serie #, get_skip_times
 from anilist_connector import get_trending_anime_malids, get_stars_by_mal_id
 from menus_decor import MAIN_MENU, SZUKAJ, NA_CZASIE, MOJA_LISTA, HISTORIA
 from subprocess import Popen, DEVNULL
@@ -19,6 +20,7 @@ import platform
 from zipfile import ZipFile
 from datetime import datetime, date
 import requests
+from PIL import Image
 import shutil
 
 # Zmienne przechowujące pobrane bazy
@@ -50,6 +52,17 @@ def get_cached_trending_list():
          preload_series_cache()
     return TRENDING_CACHE
 
+def kill_process(process):
+    if not process:
+        return
+    
+    if os.name == "nt":
+        subprocess.run(
+            ["taskkill", "/F", "/T", "/PID", str(process.pid)], 
+            capture_output=True
+        )
+    else:
+        process.terminate()
 
 def clear():
     system("cls" if os.name == "nt" else "clear")
@@ -63,15 +76,47 @@ def get_terminal_size():
 def open_menu(choices, prompt='Prompt', border=True, qmark='', message='', pointer='>', cycle=True, height=10, image=None):
     clear()
 
+    # HYBRYDOWA OBSŁUGA OKŁADEK timg, climage
     if image:
-        if shutil.which('timg') is None:
-            print(colored("[UWAGA]", "yellow"), colored("Aby wyświetlać okładki wymagana jest instalacja", "white"), colored("timg", "green"), '\n')
-        else:
+        try:
             response = requests.get(image)
             image_path = os.path.join(tempfile.gettempdir(), "cover.jpg")
             with open(image_path, 'wb') as file:
                 file.write(response.content)
-            os.system(f"timg -C -g {get_terminal_size()[0]}x{get_terminal_size()[1] - height - 4} {image_path}")
+
+            if shutil.which('timg') is not None:
+                os.system(f"timg -C -g {get_terminal_size()[0]}x{get_terminal_size()[1] - height - 5} {image_path}")
+            
+            else:
+                terminal_cols, terminal_lines = get_terminal_size()
+                
+                avail_lines = max(5, terminal_lines - height - 4) 
+                
+                with Image.open(image_path) as img:
+                    img_w, img_h = img.size
+                    
+                calculated_width = int(avail_lines * 2 * (img_w / img_h))
+                
+                cover_width = min(calculated_width, terminal_cols - 4)
+
+                cover_art = climage.convert(
+                    image_path, 
+                    is_unicode=True, 
+                    is_truecolor=True, 
+                    is_256color=False, 
+                    is_16color=False, 
+                    is_8color=False,
+                    width=cover_width
+                )
+                
+                left_padding = " " * max(0, (terminal_cols - cover_width) // 2)
+                
+                for line in cover_art.splitlines():
+                    print(left_padding + line)
+                    
+                
+        except Exception:
+            pass
 
 
     action = inquirer.fuzzy(
@@ -120,7 +165,7 @@ def m_welcome():
 
     prompt = 'Wybierz co chcesz zrobić: '
 
-    ans = open_menu(choices=choices, prompt=prompt, height=8, message=MAIN_MENU)
+    ans = open_menu(choices=choices, prompt=prompt, height=9, message=MAIN_MENU)
 
     if ans == choices[0]:
         m_find()
@@ -147,21 +192,20 @@ def m_welcome():
 
 
 def m_settings():
-    choices = [{
-        "type": "list",
-        "message": "Czy chcesz aby openingi i endingi były automatycznie pomijane?",
-        "choices": ["Tak", "Nie"],
-    }]
+    # choices = [{
+    #     "type": "list",
+    #     "message": "Czy chcesz aby openingi i endingi były automatycznie pomijane?",
+    #     "choices": ["Tak", "Nie"],
+    # }]
 
-    skip = prompt(questions=choices)
+    # skip = prompt(questions=choices)
 
-    if skip[0] == "Tak":
-        settings[2] = True
-        save()
-    elif skip[0] == "Nie":
-        settings[2] = False
-        save()
-
+    # if skip[0] == "Tak":
+    #     settings[2] = True
+    #     save()
+    # elif skip[0] == "Nie":
+    #     settings[2] = False
+    #     save()
 
     choices = [{
             "type": "list",
@@ -293,7 +337,7 @@ def perform_search(search_key):
 
 
 def m_trending():
-    # Pobieranie danych z błyskawicznego Cache'u zamiast z API
+    # Pobieranie danych z cache
     trending_anime_malids = get_cached_trending_list()
     all_anime_list = get_cached_series_list()
 
@@ -306,7 +350,6 @@ def m_trending():
             title = anime['title']
             title_en = anime['title_en']
             
-            # Dodajemy wszystko w jednej linii, odchudzając kod
             top_anime.append([order, slug, title, title_en])
 
     # Sortowanie względem miejsca w trendach
@@ -505,13 +548,13 @@ def w_players(SLUG, NUMBER, err=''):
 
     ans_index = players[ans_index_in_choices]
 
-    skip_times = [-1, -1, -1, -1]
+    # skip_times = [-1, -1, -1, -1]
 
-    if settings[2]:
-        details = get_details_for_serie(SLUG)
-        skip_times = get_skip_times(details['mal_id'], NUMBER)
+    # if settings[2]:
+    #     details = get_details_for_serie(SLUG)
+    #     skip_times = get_skip_times(details['mal_id'], NUMBER)
 
-    process = mpv_play(ans_index[1], SKIP_TIMES=skip_times)
+    process = mpv_play(ans_index[1]) # , SKIP_TIMES=skip_times
 
 
     # Wait 3 sec and check if started playing
@@ -523,7 +566,10 @@ def w_players(SLUG, NUMBER, err=''):
     w_default(SLUG, NUMBER, process)
 
 
-def mpv_play(URL, SKIP_TIMES):
+def mpv_play(URL): #, SKIP_TIMES
+
+    mpv_exec = "mpv.exe" if os.name == "nt" else "mpv"
+
     if shutil.which('mpv') is None:
         print(colored("[BŁĄD]", "red"), colored("Aby program działał wymagana jest instalacja", "white"), colored("mpv", "green"), '\n')
         sys.exit()
@@ -561,28 +607,29 @@ def mpv_play(URL, SKIP_TIMES):
         video_files = [file for file in new_files if file.lower().endswith(tuple(video_extensions))]
 
         try:
-            process = Popen(args=['mpv',
+            process = Popen(args=[mpv_exec,
                                   "--save-position-on-quit",
+                                  "--input-terminal=no",
                                   f"--chapters-file={chapters_file}",
-                                  f"--script-opts=doccli_skip-opening_start={SKIP_TIMES[0]},doccli_skip-opening_end={SKIP_TIMES[1]},doccli_skip-ending_start={SKIP_TIMES[2]},doccli_skip-ending_end={SKIP_TIMES[3]}",
                                   os.path.join(temp_dir, video_files[0])],
                             shell=False,
                             stdout=DEVNULL,
-                            stderr=DEVNULL)
+                            stderr=DEVNULL,)
             return process
         except IndexError:
             return
 
     else:
-        process = Popen(args=['mpv',
+        process = Popen(args=[mpv_exec,
                               "--save-position-on-quit",
+                              "--input-terminal=no",
                               f"--chapters-file={chapters_file}",
-                              f"--script-opts=doccli_skip-opening_start={SKIP_TIMES[0]},doccli_skip-opening_end={SKIP_TIMES[1]},doccli_skip-ending_start={SKIP_TIMES[2]},doccli_skip-ending_end={SKIP_TIMES[3]}",
                               URL],
                         shell=False,
                         stdout=DEVNULL,
                         stderr=DEVNULL)
         return process
+        #f"--script-opts=doccli_skip-opening_start={SKIP_TIMES[0]},doccli_skip-opening_end={SKIP_TIMES[1]},doccli_skip-ending_start={SKIP_TIMES[2]},doccli_skip-ending_end={SKIP_TIMES[3]}",
 
 
 def w_default(SLUG, NUMBER, process):
@@ -614,45 +661,50 @@ def w_default(SLUG, NUMBER, process):
     ans = open_menu(choices=choices, prompt=prompt, qmark=f'Odcinek: {NUMBER}/{how_many_episodes}', height=5)
 
     if ans == choices[0]:
-        process.terminate()
+        kill_process(process)
         update_rpc("Menu główne", "Szuka anime do obejrzenia...")
         w_players(SLUG, NUMBER)
 
     elif ans == choices[1]:
-        process.terminate()
+        kill_process(process)
         update_rpc("Menu główne", "Szuka anime do obejrzenia...")
         continue_data[1] = NUMBER + 1 if NUMBER < how_many_episodes else NUMBER
         save()
         w_players(SLUG, NUMBER + 1 if NUMBER < how_many_episodes else NUMBER)
         
     elif ans == choices[2]:
-        process.terminate()
+        kill_process(process)
         update_rpc("Menu główne", "Szuka anime do obejrzenia...")
         continue_data[1] = NUMBER - 1 if NUMBER >= 2 else NUMBER
         save()
         w_players(SLUG, NUMBER - 1 if NUMBER >= 2 else NUMBER)
         
     elif ans == choices[3]:
-        process.terminate()
+        kill_process(process)
         update_rpc("Menu główne", "Szuka anime do obejrzenia...")
         w_list(SLUG)
         
     elif ans == choices[4]:
-        process.terminate()
+        kill_process(process)
         update_rpc("Menu główne", "Szuka anime do obejrzenia...")
         m_welcome()
 
 
 def center_text(text: str) -> str:
-    terminal_width = os.get_terminal_size().columns
+    # Odejmujemy 1 od szerokości terminala
+    terminal_width = os.get_terminal_size().columns - 1
     art_lines = text.splitlines()
+    
+    # Zostawiamy oryginalne .center() bez rstrip()
     return "\n".join(line.center(terminal_width) for line in art_lines)
 
 
 # SAVING SECTION
+if os.name == "nt": # WIN
+    PATH_config = os.path.join(os.getenv("APPDATA"), "doccli")
+else:               # LINUX/MACOS
+    PATH_config = os.path.join(os.path.expanduser("~"), ".config", "doccli")
 
-PATH_home = os.path.expanduser("~")
-PATH_config = os.path.join(PATH_home, ".config", "doccli")
 PATH_mylist = os.path.join(PATH_config, "mylist.json")
 PATH_continue = os.path.join(PATH_config, "continue.json")
 PATH_settings = os.path.join(PATH_config, "settings.json")

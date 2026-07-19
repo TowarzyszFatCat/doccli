@@ -9,9 +9,9 @@ from requests import get, exceptions
 from main_module import m_welcome
 from termcolor import colored
 from discord_integration import start_rpc, set_running
-from docchi_api_connector import get_skip_times
+#from docchi_api_connector import get_skip_times
 
-VERSION = "v2.20.1"
+VERSION = "v2.21"
 
 def get_cmd_version(cmd, args=["--version"]):
     try:
@@ -49,7 +49,14 @@ def check_dependencies() -> bool:
             
             if norm_local != norm_latest:
                 print(colored("[+] yt-dlp:    ", "green") + f"Zainstalowano (Twoja: {local_yt} | Najnowsza: {latest_yt})")
-                print(colored("    [!] Zalecam aktualizację (sudo yt-dlp -U), bo niektóre źródła mogą nie działać!", "red"))
+                
+                # --- WERSJA KOMENDY ZALEŻNA OD SYSTEMU ---
+                if os.name == "nt":
+                    update_cmd = "winget upgrade yt-dlp.yt-dlp"
+                else:
+                    update_cmd = "sudo yt-dlp -U"
+                
+                print(colored(f"    [!] Zalecam aktualizację ({update_cmd}), bo niektóre źródła mogą nie działać!", "red"))
                 requires_action = True
             else:
                 print(colored("[+] yt-dlp:    ", "green") + f"Zainstalowano (Wersja: {local_yt} - Aktualna!)")
@@ -70,9 +77,9 @@ def check_dependencies() -> bool:
     # 3. Opcjonalne: timg
     if shutil.which("timg"):
         timg_v = get_cmd_version("timg")
-        print(colored("[+] timg:      ", "green") + f"Zainstalowano (Wersja: {timg_v})")
+        print(colored("[+] timg:      ", "green") + f"Zainstalowano (Wersja: {timg_v} | Okładki w pełnej rozdzielczości)")
     else:
-        print(colored("[!] timg:      ", "yellow") + "Brak (Okładki nie będą wyświetlane)")
+        print(colored("[!] timg:      ", "yellow") + "Brak [Tylko system Linux! (Okładki w pełnej rozdzielczości)")
 
     # 4. Opcjonalne: megatools
     if shutil.which("megatools"):

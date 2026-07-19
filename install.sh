@@ -1,11 +1,10 @@
 #!/bin/bash
 
-# Definiowanie kolorów (Kody ANSI)
 CYAN='\033[1;36m'
 GREEN='\033[1;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[1;34m'
-NC='\033[0m' # No Color (Powrót do domyślnego koloru terminala)
+NC='\033[0m' # No Color
 
 echo -e "${CYAN}====================================================${NC}"
 echo -e "${GREEN}          Rozpoczynam instalację Doccli...          ${NC}"
@@ -29,9 +28,9 @@ echo -e "${YELLOW}[4/5] Konfiguruję pliki programu...${NC}"
 sudo chmod +x doccli/doccli
 sudo mv doccli/doccli /usr/local/bin
 
-mkdir -p ~/.config/mpv/scripts
-sudo mv doccli/doccli_skip.lua ~/.config/mpv/scripts
-sudo mv doccli ~/.doccli_src
+# mkdir -p ~/.config/mpv/scripts
+# sudo mv doccli/doccli_skip.lua ~/.config/mpv/scripts
+# sudo mv doccli ~/.doccli_src
 
 # Bezpieczne uprawnienia plików
 sudo chmod 755 ~/.doccli_src
@@ -40,7 +39,7 @@ echo ""
 
 echo -e "${YELLOW}[5/5] Konfiguruję biblioteki Pythona (może to chwilę potrwać)...${NC}"
 cd ~/.doccli_src && python3 -m venv .venv
-cd ~/.doccli_src && .venv/bin/pip install requests inquirerpy termcolor
+cd ~/.doccli_src && .venv/bin/pip install requests inquirerpy termcolor climage pillow
 cd ~/.doccli_src && .venv/bin/pip install https://github.com/qwertyquerty/pypresence/archive/master.zip
 echo ""
 
