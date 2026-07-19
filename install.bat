@@ -46,7 +46,7 @@ echo/
 
 echo [3/6] Sprawdzam i instaluje narzedzia (mpv, yt-dlp)...
 winget install --id yt-dlp.yt-dlp --accept-source-agreements --accept-package-agreements
-winget install --id mpv.mpv --accept-source-agreements --accept-package-agreements
+winget install --id 9P3JFR0CLLL6 --accept-source-agreements --accept-package-agreements
 echo/
 
 echo [4/6] Konfiguruje srodowisko wirtualne Pythona...
