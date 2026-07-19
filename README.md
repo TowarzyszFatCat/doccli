@@ -15,7 +15,7 @@ Naprawa błędów odtwarzania z niektórych źródeł.
 
 ---
 
-[showcase.webm](https://github.com/user-attachments/assets/f720fdad-4643-47ee-8e7f-2f9a2a6fca55)
+https://github.com/user-attachments/assets/b4116bf9-c66c-41a5-9da8-6665ff18d3e6
 
 ---
 
