@@ -52,11 +52,11 @@ def check_dependencies() -> bool:
                 
                 # --- WERSJA KOMENDY ZALEŻNA OD SYSTEMU ---
                 if os.name == "nt":
-                    update_cmd = "winget upgrade yt-dlp.yt-dlp"
+                    update_cmd = "yt-dlp -U"
                 else:
                     update_cmd = "sudo yt-dlp -U"
                 
-                print(colored(f"    [!] Zalecam aktualizację ({update_cmd}), bo niektóre źródła mogą nie działać!", "red"))
+                print(colored(f"    [!] Zalecam aktualizację komendą: ({update_cmd}), bo niektóre źródła mogą nie działać!", "red"))
                 requires_action = True
             else:
                 print(colored("[+] yt-dlp:    ", "green") + f"Zainstalowano (Wersja: {local_yt} - Aktualna!)")
