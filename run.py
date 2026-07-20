@@ -76,9 +76,9 @@ def check_dependencies() -> bool:
     # 3. Opcjonalne: chafa
     if shutil.which("chafa"):
         timg_v = get_cmd_version("chafa")
-        print(colored("[+] chafa:      ", "green") + f"Zainstalowano (Wersja: {timg_v} | Wyświetlanie okładek)")
+        print(colored("[+] chafa:     ", "green") + f"Zainstalowano (Wersja: {timg_v} | Wyświetlanie okładek)")
     else:
-        print(colored("[!] chafa:      ", "yellow") + "Brak [Wyświetlanie okładek]")
+        print(colored("[!] chafa:     ", "yellow") + "Brak [Wyświetlanie okładek]")
         requires_action = True
 
     # 4. Opcjonalne: megatools
