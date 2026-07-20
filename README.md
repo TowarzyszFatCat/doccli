@@ -4,11 +4,13 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a> i nie tylko
 </h1>
 
 <h2 align="center">
-<u><b>Co nowego w UPDATE v2.20 - v2.21.1 ?</b><br></br></u>
+<u><b>Co nowego w UPDATE v2.20 - v2.22 ?</b><br></br></u>
 
 W pełni natywne wsparcie na Windowsie z automatycznym instalatorem!<br>
 Sprawdzanie dostępności źródeł!</br>
-Pobieranie pełnych sezonów!<br>
+Pobieranie pełnych sezonów wraz z biblioteką offline i trybem oglądania automatycznego!<br>
+Opisy anime tłumaczone maszynowo na język polski!<br>
+Statystyki programu oraz rangi!<br>
 Przyspieszenie działania wyszukiwarek oraz menu na czasie!<br>
 Wyświetlanie okładek w pełnej rozdzielczości!<br>
 Naprawa błędów odtwarzania z niektórych źródeł.
