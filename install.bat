@@ -69,6 +69,10 @@ winget install --id 9P3JFR0CLLL6 --accept-source-agreements --accept-package-agr
 color 0B
 echo/
 
+winget install --id hpjansson.Chafa --accept-source-agreements --accept-package-agreements
+color 0B
+echo/
+
 echo [6/9] Konfiguruje srodowisko wirtualne Pythona...
 python -m venv .venv
 echo/

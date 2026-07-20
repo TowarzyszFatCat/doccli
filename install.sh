@@ -12,7 +12,7 @@ echo -e "${CYAN}====================================================${NC}\n"
 
 echo -e "${YELLOW}[1/5] Sprawdzam pakiety systemowe (mpv, wget)...${NC}"
 sudo apt-get update
-sudo apt-get install -y mpv wget
+sudo apt-get install -y mpv wget chafa
 echo ""
 
 echo -e "${YELLOW}[2/5] Usuwam przestarzałe wersje yt-dlp...${NC}"
@@ -36,7 +36,7 @@ echo ""
 
 echo -e "${YELLOW}[5/5] Konfiguruję biblioteki Pythona (może to chwilę potrwać)...${NC}"
 cd ~/.doccli_src && python3 -m venv .venv
-cd ~/.doccli_src && .venv/bin/pip install requests inquirerpy termcolor climage pillow
+cd ~/.doccli_src && .venv/bin/pip install requests inquirerpy termcolor
 cd ~/.doccli_src && .venv/bin/pip install https://github.com/qwertyquerty/pypresence/archive/master.zip
 echo ""
 

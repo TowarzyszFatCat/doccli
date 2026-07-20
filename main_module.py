@@ -5,7 +5,6 @@ import re
 import tempfile
 import subprocess
 import json
-import climage
 from InquirerPy import inquirer, prompt
 import os
 from os import system
@@ -20,7 +19,6 @@ import platform
 from zipfile import ZipFile
 from datetime import datetime, date
 import requests
-from PIL import Image
 import shutil
 from concurrent.futures import ThreadPoolExecutor
 
@@ -77,7 +75,6 @@ def get_terminal_size():
 def open_menu(choices, prompt='Prompt', border=True, qmark='', message='', pointer='>', cycle=True, height=10, image=None):
     clear()
 
-    # HYBRYDOWA OBSŁUGA OKŁADEK timg, climage
     if image:
         try:
             response = requests.get(image)
@@ -85,36 +82,14 @@ def open_menu(choices, prompt='Prompt', border=True, qmark='', message='', point
             with open(image_path, 'wb') as file:
                 file.write(response.content)
 
-            if shutil.which('timg') is not None:
-                os.system(f"timg -C -g {get_terminal_size()[0]}x{get_terminal_size()[1] - height - 5} {image_path}")
-            
+            # Sprawdzamy czy chafa jest zainstalowana w systemie
+            if shutil.which('chafa') is not None:
+                term_width, term_height = get_terminal_size()
+                avail_height = max(5, term_height - height - 5)
+                
+                os.system(f"chafa -s {term_width}x{avail_height} --align=center {image_path}")
             else:
-                terminal_cols, terminal_lines = get_terminal_size()
-                
-                avail_lines = max(5, terminal_lines - height - 4) 
-                
-                with Image.open(image_path) as img:
-                    img_w, img_h = img.size
-                    
-                calculated_width = int(avail_lines * 2 * (img_w / img_h))
-                
-                cover_width = min(calculated_width, terminal_cols - 4)
-
-                cover_art = climage.convert(
-                    image_path, 
-                    is_unicode=True, 
-                    is_truecolor=True, 
-                    is_256color=False, 
-                    is_16color=False, 
-                    is_8color=False,
-                    width=cover_width
-                )
-                
-                left_padding = " " * max(0, (terminal_cols - cover_width) // 2)
-                
-                for line in cover_art.splitlines():
-                    print(left_padding + line)
-                    
+                print(center_text("Brak narzędzia 'chafa' do wyświetlania okładek."))
                 
         except Exception:
             pass
