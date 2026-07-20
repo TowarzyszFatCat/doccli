@@ -1,4 +1,6 @@
 from requests import post
+import time
+from deep_translator import GoogleTranslator
 
 url = "https://graphql.anilist.co"
 
@@ -26,34 +28,56 @@ def get_trending_anime_malids():
     else:
         return request.status_code
 
-def get_stars_by_mal_id(mal_id):
+
+def get_details_from_anilist(mal_id):
     query = '''
     query ($malId: Int) {
       Media(idMal: $malId, type: ANIME) {
         averageScore
+        description(asHtml: false)
       }
     }
     '''
-
+    
     variables = {"malId": mal_id}
-    response = post(url, json={'query': query, 'variables': variables})
+    
+    # Domyślne wartości
+    stars = "\U0001F311\U0001F311\U0001F311\U0001F311\U0001F311"
+    description = "Brak opisu."
 
-    if response.status_code == 200:
-        data = response.json()
-        media = data.get('data', {}).get('Media')
+    try:
+        response = post(url, json={'query': query, 'variables': variables}, timeout=5)
+        
+        if response.status_code == 200:
+            data = response.json()
+            media = data.get('data', {}).get('Media')
 
-        if not media or media['averageScore'] is None:
-            return "✩✩✩✩✩"
+            if media:
+                # Obsługa gwiazdek
+                if media.get('averageScore'):
+                    avg = media['averageScore']
+                    stars_val = avg / 20 
+                    full_stars = int(stars_val)
+                    half_star = stars_val - full_stars >= 0.5
+                    full = "\U0001F315" * full_stars
+                    if half_star and full_stars < 5:
+                        full += "\U0001F317"
+                    full += "\U0001F311" * (5 - len(full))
+                    stars = full
+                
+                # Obsługa opisu i tłumaczenie na polski
+                if media.get('description'):
+                    raw_desc = media['description']
+                    # Szybkie przeczyszczenie z ewentualnych dziwnych tagów HTML, które lubi dawać AniList
+                    clean_desc = raw_desc.replace('<br>', '\n').replace('<i>', '').replace('</i>', '')
+                    
+                    try:
+                        translated = GoogleTranslator(source='auto', target='pl').translate(clean_desc)
+                        description = translated
+                    except Exception:
+                        description = clean_desc
 
-        avg = media['averageScore']
-        stars = avg / 20  # 0–5
-        full_stars = int(stars)
-        half_star = stars - full_stars >= 0.5
+    except Exception:
+        pass
 
-        full = "\U0001F315" * full_stars
-        if half_star and full_stars < 5:
-            full += "\U0001F317"
-        full += "\U0001F311" * (5 - len(full))
-        return full
-    else:
-        return "\U0001F311\U0001F311\U0001F311\U0001F311\U0001F311"
+    return stars, description

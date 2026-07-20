@@ -6,10 +6,12 @@ import tempfile
 import subprocess
 import json
 from InquirerPy import inquirer, prompt
+from PIL import Image
 import os
+import textwrap
 from os import system
 from docchi_api_connector import get_series_list, get_episodes_count_for_serie, get_players_list, get_details_for_serie, extract_lycoris_direct_link #, get_skip_times
-from anilist_connector import get_trending_anime_malids, get_stars_by_mal_id
+from anilist_connector import get_trending_anime_malids, get_details_from_anilist
 from menus_decor import MAIN_MENU, SZUKAJ, NA_CZASIE, MOJA_LISTA, HISTORIA
 from subprocess import Popen, DEVNULL
 from termcolor import colored
@@ -72,28 +74,85 @@ def get_terminal_size():
     return columns, rows
 
 
-def open_menu(choices, prompt='Prompt', border=True, qmark='', message='', pointer='>', cycle=True, height=10, image=None):
+def open_menu(choices, prompt='Prompt', border=True, qmark='', message='', pointer='>', cycle=True, height=10, image=None, description=None):
     clear()
 
+    # nie mam pojęcia co tu sie dzieje ale działa
     if image:
         try:
             response = requests.get(image)
-            image_path = os.path.join(tempfile.gettempdir(), "cover.jpg")
+            image_path = os.path.join(tempfile.gettempdir(), "cover.png")
             with open(image_path, 'wb') as file:
                 file.write(response.content)
 
-            # Sprawdzamy czy chafa jest zainstalowana w systemie
-            if shutil.which('chafa') is not None:
-                term_width, term_height = get_terminal_size()
-                avail_height = max(5, term_height - height - 5)
+            term_width, term_height = get_terminal_size()
+            
+            avail_height = max(5, term_height - height - 6) 
+            chafa_height = max(3, avail_height)
+
+            img_ratio = 0.7
+            margin_ratio = 0.0
+
+            try:
+                img = Image.open(image_path).convert("RGBA")
+                img_w, img_h = img.size
                 
-                os.system(f"chafa -s {term_width}x{avail_height} --align=center {image_path}")
+                pad_pixels = int(img_w * 0.15) 
+                new_w = pad_pixels + img_w
+                
+                padded_img = Image.new("RGBA", (new_w, img_h), (0, 0, 0, 0))
+                padded_img.paste(img, (pad_pixels, 0))
+                padded_img.save(image_path, "PNG")
+                
+                img_ratio = new_w / img_h
+                margin_ratio = pad_pixels / img_h
+            except Exception:
+                pass
+
+            if shutil.which('chafa') is not None:
+                char_aspect = 2.0 
+                chafa_units_h = chafa_height * char_aspect
+                
+                rendered_cols = int(chafa_units_h * img_ratio)
+                margin_cols = int(chafa_units_h * margin_ratio)
+                
+                text_start_col = rendered_cols + margin_cols + 4
+                
+                if text_start_col >= term_width - 15:
+                    text_start_col = int(term_width * 0.4)
+                    
+                text_width = term_width - text_start_col - 2
+
+                print("\0337", end="")
+                sys.stdout.flush()
+
+                os.system(f"chafa -s {term_width}x{chafa_height} {image_path}")
+                
+                if description:
+                    clean_desc = description.replace('<br>', '\n')
+                    wrapped_desc = textwrap.wrap(clean_desc, width=text_width)
+                    
+                    header_text = "Tłumaczenie maszynowe opisu z AniList:"
+                    colored_header = colored(header_text, "cyan") 
+                    
+                    wrapped_desc.insert(0, colored_header)
+                    wrapped_desc.insert(1, "") 
+                else:
+                    wrapped_desc = []
+
+                for i, line in enumerate(wrapped_desc[:avail_height]):
+                    row = i + 2 
+                    print(f"\033[{row};{text_start_col}H{line}", end="")
+
+                menu_row = avail_height + 2
+                print(f"\033[{menu_row};1H", end="")
+                sys.stdout.flush()
+                    
             else:
                 print(center_text("Brak narzędzia 'chafa' do wyświetlania okładek."))
                 
-        except Exception:
+        except Exception as e:
             pass
-
 
     action = inquirer.fuzzy(
         message=message if message.startswith('[') else center_text(message),    # Message above border
@@ -372,7 +431,19 @@ def m_details(details):
 
     episode_count = get_episodes_count_for_serie(details['slug'])
 
-    ans = open_menu(choices=choices, prompt=prompt, qmark=f'{details["title"]} / {details["title_en"]} \n [Ilość odcinków: {episode_count}] [Ocena: {get_stars_by_mal_id(str(details["mal_id"]))}]', message=genres, height=6, image=details['cover'])
+    # 1. Pobieramy ocenę i opis z nowej funkcji (pamiętaj by zaktualizować importy na górze pliku!)
+    stars, description = get_details_from_anilist(str(details["mal_id"]))
+
+    # 2. Wywołujemy open_menu przekazując zmienną 'description' i zmienione 'stars'
+    ans = open_menu(
+        choices=choices, 
+        prompt=prompt, 
+        qmark=f'{details["title"]} / {details["title_en"]} \n [Ilość odcinków: {episode_count}] [Ocena: {stars}]', 
+        message=genres, 
+        height=6, 
+        image=details['cover'],
+        description=description  # <--- Dodany nowy parametr
+    )
 
     if ans == choices[0]:
         continue_data[0] = details
