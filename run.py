@@ -11,7 +11,7 @@ from termcolor import colored
 from discord_integration import start_rpc, set_running
 #from docchi_api_connector import get_skip_times
 
-VERSION = "v2.21"
+VERSION = "v2.22"
 
 def get_cmd_version(cmd, args=["--version"]):
     try:
