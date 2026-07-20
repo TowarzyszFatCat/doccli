@@ -27,10 +27,7 @@ echo ""
 echo -e "${YELLOW}[4/5] Konfiguruję pliki programu...${NC}"
 sudo chmod +x doccli/doccli
 sudo mv doccli/doccli /usr/local/bin
-
-# mkdir -p ~/.config/mpv/scripts
-# sudo mv doccli/doccli_skip.lua ~/.config/mpv/scripts
-# sudo mv doccli ~/.doccli_src
+sudo mv doccli ~/.doccli_src
 
 # Bezpieczne uprawnienia plików
 sudo chmod 755 ~/.doccli_src
