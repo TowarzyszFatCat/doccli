@@ -78,7 +78,7 @@ python -m venv .venv
 echo/
 
 echo [7/9] Instaluje wymagane biblioteki...
-.venv\Scripts\pip install requests inquirerpy termcolor climage pillow deep-translator
+.venv\Scripts\pip install requests inquirerpy termcolor climage pillow deep-translator rich
 color 0B
 .venv\Scripts\pip install https://github.com/qwertyquerty/pypresence/archive/master.zip
 color 0B

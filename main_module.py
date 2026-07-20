@@ -12,6 +12,7 @@ import textwrap
 from os import system
 from docchi_api_connector import get_series_list, get_episodes_count_for_serie, get_players_list, get_details_for_serie, extract_lycoris_direct_link #, get_skip_times
 from anilist_connector import get_trending_anime_malids, get_details_from_anilist
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeRemainingColumn, TaskProgressColumn
 from menus_decor import MAIN_MENU, SZUKAJ, NA_CZASIE, MOJA_LISTA, HISTORIA
 from subprocess import Popen, DEVNULL
 from termcolor import colored
@@ -23,6 +24,11 @@ from datetime import datetime, date
 import requests
 import shutil
 from concurrent.futures import ThreadPoolExecutor
+from rich.console import Console
+from rich.table import Table
+from rich.panel import Panel
+from rich.console import Group
+from rich.align import Align
 
 # Zmienne przechowujące pobrane bazy
 SERIES_CACHE = None
@@ -326,33 +332,126 @@ def m_find():
         m_welcome()
 
 
+def get_folder_size(folder_path="doccli_downloads"):
+    total_size = 0
+    if os.path.exists(folder_path):
+        for dirpath, dirnames, filenames in os.walk(folder_path):
+            for f in filenames:
+                fp = os.path.join(dirpath, f)
+                if not os.path.islink(fp):
+                    total_size += os.path.getsize(fp)
+    return total_size
+
+def get_user_rank(hours):
+    if hours < 10:
+        return "[cyan]🌱 Niedzielny Widz[/cyan]"
+    elif hours < 25:
+        return "[green]🌸 Nowicjusz[/green]"
+    elif hours < 50:
+        return "[orange]🗡️ Uczeń Shounenów[/orange]"
+    elif hours < 100:
+        return "[blue]🥷 Genin[/blue]"
+    elif hours < 250:
+        return "[violet]⭐ Otaku[/violet]"
+    elif hours < 500:
+        return "[magenta]⚔️ Łowca Demonów[/magenta]"
+    elif hours < 1000:
+        return "[red]🔥 Weteran [/red]"
+    else:
+        return "[yellow]👑 Hikikomori[yellow]"
+
 def m_stats():
+    clear()
 
-    ep_played = 0
-    q_mylist = 0
-
-    for ep in history:
-        ep_played += 1
-
-    for quantity in mylist:
-        q_mylist += 1
+    ep_played = len(history)
+    q_mylist = len(mylist)
 
     ti_c = pathlib.Path(PATH_config).stat().st_mtime
-    dt_c = datetime.fromtimestamp(ti_c).strftime("%d/%m/%Y, %H:%M:%S")
+    dt_c = datetime.fromtimestamp(ti_c).strftime("%d/%m/%Y")
 
     creation_dt = date.fromtimestamp(ti_c)
     now_dt = date.today()
     delta_dt = now_dt - creation_dt
 
+    total_minutes = ep_played * 21
+    hours = total_minutes // 60
+    minutes = total_minutes % 60
+    
+    size_bytes = get_folder_size()
+    size_gb = round(size_bytes / (1024 ** 3), 2)
 
-    print(colored("Używasz doccli już od:", "white"), colored(delta_dt.days, "green"), colored("dni!", "white"))
-    print(colored("Pierwsze uruchomienie doccli:", "white"), colored(dt_c, "green"))
-    print('')
-    print(colored("Odtworzone odcinki:", "white"), colored(ep_played, "red"))
-    print(colored("Pozycje zapisane na liście:", "white"), colored(q_mylist, "red"))
-    print('')
+    last_watched = "Brak danych"
+    if history:
+        raw_history = str(history[0]) 
+        if "]" in raw_history:
+            clean_title = raw_history.split("]", 1)[1].strip()
+        else:
+            clean_title = raw_history
+            
+        if len(clean_title) > 35:
+            last_watched = clean_title[:32] + "..."
+        else:
+            last_watched = clean_title
+
+    user_rank = get_user_rank(hours)
+
+    console = Console()
+
+    # AKTYWNOŚĆ
+    table_activity = Table(show_header=False, box=None, padding=(0, 2))
+    table_activity.add_column("Statystyka", style="cyan", width=25)
+    table_activity.add_column("Wartość", justify="right", style="bold")
+    table_activity.add_row("Obecna Ranga:", user_rank)
+    table_activity.add_row("Odtworzone odcinki:", f"[bold red]{ep_played}[/bold red]")
+    table_activity.add_row("Czas oglądania (21m/odc):", f"[yellow]{hours}h {minutes}m[/yellow]")
+    table_activity.add_row("Ostatnio oglądane:", f"[magenta]{last_watched}[/magenta]")
+
+    # BIBLIOTEKA
+    table_app = Table(show_header=False, box=None, padding=(0, 2))
+    table_app.add_column("Statystyka", style="cyan", width=25)
+    table_app.add_column("Wartość", justify="right", style="bold")
+    table_app.add_row("Zapisane na liście:", f"[bold red]{q_mylist}[/bold red]")
+    table_app.add_row("Zajęte miejsce na dysku:", f"[green]{size_gb} GB[/green]")
+    table_app.add_row("Pierwsza instalacja doccli:", f"[white]{dt_c}[/white]")
+    table_app.add_row("Wiek profilu:", f"[white]{delta_dt.days} dni[/white]")
+
+    # RANGI
+    table_legend = Table(show_header=False, box=None, padding=(0, 2))
+    table_legend.add_column("Ranga", style="bold", width=30) 
+    table_legend.add_column("Wymaganie", justify="right", style="dim white")
+    table_legend.add_row("[cyan]🌱 Niedzielny Widz[/cyan]", "0 - 9 godz.")
+    table_legend.add_row("[green]🌸 Nowicjusz[/green]", "10 - 24 godz.")
+    table_legend.add_row("[yellow]🗡️ Uczeń Shounenów[/yellow]", "25 - 49 godz.")
+    table_legend.add_row("[blue]🥷 Genin[/blue]", "50 - 99 godz.")
+    table_legend.add_row("[violet]⭐ Otaku[/violet]", "100 - 249 godz.")
+    table_legend.add_row("[magenta]⚔️ Łowca Demonów[/magenta]", "250 - 499 godz.")
+    table_legend.add_row("[red]🔥 Weteran [/red]", "500 - 999 godz.")
+    table_legend.add_row("[yellow]👑 Hikikomori[yellow]", "1000+ godz.")
+
+
+    panel_activity = Panel(table_activity, title="[bold yellow]🎬 Twój Profil[/bold yellow]", border_style="cyan", expand=False)
+    panel_app = Panel(table_app, title="[bold yellow]📁 Biblioteka i Dane[/bold yellow]", border_style="cyan", expand=False)
+    panel_legend = Panel(table_legend, title="[bold yellow]🏆 Legenda Rang[/bold yellow]", border_style="cyan", expand=False)
+
+
+    dashboard = Group(
+        Align.center(panel_activity),
+        Align.center(panel_app),
+        Align.center(panel_legend)
+    )
+
+    main_panel = Panel(
+        dashboard, 
+        title="[bold magenta]📊 STATYSTYKI DOCCLI[/bold magenta]", 
+        border_style="blue", 
+        expand=False,
+        padding=(1, 4)
+    )
+
+    console.print(Align.center(main_panel))
+    
+    print('\n')
     input(colored("Naciśnij enter aby wrócić do menu głównego...", "yellow"))
-
     m_welcome()
 
 
@@ -517,7 +616,7 @@ def w_download_season(SLUG, TITLE):
     os.makedirs(series_dir, exist_ok=True)
 
     clear()
-    print(colored(f"[INFO] Przygotowywanie do pobrania {TITLE} ({how_many_episodes} odcinków)...", "cyan"))
+    print(colored(f"[INFO] Przygotowywanie do pobrania {TITLE} ({how_many_episodes} odcinki)...", "cyan"))
     print(colored(f"[INFO] Lokalizacja zapisu: {series_dir}", "yellow"))
     
     for ep_number in range(1, how_many_episodes + 1):
@@ -526,8 +625,6 @@ def w_download_season(SLUG, TITLE):
         if players == 404 or not players:
             print(colored(f"\n[BŁĄD] Nie znaleziono źródeł dla odcinka {ep_number}. Pomijam...", "red"))
             continue
-
-        print(colored(f"\n[INFO] Rozpoczynam pobieranie odcinka {ep_number}/{how_many_episodes}...", "cyan"))
         
         file_name_template = os.path.join(series_dir, f"{safe_title} - Odcinek {ep_number:02d}.%(ext)s")
         downloaded = False
@@ -541,27 +638,56 @@ def w_download_season(SLUG, TITLE):
                 if extracted:
                     target_url = extracted
             
-            print(f"\r\033[K" + colored(f"[*] Sprawdzam źródło {index}/{total_sources}...", "yellow"), end="", flush=True)
+            print(f"\r\033[K" + colored(f"[*] Sprawdzam źródło {index}/{total_sources} (Odcinek {ep_number}/{how_many_episodes})...", "yellow"), end="", flush=True)
             
             command = [
                 "yt-dlp",
-                "-q",
-                "--progress",
+                "--newline",
                 "--no-warnings",
+                "--merge-output-format", "mp4",
                 target_url,
                 "-o",
                 file_name_template
             ]
             
-            result = subprocess.run(command, stderr=subprocess.DEVNULL)
+            print()
             
-            if result.returncode == 0:
-                downloaded = True
-                print("\n" + colored(f"[+] Sukces! Pobrano odcinek {ep_number}.", "green"))
-                break
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[bold cyan]{task.description}"),
+                BarColumn(bar_width=40, complete_style="green", finished_style="bold green"),
+                TaskProgressColumn(),
+                TimeRemainingColumn(),
+            ) as progress:                
+                task_id = progress.add_task(description=f"Pobieranie odc. {ep_number} [bold yellow](Ścieżka VIDEO)", total=100)
+                
+                process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+                
+                current_percent = 0.0
+
+                for line in process.stdout:
+                    match = re.search(r'\[download\]\s+([\d\.]+)%', line)
+                    if match:
+                        try:
+                            percent = float(match.group(1))
+                            
+                            if percent < current_percent - 50:
+                                progress.update(task_id, description=f"Pobieranie odc. {ep_number} [bold yellow](Ścieżka AUDIO)")
+                                
+                            current_percent = percent
+                            progress.update(task_id, completed=percent)
+                        except ValueError:
+                            pass
+                            
+                process.wait()
+                
+                if process.returncode == 0:
+                    downloaded = True
+                    progress.update(task_id, completed=100, description=f"[bold green]Ukończono odc. {ep_number}!")
+                    break
 
         if not downloaded:
-            print("\n" + colored(f"[BŁĄD] Żadne ze źródeł dla odcinka {ep_number} nie zadziałało.", "red"))
+            print(colored(f"[BŁĄD] Żadne ze źródeł dla odcinka {ep_number} nie zadziałało.", "red"))
         
     print(colored(f"\n[ZAKOŃCZONO] Proces pobierania serii {TITLE} dobiegł końca!", "green"))
     input(colored("Naciśnij Enter, aby wrócić...", "yellow"))
