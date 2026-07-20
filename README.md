@@ -93,12 +93,12 @@ sudo apt install mpv yt-dlp python3-pip python3-venv
 
 ### Instalacja w jednej komendzie:
 ```bash
-cd ~ && git clone [https://github.com/TowarzyszFatCat/doccli.git](https://github.com/TowarzyszFatCat/doccli.git) && bash doccli/install.sh
+cd ~ && git clone https://github.com/TowarzyszFatCat/doccli.git && bash doccli/install.sh
 ```
 
 ### Aktualizacja w jednej komendzie:
 ```bash
-sudo rm /usr/local/bin/doccli && sudo rm -rf ~/.doccli_src && cd ~ && git clone [https://github.com/TowarzyszFatCat/doccli.git](https://github.com/TowarzyszFatCat/doccli.git) && bash doccli/install.sh
+sudo rm /usr/local/bin/doccli && sudo rm -rf ~/.doccli_src && cd ~ && git clone https://github.com/TowarzyszFatCat/doccli.git && bash doccli/install.sh
 ```
 
 ### Jak odinstalować:
