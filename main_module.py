@@ -557,7 +557,7 @@ def w_players(SLUG, NUMBER, err=''):
                     ["yt-dlp", "-q", "--simulate", "--no-warnings", url],
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
-                    timeout=5 # Limit 5 sekund
+                    timeout=15 # czas zalezny od predkosci pc oraz sieci
                 )
                 return "ok" if res.returncode == 0 else "error"
             except:
