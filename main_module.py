@@ -13,7 +13,7 @@ from os import system
 from docchi_api_connector import get_series_list, get_episodes_count_for_serie, get_players_list, get_details_for_serie, extract_lycoris_direct_link #, get_skip_times
 from anilist_connector import get_trending_anime_malids, get_details_from_anilist
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeRemainingColumn, TaskProgressColumn
-from menus_decor import MAIN_MENU, SZUKAJ, NA_CZASIE, MOJA_LISTA, HISTORIA
+from menus_decor import MAIN_MENU, SZUKAJ, NA_CZASIE, MOJA_LISTA, HISTORIA, MOJA_BIBLIOTEKA
 from subprocess import Popen, DEVNULL
 from termcolor import colored
 import webbrowser
@@ -197,6 +197,7 @@ def m_welcome():
     else:
         choices.append(f"Wznów {continue_data[0]['title']} / {continue_data[0]['title_en']}, Odc: {continue_data[1]}")
 
+    choices.append("Moja Biblioteka (Offline)")
     choices.append("Moja lista")
     choices.append("Historia oglądania")
     choices.append("Ustawienia")
@@ -206,7 +207,7 @@ def m_welcome():
 
     prompt = 'Wybierz co chcesz zrobić: '
 
-    ans = open_menu(choices=choices, prompt=prompt, height=9, message=MAIN_MENU)
+    ans = open_menu(choices=choices, prompt=prompt, height=10, message=MAIN_MENU)
 
     if ans == choices[0]:
         m_find()
@@ -217,20 +218,22 @@ def m_welcome():
             m_welcome()
         else:
             w_players(continue_data[0]['slug'], continue_data[1])
+
     elif ans == choices[3]:
-        m_mylist()
+        m_local_library()
     elif ans == choices[4]:
-        m_history()
+        m_mylist()
     elif ans == choices[5]:
-        m_settings()
+        m_history()
     elif ans == choices[6]:
-        m_stats()
+        m_settings()
     elif ans == choices[7]:
-        m_discord()
+        m_stats()
     elif ans == choices[8]:
+        m_discord()
+    elif ans == choices[9]:
         set_running(False)
         sys.exit()
-
 
 def m_settings():
     # choices = [{
@@ -915,6 +918,111 @@ def w_default(SLUG, NUMBER, process):
         kill_process(process)
         update_rpc("Menu główne", "Szuka anime do obejrzenia...")
         m_welcome()
+
+def m_local_library():
+    clear()
+    
+    current_dir = os.getcwd()
+    downloads_dir = os.path.join(current_dir, "doccli_downloads")
+    
+    if not os.path.exists(downloads_dir):
+        print(colored("[BŁĄD] Twój folder doccli_downloads jeszcze nie istnieje.", "red"))
+        print(colored("Najpierw musisz pobrać jakieś anime!", "yellow"))
+        print('')
+        input(colored("Naciśnij Enter, aby wrócić do menu...", "yellow"))
+        m_welcome()
+        return
+        
+    series_list = [d for d in os.listdir(downloads_dir) if os.path.isdir(os.path.join(downloads_dir, d))]
+    
+    if not series_list:
+        print(colored("[INFO] Twój folder doccli_downloads jest pusty.", "yellow"))
+        print('')
+        input(colored("Naciśnij Enter, aby wrócić do menu...", "yellow"))
+        m_welcome()
+        return
+        
+    series_list.append("Wróć do menu głównego")
+    
+    selected_series = open_menu(
+        choices=series_list, 
+        prompt='Wybierz serię z dysku: ', 
+        height=10, 
+        message=MOJA_BIBLIOTEKA
+    )
+    
+    if selected_series == "Wróć do menu głównego":
+        m_welcome()
+        return
+
+    while True:
+        clear()
+        series_path = os.path.join(downloads_dir, selected_series)
+        
+        episodes_list = [f for f in os.listdir(series_path) if os.path.isfile(os.path.join(series_path, f))]
+        episodes_list.sort()
+        
+        if not episodes_list:
+            print(colored(f"Brak plików wideo w folderze {selected_series}.", "red"))
+            input(colored("Naciśnij Enter, aby wrócić do menu...", "yellow"))
+            m_welcome()
+            return
+            
+        choices = ["Oglądaj automatycznie"] + episodes_list + ["Wróć do wyboru serii"]
+        
+        selected_ep = open_menu(
+            choices=choices, 
+            prompt=f'Wybierz odcinek ({selected_series}): ', 
+            height=10, 
+            message=MOJA_BIBLIOTEKA
+        )
+        
+        if selected_ep == "Wróć do wyboru serii":
+            m_local_library()
+            return
+            
+        elif selected_ep == "Oglądaj automatycznie":
+            for ep in episodes_list:
+                file_path = os.path.join(series_path, ep)
+                clear()
+                print(colored(f"Oglądanie automatyczne: {ep}", "cyan"))
+                print(colored("Wciśnij 'Q' w obrębie okna MPV, lub zamknij je aby przerwać seans i wrócić do menu.", "white"))
+                
+                now = datetime.now()
+                dt_string = now.strftime("%d/%m/%Y %H:%M")
+                history.insert(0, f"[{dt_string}] {selected_series} | Offline [{ep}]")
+                save()
+                
+                try:
+                    process = subprocess.run(["mpv", file_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    
+                    if process.returncode != 0:
+                        print(colored("\n[INFO] Przerwano oglądanie automatyczne.", "yellow"))
+                        input("Naciśnij Enter...")
+                        break
+                except FileNotFoundError:
+                    print(colored("[BŁĄD] Nie znaleziono odtwarzacza mpv!", "red"))
+                    input("Naciśnij Enter...")
+                    m_welcome()
+                    return
+        else:
+            file_path = os.path.join(series_path, selected_ep)
+            clear()
+            print(colored(f"Odtwarzam z dysku: {selected_ep}", "cyan"))
+            print(colored("Wciśnij 'Q' w obrębie okna MPV, lub zamknij je aby przerwać seans i wrócić do menu.", "white"))
+            
+            now = datetime.now()
+            dt_string = now.strftime("%d/%m/%Y %H:%M")
+            history.insert(0, f"[{dt_string}] {selected_series} | Offline [{selected_ep}]")
+            save()
+            
+            try:
+                subprocess.run(["mpv", file_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except FileNotFoundError:
+                print(colored("[BŁĄD] Nie znaleziono odtwarzacza mpv!", "red"))
+                input("Naciśnij Enter...")
+                m_welcome()
+                return
 
 
 def center_text(text: str) -> str:
