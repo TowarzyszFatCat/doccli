@@ -35,7 +35,7 @@ def get_latest_ytdlp_version():
 def check_dependencies() -> bool:
     requires_action = False
     
-    print(colored(f"--- Doccli {VERSION} ---", "magenta"))
+    print(colored(f"--- Doccli {VERSION} ---", "yellow"))
     print(colored("[INFO] Sprawdzanie środowiska i zależności...", "cyan"))
     
     # 1. Wymagane: yt-dlp
@@ -57,7 +57,6 @@ def check_dependencies() -> bool:
                     update_cmd = "sudo yt-dlp -U"
                 
                 print(colored(f"    [!] Zalecam aktualizację komendą: ({update_cmd}), bo niektóre źródła mogą nie działać!", "red"))
-                requires_action = True
             else:
                 print(colored("[+] yt-dlp:    ", "green") + f"Zainstalowano (Wersja: {local_yt} - Aktualna!)")
         else:
@@ -74,19 +73,20 @@ def check_dependencies() -> bool:
         print(colored("[-] mpv:       ", "red") + "BRAK! Odtwarzanie wideo nie będzie działać.")
         requires_action = True
 
-    # 3. Opcjonalne: timg
-    if shutil.which("timg"):
-        timg_v = get_cmd_version("timg")
-        print(colored("[+] timg:      ", "green") + f"Zainstalowano (Wersja: {timg_v} | Okładki w pełnej rozdzielczości)")
+    # 3. Opcjonalne: chafa
+    if shutil.which("chafa"):
+        timg_v = get_cmd_version("chafa")
+        print(colored("[+] chafa:      ", "green") + f"Zainstalowano (Wersja: {timg_v} | Wyświetlanie okładek)")
     else:
-        print(colored("[!] timg:      ", "yellow") + "Brak [Tylko system Linux! (Okładki w pełnej rozdzielczości)")
+        print(colored("[!] chafa:      ", "yellow") + "Brak [Wyświetlanie okładek]")
+        requires_action = True
 
     # 4. Opcjonalne: megatools
     if shutil.which("megatools"):
         mega_v = get_cmd_version("megatools")
         print(colored("[+] megatools: ", "green") + f"Zainstalowano (Wersja: {mega_v})")
     else:
-        print(colored("[!] megatools: ", "yellow") + "Brak (Odtwarzanie ze źródeł Mega.nz będzie omijane)")
+        print(colored("[!] megatools: ", "yellow") + "Brak (Odtwarzanie ze źródeł Mega.nz)")
 
     print("")
     return requires_action

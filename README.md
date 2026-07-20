@@ -1,15 +1,16 @@
 <h1 align="center">
 <img src="icon_1.png" alt="Icon" width="100" height="100"> <br>
-CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a>
+CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a> i nie tylko!
 </h1>
 
 <h2 align="center">
-<u><b>Co nowego w UPDATE v2.20 - v2.21 ?</b><br></br></u>
+<u><b>Co nowego w UPDATE v2.20 - v2.21.1 ?</b><br></br></u>
 
 W pełni natywne wsparcie na Windowsie z automatycznym instalatorem!<br>
 Sprawdzanie dostępności źródeł!</br>
 Pobieranie pełnych sezonów!<br>
 Przyspieszenie działania wyszukiwarek oraz menu na czasie!<br>
+Wyświetlanie okładek w pełnej rozdzielczości!<br>
 Naprawa błędów odtwarzania z niektórych źródeł.
 </h2>
 
@@ -55,17 +56,19 @@ https://github.com/user-attachments/assets/b4116bf9-c66c-41a5-9da8-6665ff18d3e6
     Instalacja Windows:
 </h1>
 
-Dzięki nowemu instalatorowi korzystanie z Doccli na systemie Windows jest teraz banalnie proste i nie wymaga używania WSL.
-
 ### Jak zainstalować:
 1. Pobierz najnowszą wersję Doccli (plik `.zip`) z zakładki **[Releases](https://github.com/TowarzyszFatCat/doccli/releases)**.
 2. Wypakuj pliki w dowolne miejsce (np. do folderu Pobrane).
 3. Wejdź do wypakowanego folderu i uruchom plik `install.bat`.
-4. Instalator automatycznie pobierze wymagane narzędzia (`mpv`, `yt-dlp`), skonfiguruje pythona, a na koniec **utworzy skrót z ikoną na Twoim Pulpicie**.
+4. Instalator automatycznie pobierze wymagane narzędzia (`winget`, `mpv`, `yt-dlp`, `chafa`), skonfiguruje pythona, a na koniec **utworzy skrót z ikoną na Twoim Pulpicie**.
 5. Po udanej instalacji, pobrany folder usunie się sam.
 
+### Możliwe problemy:
+- Na windowsie 10 może pojawić się problem z Instalatorem Aplikacji (App Installer), instalator doccli powinien wyświetlić o tym komunikat i otworzyć okno Microsoft Store, w którym należy zaktualizować aplikację a następnie uruchomić instalator ponownie.
+
 ### Jak odinstalować:
-Naciśnij kombinację klawiszy `Win + R`, wpisz `%LOCALAPPDATA%\Doccli` i wciśnij Enter. W otwartym folderze znajdziesz plik `uninstall.bat`, który usunie program i skróty z Twojego komputera.
+- Naciśnij kombinację klawiszy `Win + R`, wpisz `%LOCALAPPDATA%\Doccli` i wciśnij Enter. W otwartym folderze znajdziesz plik `uninstall.bat`, który usunie program i skróty z Twojego komputera, ale zostawi ustawienia użytkownika.
+- Configi i ustawienia zapisane są w folderze `%APPDATA%\doccli`, który należy usunąć ręcznie (o ile jest taka potrzeba).
 
 ---
 <h1 align="center">
@@ -76,19 +79,19 @@ Naciśnij kombinację klawiszy `Win + R`, wpisz `%LOCALAPPDATA%\Doccli` i wciśn
 - `mpv`
 - `yt-dlp`
 - `python3.12+` (z modułem pip oraz venv)
+- `chafa`
 
 Instalacja wymaganych paczek na Arch:
 ```bash
-sudo pacman -S mpv yt-dlp python3-pip python3-venv
+sudo pacman -S mpv yt-dlp python3-pip python3-venv chafa
 ```
 
 Instalacja wymaganych paczek na Debian/Ubuntu/Pop:
 ```bash
-sudo apt install mpv yt-dlp python3-pip python3-venv
+sudo apt install mpv yt-dlp python3-pip python3-venv chafa
 ```
 
 ### Opcjonalne paczki:
-- Wyświetlanie okładek w lepszej rozdzielczości (tylko niektóre terminale): `timg` [ <a href="https://github.com/hzeller/timg">link do timg</a> ]
 - Dla wsparcia źródeł z mega.nz: `megatools`  [ <a href="https://megatools.megous.com/">link do megatools</a> ]
 
 ### Instalacja w jednej komendzie:
