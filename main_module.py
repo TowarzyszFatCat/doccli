@@ -359,7 +359,7 @@ def m_stats():
     ep_played = len(ds.history)
     q_mylist = len(ds.mylist)
 
-    ti_c = pathlib.Path(PATH_config).stat().st_mtime
+    ti_c = pathlib.Path(ds.config_dir).stat().st_mtime
     dt_c = datetime.fromtimestamp(ti_c).strftime("%d/%m/%Y")
 
     creation_dt = date.fromtimestamp(ti_c)
