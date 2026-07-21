@@ -20,6 +20,8 @@ class DataStorage:
         self.settings = [True, "Używa doccli!", True]
         self.history = []
 
+        self.load()
+
     def load(self):
         """Wczytuje dane z dysku do zmiennych."""
         if not os.path.exists(self.config_dir):
@@ -59,3 +61,5 @@ class DataStorage:
         with open(self.path_continue, 'w') as file: json.dump(self.continue_data, file, indent=4)
         with open(self.path_settings, 'w') as file: json.dump(self.settings, file, indent=4)
         with open(self.path_history, 'w') as file: json.dump(self.history, file, indent=4)
+
+ds = DataStorage()

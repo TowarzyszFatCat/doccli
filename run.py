@@ -1,15 +1,19 @@
-import time
 import os
+import sys
+import re
 import shutil
 import subprocess
 import threading
-import re
-from requests import get, exceptions
+import time
 
-from main_module import m_welcome
+# From pip
+from requests import exceptions, get
 from termcolor import colored
-from discord_integration import start_rpc, set_running
-#from docchi_api_connector import get_skip_times
+
+# Doccli modules
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "src")) # Drurne obejście
+from discord_integration import set_running, start_rpc
+from main_module import m_welcome
 
 VERSION = "v2.22"
 

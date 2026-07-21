@@ -1,6 +1,8 @@
-from requests import post
 import time
+
+# From pip
 from deep_translator import GoogleTranslator
+from requests import post
 
 url = "https://graphql.anilist.co"
 

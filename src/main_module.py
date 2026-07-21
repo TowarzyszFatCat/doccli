@@ -1,67 +1,29 @@
-import pathlib
+import os
 import sys
 import time
-import re
-import tempfile
-import subprocess
-import json
-from InquirerPy import inquirer, prompt
-from PIL import Image
-import os
-import textwrap
-from os import system
-from docchi_api_connector import get_series_list, get_episodes_count_for_serie, get_players_list, get_details_for_serie, extract_lycoris_direct_link #, get_skip_times
-from anilist_connector import get_trending_anime_malids, get_details_from_anilist
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeRemainingColumn, TaskProgressColumn
-from menus_decor import MAIN_MENU, SZUKAJ, NA_CZASIE, MOJA_LISTA, HISTORIA, MOJA_BIBLIOTEKA
-from subprocess import Popen, DEVNULL
-from termcolor import colored
-import webbrowser
-from discord_integration import update_rpc, set_running
-import platform
-from zipfile import ZipFile
-from datetime import datetime, date
-import requests
 import shutil
+import tempfile
+import webbrowser
+import subprocess
+from subprocess import Popen, DEVNULL
+from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
-from rich.console import Console
-from rich.table import Table
-from rich.panel import Panel
-from rich.console import Group
-from rich.align import Align
+
+# From pip
+from termcolor import colored
+from InquirerPy import prompt
 
 # Doccli modules
-from storage import DataStorage
-ds = DataStorage()
+from storage import ds
+from cache import preload_series_cache, get_cached_series_list, get_cached_trending_list
+from ui_utils import clear, open_menu
+from downloader import w_download_season
+from stats import m_stats
+from menus_decor import MAIN_MENU, SZUKAJ, NA_CZASIE, MOJA_LISTA, HISTORIA, MOJA_BIBLIOTEKA
+from discord_integration import update_rpc, set_running
+from docchi_api_connector import get_episodes_count_for_serie, get_players_list, get_details_for_serie, extract_lycoris_direct_link
+from anilist_connector import get_details_from_anilist
 
-# Zmienne przechowujące pobrane bazy
-SERIES_CACHE = None
-TRENDING_CACHE = None
-
-def preload_series_cache():
-    global SERIES_CACHE, TRENDING_CACHE
-    # Pobiera listy tylko przy pierwszym uruchomieniu
-    if SERIES_CACHE is None or TRENDING_CACHE is None:
-        clear()
-        print(colored("[INFO] Łączenie z serwerami Docchi oraz AniList...", "cyan"))
-        print(colored("[INFO] Pobieranie bazy tytułów i trendów...", "cyan"))
-        SERIES_CACHE = get_series_list()
-        TRENDING_CACHE = get_trending_anime_malids()
-        time.sleep(1)
-
-
-def get_cached_series_list():
-    global SERIES_CACHE
-    if SERIES_CACHE is None:
-         preload_series_cache()
-    return SERIES_CACHE
-
-
-def get_cached_trending_list():
-    global TRENDING_CACHE
-    if TRENDING_CACHE is None:
-         preload_series_cache()
-    return TRENDING_CACHE
 
 def kill_process(process):
     if not process:
@@ -75,117 +37,8 @@ def kill_process(process):
     else:
         process.terminate()
 
-def clear():
-    system("cls" if os.name == "nt" else "clear")
-
-
-def get_terminal_size():
-    columns, rows = os.get_terminal_size()
-    return columns, rows
-
-
-def open_menu(choices, prompt='Prompt', border=True, qmark='', message='', pointer='>', cycle=True, height=10, image=None, description=None):
-    clear()
-
-    # nie mam pojęcia co tu sie dzieje ale działa
-    if image:
-        try:
-            response = requests.get(image)
-            image_path = os.path.join(tempfile.gettempdir(), "cover.png")
-            with open(image_path, 'wb') as file:
-                file.write(response.content)
-
-            term_width, term_height = get_terminal_size()
-            
-            avail_height = max(5, term_height - height - 6) 
-            chafa_height = max(3, avail_height)
-
-            img_ratio = 0.7
-            margin_ratio = 0.0
-
-            try:
-                img = Image.open(image_path).convert("RGBA")
-                img_w, img_h = img.size
-                
-                pad_pixels = int(img_w * 0.15) 
-                new_w = pad_pixels + img_w
-                
-                padded_img = Image.new("RGBA", (new_w, img_h), (0, 0, 0, 0))
-                padded_img.paste(img, (pad_pixels, 0))
-                padded_img.save(image_path, "PNG")
-                
-                img_ratio = new_w / img_h
-                margin_ratio = pad_pixels / img_h
-            except Exception:
-                pass
-
-            if shutil.which('chafa') is not None:
-                char_aspect = 2.0 
-                chafa_units_h = chafa_height * char_aspect
-                
-                rendered_cols = int(chafa_units_h * img_ratio)
-                margin_cols = int(chafa_units_h * margin_ratio)
-                
-                text_start_col = rendered_cols + margin_cols + 4
-                
-                if text_start_col >= term_width - 15:
-                    text_start_col = int(term_width * 0.4)
-                    
-                text_width = term_width - text_start_col - 2
-
-                print("\0337", end="")
-                sys.stdout.flush()
-
-                os.system(f"chafa -s {term_width}x{chafa_height} {image_path}")
-                
-                if description:
-                    clean_desc = description.replace('<br>', '\n')
-                    wrapped_desc = textwrap.wrap(clean_desc, width=text_width)
-                    
-                    header_text = "Tłumaczenie maszynowe opisu z AniList:"
-                    colored_header = colored(header_text, "cyan") 
-                    
-                    wrapped_desc.insert(0, colored_header)
-                    wrapped_desc.insert(1, "") 
-                else:
-                    wrapped_desc = []
-
-                for i, line in enumerate(wrapped_desc[:avail_height]):
-                    row = i + 2 
-                    print(f"\033[{row};{text_start_col}H{line}", end="")
-
-                menu_row = avail_height + 2
-                print(f"\033[{menu_row};1H", end="")
-                sys.stdout.flush()
-                    
-            else:
-                print(center_text("Brak narzędzia 'chafa' do wyświetlania okładek."))
-                
-        except Exception as e:
-            pass
-
-    action = inquirer.fuzzy(
-        message=message if message.startswith('[') else center_text(message),    # Message above border
-        choices=choices,
-        border=border,
-        qmark=qmark,    # Before message above border
-        prompt=prompt,
-        pointer=pointer,
-        cycle=cycle,
-        height=height,
-    ).execute()
-
-    clear() # Remember to always keep things tidy :P
-
-    try:
-        return choices[choices.index(action)]
-    except ValueError:
-        return open_menu(choices=choices, prompt=prompt, border=border, qmark="Nie znaleziono na liście, wyszukaj ponownie", message=message, pointer=pointer, cycle=cycle, height=height)
-
 
 def m_welcome():
-
-    ds.load()
 
     preload_series_cache()
 
@@ -233,6 +86,7 @@ def m_welcome():
         m_settings()
     elif ans == choices[7]:
         m_stats()
+        m_welcome()
     elif ans == choices[8]:
         m_discord()
     elif ans == choices[9]:
@@ -323,129 +177,6 @@ def m_find():
         perform_search('mal_id')
     elif ans == choices[3]:
         m_welcome()
-
-
-def get_folder_size(folder_path="doccli_downloads"):
-    total_size = 0
-    if os.path.exists(folder_path):
-        for dirpath, dirnames, filenames in os.walk(folder_path):
-            for f in filenames:
-                fp = os.path.join(dirpath, f)
-                if not os.path.islink(fp):
-                    total_size += os.path.getsize(fp)
-    return total_size
-
-def get_user_rank(hours):
-    if hours < 10:
-        return "[cyan]🌱 Niedzielny Widz[/cyan]"
-    elif hours < 25:
-        return "[green]🌸 Nowicjusz[/green]"
-    elif hours < 50:
-        return "[orange]🗡️ Uczeń Shounenów[/orange]"
-    elif hours < 100:
-        return "[blue]🥷 Genin[/blue]"
-    elif hours < 250:
-        return "[violet]⭐ Otaku[/violet]"
-    elif hours < 500:
-        return "[magenta]⚔️ Łowca Demonów[/magenta]"
-    elif hours < 1000:
-        return "[red]🔥 Weteran [/red]"
-    else:
-        return "[yellow]👑 Hikikomori[yellow]"
-
-def m_stats():
-    clear()
-
-    ep_played = len(ds.history)
-    q_mylist = len(ds.mylist)
-
-    ti_c = pathlib.Path(ds.config_dir).stat().st_mtime
-    dt_c = datetime.fromtimestamp(ti_c).strftime("%d/%m/%Y")
-
-    creation_dt = date.fromtimestamp(ti_c)
-    now_dt = date.today()
-    delta_dt = now_dt - creation_dt
-
-    total_minutes = ep_played * 21
-    hours = total_minutes // 60
-    minutes = total_minutes % 60
-    
-    size_bytes = get_folder_size()
-    size_gb = round(size_bytes / (1024 ** 3), 2)
-
-    last_watched = "Brak danych"
-    if ds.history:
-        raw_history = str(ds.history[0]) 
-        if "]" in raw_history:
-            clean_title = raw_history.split("]", 1)[1].strip()
-        else:
-            clean_title = raw_history
-            
-        if len(clean_title) > 35:
-            last_watched = clean_title[:32] + "..."
-        else:
-            last_watched = clean_title
-
-    user_rank = get_user_rank(hours)
-
-    console = Console()
-
-    # AKTYWNOŚĆ
-    table_activity = Table(show_header=False, box=None, padding=(0, 2))
-    table_activity.add_column("Statystyka", style="cyan", width=25)
-    table_activity.add_column("Wartość", justify="right", style="bold")
-    table_activity.add_row("Obecna Ranga:", user_rank)
-    table_activity.add_row("Odtworzone odcinki:", f"[bold red]{ep_played}[/bold red]")
-    table_activity.add_row("Czas oglądania (21m/odc):", f"[yellow]{hours}h {minutes}m[/yellow]")
-    table_activity.add_row("Ostatnio oglądane:", f"[magenta]{last_watched}[/magenta]")
-
-    # BIBLIOTEKA
-    table_app = Table(show_header=False, box=None, padding=(0, 2))
-    table_app.add_column("Statystyka", style="cyan", width=25)
-    table_app.add_column("Wartość", justify="right", style="bold")
-    table_app.add_row("Zapisane na liście:", f"[bold red]{q_mylist}[/bold red]")
-    table_app.add_row("Zajęte miejsce na dysku:", f"[green]{size_gb} GB[/green]")
-    table_app.add_row("Pierwsza instalacja doccli:", f"[white]{dt_c}[/white]")
-    table_app.add_row("Wiek profilu:", f"[white]{delta_dt.days} dni[/white]")
-
-    # RANGI
-    table_legend = Table(show_header=False, box=None, padding=(0, 2))
-    table_legend.add_column("Ranga", style="bold", width=30) 
-    table_legend.add_column("Wymaganie", justify="right", style="dim white")
-    table_legend.add_row("[cyan]🌱 Niedzielny Widz[/cyan]", "0 - 9 godz.")
-    table_legend.add_row("[green]🌸 Nowicjusz[/green]", "10 - 24 godz.")
-    table_legend.add_row("[yellow]🗡️ Uczeń Shounenów[/yellow]", "25 - 49 godz.")
-    table_legend.add_row("[blue]🥷 Genin[/blue]", "50 - 99 godz.")
-    table_legend.add_row("[violet]⭐ Otaku[/violet]", "100 - 249 godz.")
-    table_legend.add_row("[magenta]⚔️ Łowca Demonów[/magenta]", "250 - 499 godz.")
-    table_legend.add_row("[red]🔥 Weteran [/red]", "500 - 999 godz.")
-    table_legend.add_row("[yellow]👑 Hikikomori[yellow]", "1000+ godz.")
-
-
-    panel_activity = Panel(table_activity, title="[bold yellow]🎬 Twój Profil[/bold yellow]", border_style="cyan", expand=False)
-    panel_app = Panel(table_app, title="[bold yellow]📁 Biblioteka i Dane[/bold yellow]", border_style="cyan", expand=False)
-    panel_legend = Panel(table_legend, title="[bold yellow]🏆 Legenda Rang[/bold yellow]", border_style="cyan", expand=False)
-
-
-    dashboard = Group(
-        Align.center(panel_activity),
-        Align.center(panel_app),
-        Align.center(panel_legend)
-    )
-
-    main_panel = Panel(
-        dashboard, 
-        title="[bold magenta]📊 STATYSTYKI DOCCLI[/bold magenta]", 
-        border_style="blue", 
-        expand=False,
-        padding=(1, 4)
-    )
-
-    console.print(Align.center(main_panel))
-    
-    print('\n')
-    input(colored("Naciśnij enter aby wrócić do menu głównego...", "yellow"))
-    m_welcome()
 
 
 def perform_search(search_key):
@@ -545,16 +276,15 @@ def m_details(details):
         w_list(details['slug'])
     elif ans == choices[2]:
         w_download_season(details['slug'], details['title'])
+        m_details(details)
     elif ans == choices[3]:
         if details in ds.mylist:
             ds.mylist.remove(details)
             ds.save()
-            ds.load()
             m_details(details)
         else:
             ds.mylist.append(details)
             ds.save()
-            ds.load()
             m_details(details)
     elif ans == choices[4]:
         m_find()
@@ -591,101 +321,6 @@ def w_list(SLUG):
         ds.save()
 
         w_players(SLUG, ans)
-
-
-def w_download_season(SLUG, TITLE):
-    how_many_episodes = get_episodes_count_for_serie(SLUG)
-
-    if how_many_episodes == 404:
-        clear()
-        print(colored("Nie znaleziono strony [Błąd 404]", "red"))
-        time.sleep(3)
-        m_details(get_details_for_serie(SLUG))
-
-    current_dir = os.getcwd()
-    safe_title = re.sub(r'[\\/*?:"<>|]', "", TITLE).strip()
-    series_dir = os.path.join(current_dir, "doccli_downloads", safe_title)
-    
-    os.makedirs(series_dir, exist_ok=True)
-
-    clear()
-    print(colored(f"[INFO] Przygotowywanie do pobrania {TITLE} ({how_many_episodes} odcinki)...", "cyan"))
-    print(colored(f"[INFO] Lokalizacja zapisu: {series_dir}", "yellow"))
-    
-    for ep_number in range(1, how_many_episodes + 1):
-        players = get_players_list(SLUG, ep_number)
-        
-        if players == 404 or not players:
-            print(colored(f"\n[BŁĄD] Nie znaleziono źródeł dla odcinka {ep_number}. Pomijam...", "red"))
-            continue
-        
-        file_name_template = os.path.join(series_dir, f"{safe_title} - Odcinek {ep_number:02d}.%(ext)s")
-        downloaded = False
-        total_sources = len(players)
-
-        for index, player in enumerate(players, 1):
-            target_url = player['player']
-
-            if "lycoris" in target_url.lower():
-                extracted = extract_lycoris_direct_link(target_url)
-                if extracted:
-                    target_url = extracted
-            
-            print(f"\r\033[K" + colored(f"[*] Sprawdzam źródło {index}/{total_sources} (Odcinek {ep_number}/{how_many_episodes})...", "yellow"), end="", flush=True)
-            
-            command = [
-                "yt-dlp",
-                "--newline",
-                "--no-warnings",
-                "--merge-output-format", "mp4",
-                target_url,
-                "-o",
-                file_name_template
-            ]
-            
-            print()
-            
-            with Progress(
-                SpinnerColumn(),
-                TextColumn("[bold cyan]{task.description}"),
-                BarColumn(bar_width=40, complete_style="green", finished_style="bold green"),
-                TaskProgressColumn(),
-                TimeRemainingColumn(),
-            ) as progress:                
-                task_id = progress.add_task(description=f"Pobieranie odc. {ep_number} [bold yellow](Ścieżka VIDEO)", total=100)
-                
-                process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-                
-                current_percent = 0.0
-
-                for line in process.stdout:
-                    match = re.search(r'\[download\]\s+([\d\.]+)%', line)
-                    if match:
-                        try:
-                            percent = float(match.group(1))
-                            
-                            if percent < current_percent - 50:
-                                progress.update(task_id, description=f"Pobieranie odc. {ep_number} [bold yellow](Ścieżka AUDIO)")
-                                
-                            current_percent = percent
-                            progress.update(task_id, completed=percent)
-                        except ValueError:
-                            pass
-                            
-                process.wait()
-                
-                if process.returncode == 0:
-                    downloaded = True
-                    progress.update(task_id, completed=100, description=f"[bold green]Ukończono odc. {ep_number}!")
-                    break
-
-        if not downloaded:
-            print(colored(f"[BŁĄD] Żadne ze źródeł dla odcinka {ep_number} nie zadziałało.", "red"))
-        
-    print(colored(f"\n[ZAKOŃCZONO] Proces pobierania serii {TITLE} dobiegł końca!", "green"))
-    input(colored("Naciśnij Enter, aby wrócić...", "yellow"))
-    
-    m_details(get_details_for_serie(SLUG))
 
 
 def w_players(SLUG, NUMBER, err=''):
@@ -909,6 +544,7 @@ def w_default(SLUG, NUMBER, process):
         update_rpc("Menu główne", "Szuka anime do obejrzenia...")
         m_welcome()
 
+
 def m_local_library():
     clear()
     
@@ -1013,12 +649,3 @@ def m_local_library():
                 input("Naciśnij Enter...")
                 m_welcome()
                 return
-
-
-def center_text(text: str) -> str:
-    # Odejmujemy 1 od szerokości terminala
-    terminal_width = os.get_terminal_size().columns - 1
-    art_lines = text.splitlines()
-    
-    # Zostawiamy oryginalne .center() bez rstrip()
-    return "\n".join(line.center(terminal_width) for line in art_lines)

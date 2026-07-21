@@ -1,5 +1,6 @@
 import time
 
+# From pip
 import pypresence.exceptions
 from pypresence import Presence, ActivityType
 
