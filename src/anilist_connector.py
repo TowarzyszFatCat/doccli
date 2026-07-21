@@ -85,7 +85,7 @@ def get_details_from_anilist(mal_id):
     return stars, description
 
 
-def update_anilist_progress(mal_id, episode_number, token):
+def update_anilist_progress(mal_id, episode_number, token, is_completed=False):
     if not token or token == "":
         return False
         
@@ -104,11 +104,13 @@ def update_anilist_progress(mal_id, episode_number, token):
     except:
         return False
 
+    # Dodaliśmy $status do mutacji
     mutation = '''
-    mutation ($mediaId: Int, $progress: Int) {
-      SaveMediaListEntry(mediaId: $mediaId, progress: $progress) {
+    mutation ($mediaId: Int, $progress: Int, $status: MediaListStatus) {
+      SaveMediaListEntry(mediaId: $mediaId, progress: $progress, status: $status) {
         id
         progress
+        status
       }
     }
     '''
@@ -121,6 +123,12 @@ def update_anilist_progress(mal_id, episode_number, token):
         'mediaId': anilist_id,
         'progress': episode_number
     }
+    
+    # Jeśli to ostatni odcinek status na COMPLETED jak nie to na CURRENT
+    if is_completed:
+        variables['status'] = 'COMPLETED'
+    else:
+        variables['status'] = 'CURRENT'
     
     try:
         req_mut = post("https://graphql.anilist.co", json={'query': mutation, 'variables': variables}, headers=headers, timeout=5)

@@ -556,24 +556,23 @@ def mpv_play(URL): #, SKIP_TIMES
         #f"--script-opts=doccli_skip-opening_start={SKIP_TIMES[0]},doccli_skip-opening_end={SKIP_TIMES[1]},doccli_skip-ending_start={SKIP_TIMES[2]},doccli_skip-ending_end={SKIP_TIMES[3]}",
 
 
-def _delayed_tracker(details, number, process):
-    for _ in range(10):
+def _delayed_tracker(details, number, process, total_episodes):
+    for _ in range(100):
         if process is None or process.poll() is not None:
-            return
+            return  
         time.sleep(1)
         
     now = datetime.now()
     dt_string = now.strftime("%d/%m/%Y %H:%M")
     
-    # Zapis do historii lokalnej
     ds.history.insert(0, f"[{dt_string}] {details['title']} / {details['title_en']} [Odc: {number}]")
     ds.save()
     
-    # Aktualizacja konta AniList
     if len(ds.settings) > 3:
         token = ds.settings[3]
         if token != "":
-            update_anilist_progress(details['mal_id'], number, token)
+            is_completed = (number == total_episodes)
+            update_anilist_progress(details['mal_id'], number, token, is_completed)
 
 
 def w_default(SLUG, NUMBER, process):
@@ -587,7 +586,7 @@ def w_default(SLUG, NUMBER, process):
         update_rpc(f"Ogląda anime", ds.settings[1])
 
     # Historia ogladania zapisze sie dopiero wtedy gdy dany odcinek jest oddtwarzany przez ponad 120sek
-    threading.Thread(target=_delayed_tracker, args=(details, NUMBER, process), daemon=True).start()
+    threading.Thread(target=_delayed_tracker, args=(details, NUMBER, process, how_many_episodes), daemon=True).start()
 
     choices = [
         "Zmień źródło",
