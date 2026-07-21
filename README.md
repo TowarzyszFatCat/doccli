@@ -24,7 +24,11 @@ NAJWIĘKSZY UPDATE DO TEJ PORY!<br><br>
 
 ---
 
-https://github.com/user-attachments/assets/b4116bf9-c66c-41a5-9da8-6665ff18d3e6
+<p align="center">
+  <img src="https://i.imgur.com/1WbW3Er.png" width="32%" alt="Menu">
+  <img src="https://i.imgur.com/Uzbjjnl.png" width="32%" alt="Na czasie">
+  <img src="https://i.imgur.com/7PMYqqP.png" width="32%" alt="Detale">
+</p>
 
 ---
 
