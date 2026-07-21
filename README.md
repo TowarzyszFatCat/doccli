@@ -76,11 +76,27 @@ NAJWIĘKSZY UPDATE DO TEJ PORY!<br><br>
 </h1>
 
 ### Jak zainstalować:
-1. Pobierz najnowszą wersję Doccli (plik `.zip`) z zakładki **[Releases](https://github.com/TowarzyszFatCat/doccli/releases)**.
-2. Wypakuj pliki w dowolne miejsce (np. do folderu Pobrane).
-3. Wejdź do wypakowanego folderu i uruchom plik `install.bat`.
-4. Instalator automatycznie pobierze wymagane narzędzia (`winget`, `mpv`, `yt-dlp`, `chafa`), skonfiguruje pythona, a na koniec **utworzy skrót z ikoną na Twoim Pulpicie**.
-5. Po udanej instalacji, pobrany folder usunie się sam.
+1. Pobierz najnowszą wersję Doccli (plik `.zip`) z zakładki **[Releases](https://github.com/TowarzyszFatCat/doccli/releases)**,
+2. Wypakuj pliki w dowolne miejsce (np. do folderu Pobrane),
+3. Wejdź do wypakowanego folderu i uruchom plik `install.bat`,
+4. Instalator automatycznie pobierze wymagane narzędzia (`winget`, `mpv`, `yt-dlp`, `chafa`), skonfiguruje pythona, a na koniec **utworzy skrót z ikoną na Twoim Pulpicie**,
+5. (Opcjonalne) Ustaw [Windows Terminal](https://apps.microsoft.com/store/detail/windows-terminal/9N0DX20HK701) jako domyślny terminal, jeżeli go nie masz lub nie wiesz jak to zrobić patrz niżej, 
+6. Po udanej instalacji, pobrany folder usunie się sam.
+
+> [!TIP]
+> Aby wyciągnąć 100% możliwości z interfejsu `doccli`, **zalecam** korzystanie z [Windows Terminal](https://apps.microsoft.com/store/detail/windows-terminal/9N0DX20HK701). 
+> 
+> Stary systemowy wiersz polecenia (CMD) jest mocno przestarzały i ma duże ograniczenia. Przesiadka na Windows Terminal daje Ci:
+> * **Wysoką jakość okładek** – obrazy renderują się poprawnie i płynnie, zamiast zamieniać się w "krzaczki" i znaki ASCII.
+> * Pełne wsparcie dla nowoczesnych kolorów.
+> * Poprawne wyświetlanie wszystkich ikon i emoji w menu.
+> 
+> **Jak zainstalować i ustawić jako domyślny?**
+> 1. Pobierz Windows Terminal ze Sklepu Microsoft lub wpisz w zwykłej konsoli: `winget install Microsoft.WindowsTerminal`
+> 2. Uruchom pobrany **Terminal**.
+> 3. Wejdź w **Ustawienia** (skrót `Ctrl + ,`).
+> 4. W zakładce *Uruchamianie* znajdź opcję **Domyślna aplikacja terminala** i zmień z *Wybór niech decyduje system Windows* na **Windows Terminal**.
+> 5. Kliknij Zapisz. Od teraz każde uruchomienie `doccli` odpali się w nowym, pięknym oknie!
 
 ### Możliwe problemy:
 - Na windowsie 10 może pojawić się problem z Instalatorem Aplikacji (App Installer), instalator doccli powinien wyświetlić o tym komunikat i otworzyć okno Microsoft Store, w którym należy zaktualizować aplikację a następnie uruchomić instalator ponownie.
