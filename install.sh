@@ -31,6 +31,7 @@ sudo mv doccli ~/.doccli_src
 
 # Bezpieczne uprawnienia plików
 sudo chmod 755 ~/.doccli_src
+chmod -R 755 ~/.doccli_src/src/
 sudo chmod 644 ~/.doccli_src/*
 echo ""
 
