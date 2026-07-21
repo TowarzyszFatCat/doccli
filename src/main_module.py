@@ -6,6 +6,7 @@ import tempfile
 import webbrowser
 import subprocess
 from subprocess import Popen, DEVNULL
+import threading
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 
@@ -22,7 +23,7 @@ from stats import m_stats
 from menus_decor import MAIN_MENU, SZUKAJ, NA_CZASIE, MOJA_LISTA, HISTORIA, MOJA_BIBLIOTEKA
 from discord_integration import update_rpc, set_running
 from docchi_api_connector import get_episodes_count_for_serie, get_players_list, get_details_for_serie, extract_lycoris_direct_link
-from anilist_connector import get_details_from_anilist
+from anilist_connector import get_details_from_anilist, update_anilist_progress, get_anilist_plan_to_watch, sync_anilist_list_status
 
 
 def kill_process(process):
@@ -94,33 +95,72 @@ def m_welcome():
         sys.exit()
 
 def m_settings():
+    choices = [
+        "Ustawienia Discord RPC",
+        "Połącz / Zaktualizuj konto AniList",
+        "Wróć do menu głównego"
+    ]
+    
+    prompt_text = 'Wybierz co chcesz skonfigurować: '
+    ans = open_menu(choices=choices, prompt=prompt_text, height=5)
+    
+    if ans == choices[0]:
+        rpc_choices = [{
+                "type": "list",
+                "message": "Czy chcesz aby znajomi na discordzie widzieli co oglądasz?",
+                "choices": ["Tak", "Nie"],
+            }]
+        res = prompt(questions=rpc_choices)
 
-    choices = [{
-            "type": "list",
-            "message": "Czy chcesz aby znajomi na discordzie widzieli co oglądasz?",
-            "choices": ["Tak", "Nie"],
-        }]
+        if res[0] == "Nie":
+            ds.settings[0] = False
+            ds.save()
+            m_welcome()
+        if res[0] == "Tak":
+            clear()
+            ds.settings[0] = True
+            choices2 = [{"type": "input", "message": "Wpisz co tylko zechcesz! Będzie to wyświetlane w II linijce statusu. Zostaw puste jeśli chcesz aby był wyświetlany domyślny status. [Minimalnie 2 znaki] (Domyślna wartość: 'Używa doccli!') \n", "name": "status_dc"}]
+            res2 = prompt(questions=choices2)
 
-    res = prompt(questions=choices)
-
-    if res[0] == "Nie":
-        ds.settings[0] = False
-        ds.save()
-        m_welcome()
-    if res[0] == "Tak":
+            if not res2['status_dc'] == "" and len(res2['status_dc']) > 1:
+                ds.settings[1] = res2['status_dc']
+                ds.save()
+                m_welcome()
+            else:
+                ds.settings[1] = 'Używa doccli!'
+                ds.save()
+                m_welcome()
+                
+    elif ans == choices[1]:
         clear()
-        ds.settings[0] = True
-        choices2 = [{"type": "input", "message": "Wpisz co tylko zechcesz! Będzie to wyświetlane w II linijce statusu. Zostaw puste jeśli chcesz aby był wyświetlany domyślny status. [Minimalnie 2 znaki] (Domyślna wartość: 'Używa doccli!') \n", "name": "status_dc"}]
-        res2 = prompt(questions=choices2)
-
-        if not res2['status_dc'] == "" and len(res2['status_dc']) > 1:
-            ds.settings[1] = res2['status_dc']
+        
+        CLIENT_ID = "16904"
+        
+        print(colored("Zaraz otworzy się przeglądarka z prośbą o autoryzację aplikacji doccli na Twoim koncie AniList.", "cyan"))
+        print(colored("Po zatwierdzeniu, skopiuj Token (długi ciąg znaków) i wklej go poniżej.", "cyan"))
+        print(colored("Jeżeli chcesz odłączyć konto AniList zostaw to pole puste i naciśnij ENTER", "cyan"))
+        print("")
+        
+        auth_url = f"https://anilist.co/api/v2/oauth/authorize?client_id={CLIENT_ID}&response_type=token"
+        
+        try:
+            webbrowser.open(auth_url)
+        except:
+            print(colored(f"Nie udało się otworzyć przeglądarki! Wejdź ręcznie w ten link:\n{auth_url}", "yellow"))
+            print("")
+            
+        questions = [{"type": "input", "message": "Wklej swój AniList Access Token (lub zostaw puste by anulować):", "name": "token"}]
+        res = prompt(questions)
+        
+        if res['token']:
+            ds.settings[3] = res['token'].strip()
             ds.save()
-            m_welcome()
-        else:
-            ds.settings[1] = 'Używa doccli!'
-            ds.save()
-            m_welcome()
+            print(colored("\n[+] Pomyślnie zapisano token! Od teraz doccli będzie automatycznie zapisywać postęp.", "green"))
+            time.sleep(3)
+        m_settings()
+        
+    elif ans == choices[2]:
+        m_welcome()
 
 
 def m_discord():
@@ -129,18 +169,44 @@ def m_discord():
 
 
 def m_mylist():
-    choices = ['Cofnij']
+    has_token = len(ds.settings) > 3 and ds.settings[3] != ""
+    
+    if has_token:
+        clear()
+        print(colored("[INFO] Trwa automatyczna synchronizacja z AniList...", "cyan"))
+        
+        token = ds.settings[3]
+        mal_ids = get_anilist_plan_to_watch(token)
+        
+        if mal_ids is not None:
+            all_series = get_cached_series_list()
+            
+            for series in all_series:
+                if series['mal_id'] in mal_ids:
+                    if series not in ds.mylist:
+                        ds.mylist.append(series)
+                        
+            for local_anime in ds.mylist:
+                if local_anime['mal_id'] not in mal_ids:
+                    threading.Thread(target=sync_anilist_list_status, args=(local_anime['mal_id'], token, True), daemon=True).start()
+                        
+            ds.save()
 
-    for element in ds.mylist:
+    choices = ['Cofnij']
+    
+    display_list = list(reversed(ds.mylist))
+    
+    for element in display_list:
         choices.append(f"{element['title']} | {element['title_en']}")
 
-    prompt = 'Wybierz anime: '
-    ans = open_menu(choices=choices, prompt=prompt, message=MOJA_LISTA)
+    prompt_txt = 'Wybierz anime: '
+    ans = open_menu(choices=choices, prompt=prompt_txt, message=MOJA_LISTA)
+    
     if ans == choices[0]:
         m_welcome()
     else:
         index = choices.index(ans)
-        m_details(ds.mylist[index - 1])
+        m_details(display_list[index - 1])
 
 
 def m_history():
@@ -182,7 +248,6 @@ def m_find():
 def perform_search(search_key):
     all_series_json = get_cached_series_list()
     
-    # Dynamiczne wyciąganie odpowiedniego klucza
     choices = [serie[search_key] for serie in all_series_json]
 
     prompt = 'Szukaj: '
@@ -244,7 +309,7 @@ def m_details(details):
     choices.append("Wyszukiwarka")
     choices.append("Menu główne")
 
-    prompt = 'Wybierz co chcesz zrobić: '
+    prompt_txt = 'Wybierz co chcesz zrobić: '
 
     genres = "[ "
     for genre in details['genres']:
@@ -253,19 +318,16 @@ def m_details(details):
     genres += " ]"
 
     episode_count = get_episodes_count_for_serie(details['slug'])
-
-    # 1. Pobieramy ocenę i opis z nowej funkcji (pamiętaj by zaktualizować importy na górze pliku!)
     stars, description = get_details_from_anilist(str(details["mal_id"]))
 
-    # 2. Wywołujemy open_menu przekazując zmienną 'description' i zmienione 'stars'
     ans = open_menu(
         choices=choices, 
-        prompt=prompt, 
+        prompt=prompt_txt, 
         qmark=f'{details["title"]} / {details["title_en"]} \n [Ilość odcinków: {episode_count}] [Ocena: {stars}]', 
         message=genres, 
         height=6, 
         image=details['cover'],
-        description=description  # <--- Dodany nowy parametr
+        description=description  
     )
 
     if ans == choices[0]:
@@ -278,13 +340,20 @@ def m_details(details):
         w_download_season(details['slug'], details['title'])
         m_details(details)
     elif ans == choices[3]:
+        has_token = len(ds.settings) > 3 and ds.settings[3] != ""
+        token = ds.settings[3] if has_token else ""
+        
         if details in ds.mylist:
             ds.mylist.remove(details)
             ds.save()
+            if has_token:
+                threading.Thread(target=sync_anilist_list_status, args=(details['mal_id'], token, False), daemon=True).start()
             m_details(details)
         else:
             ds.mylist.append(details)
             ds.save()
+            if has_token:
+                threading.Thread(target=sync_anilist_list_status, args=(details['mal_id'], token, True), daemon=True).start()
             m_details(details)
     elif ans == choices[4]:
         m_find()
@@ -487,6 +556,26 @@ def mpv_play(URL): #, SKIP_TIMES
         #f"--script-opts=doccli_skip-opening_start={SKIP_TIMES[0]},doccli_skip-opening_end={SKIP_TIMES[1]},doccli_skip-ending_start={SKIP_TIMES[2]},doccli_skip-ending_end={SKIP_TIMES[3]}",
 
 
+def _delayed_tracker(details, number, process):
+    for _ in range(10):
+        if process is None or process.poll() is not None:
+            return
+        time.sleep(1)
+        
+    now = datetime.now()
+    dt_string = now.strftime("%d/%m/%Y %H:%M")
+    
+    # Zapis do historii lokalnej
+    ds.history.insert(0, f"[{dt_string}] {details['title']} / {details['title_en']} [Odc: {number}]")
+    ds.save()
+    
+    # Aktualizacja konta AniList
+    if len(ds.settings) > 3:
+        token = ds.settings[3]
+        if token != "":
+            update_anilist_progress(details['mal_id'], number, token)
+
+
 def w_default(SLUG, NUMBER, process):
     how_many_episodes = get_episodes_count_for_serie(SLUG)
 
@@ -497,11 +586,8 @@ def w_default(SLUG, NUMBER, process):
     else:
         update_rpc(f"Ogląda anime", ds.settings[1])
 
-    # Save to history
-    now = datetime.now()
-    dt_string = now.strftime("%d/%m/%Y %H:%M")
-    ds.history.insert(0, f"[{dt_string}] {details['title']} / {details['title_en']} [Odc: {NUMBER}]")
-    ds.save()
+    # Historia ogladania zapisze sie dopiero wtedy gdy dany odcinek jest oddtwarzany przez ponad 120sek
+    threading.Thread(target=_delayed_tracker, args=(details, NUMBER, process), daemon=True).start()
 
     choices = [
         "Zmień źródło",

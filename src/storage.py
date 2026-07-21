@@ -17,7 +17,7 @@ class DataStorage:
         # Dane
         self.mylist = []
         self.continue_data = [None, None]
-        self.settings = [True, "Używa doccli!", True]
+        self.settings = [True, "Używa doccli!", True, ""]
         self.history = []
 
         self.load()
@@ -45,15 +45,15 @@ class DataStorage:
         with open(self.path_history, 'r') as file:
             self.history = json.load(file)
 
-        # Ustawienia
+# Ustawienia
         if not os.path.exists(self.path_settings):
-            with open(self.path_settings, 'w') as file: json.dump([True, "Używa doccli!", True], file, indent=4)
+            with open(self.path_settings, 'w') as file: json.dump([True, "Używa doccli!", True, ""], file, indent=4)
         with open(self.path_settings, 'r') as file:
             self.settings = json.load(file)
-            # Naprawa starych plików po aktualizacji
-            if len(self.settings) != 3:
-                self.settings.append(True)
-                self.save()
+            # Naprawa starych plików po aktualizacji - upewnia się, że mamy 4 elementy (w tym token)
+            while len(self.settings) < 4:
+                self.settings.append("")
+            self.save()
 
     def save(self):
         """Zapisuje obecne zmienne na dysk."""

@@ -6,7 +6,7 @@ from pypresence import Presence, ActivityType
 
 discord_data = ["Menu główne", "Ładowanie..."]
 start_time = None
-
+running = False
 
 try:
     client_ID = '1206583480771936318'
