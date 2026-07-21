@@ -26,6 +26,9 @@ NAJWIĘKSZY UPDATE DO TEJ PORY!<br><br>
 - Rozbudowane menu pobierania z wyborem jakości,<br>
 - Możliwość wybrania jakości i sortowanie według jakości.
 
+**v2.30.2:**
+- Możliwość wybrania folderu pobierania.
+
 ---
 
 <p align="center">

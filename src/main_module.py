@@ -106,14 +106,17 @@ def m_welcome():
         sys.exit()
 
 def m_settings():
+    current_dl_path = ds.settings[4] if ds.settings[4] != "" else "Domyślny"
+
     choices = [
         "Ustawienia Discord RPC",
         "Połącz / Zaktualizuj konto AniList",
+        f"Zmień folder pobierania (Obecnie: {current_dl_path})",
         "Wróć do menu głównego"
     ]
     
     prompt_text = 'Wybierz co chcesz skonfigurować: '
-    ans = open_menu(choices=choices, prompt=prompt_text, height=5)
+    ans = open_menu(choices=choices, prompt=prompt_text, height=6)
     
     if ans == choices[0]:
         rpc_choices = [{
@@ -144,20 +147,15 @@ def m_settings():
                 
     elif ans == choices[1]:
         clear()
-        
         CLIENT_ID = "16904"
-        
         print(colored("Zaraz otworzy się przeglądarka z prośbą o autoryzację aplikacji doccli na Twoim koncie AniList.", "cyan"))
-        print(colored("Po zatwierdzeniu, skopiuj Token (długi ciąg znaków) i wklej go poniżej.", "cyan"))
-        print("")
+        print(colored("Po zatwierdzeniu, skopiuj Token (długi ciąg znaków) i wklej go poniżej.\n", "cyan"))
         
         auth_url = f"https://anilist.co/api/v2/oauth/authorize?client_id={CLIENT_ID}&response_type=token"
-        
         try:
             webbrowser.open(auth_url)
         except:
-            print(colored(f"Nie udało się otworzyć przeglądarki! Wejdź ręcznie w ten link:\n{auth_url}", "yellow"))
-            print("")
+            print(colored(f"Nie udało się otworzyć przeglądarki! Wejdź ręcznie w ten link:\n{auth_url}\n", "yellow"))
             
         questions = [{"type": "input", "message": "Wklej swój AniList Access Token (lub zostaw puste by anulować):", "name": "token"}]
         res = prompt(questions)
@@ -168,8 +166,35 @@ def m_settings():
             print(colored("\n[+] Pomyślnie zapisano token! Od teraz doccli będzie automatycznie zapisywać postęp.", "green"))
             time.sleep(3)
         m_settings()
-        
+
     elif ans == choices[2]:
+        clear()
+        print(colored(f"[INFO] Obecny folder pobierania: {current_dl_path}", "cyan"))
+        print(colored("Wpisz pełną ścieżkę do nowego folderu (np. D:\\Anime lub /home/user/Wideo).", "yellow"))
+        print(colored("Zostaw to pole puste i wciśnij ENTER, aby przywrócić domyślny folder wewnątrz programu.\n", "yellow"))
+        
+        questions = [{"type": "input", "message": "Podaj nową ścieżkę:", "name": "new_path"}]
+        res = prompt(questions)
+        new_input = res['new_path'].strip()
+        
+        if new_input == "":
+            ds.settings[4] = ""
+            ds.save()
+            print(colored("\n[+] Przywrócono domyślny folder pobierania!", "green"))
+        else:
+            try:
+                # Tworzy podany folder, jeśli jeszcze nie istnieje
+                os.makedirs(new_input, exist_ok=True)
+                ds.settings[4] = new_input
+                ds.save()
+                print(colored(f"\n[+] Pomyślnie zmieniono folder zapisu na: {new_input}", "green"))
+            except Exception as e:
+                print(colored(f"\n[-] Błąd podczas tworzenia folderu (Nieprawidłowa ścieżka?): {e}", "red"))
+        
+        time.sleep(3)
+        m_settings()
+        
+    elif ans == choices[3]:
         m_welcome()
 
 
@@ -350,7 +375,7 @@ def m_details(details):
         w_list(details['slug'])
         
     elif ans == choices[2]: 
-        w_download_season(details['slug'], details['title'])
+        w_download_season(details['slug'], details['title'], base_download_dir=ds.settings[4])
         m_details(details)
         
     elif ans == choices[3]: 
@@ -392,7 +417,7 @@ def m_details(details):
                 print(colored("Błąd: Nie podano poprawnych numerów odcinków!", "red"))
                 time.sleep(2)
             else:
-                w_download_season(details['slug'], details['title'], ep_list)
+                w_download_season(details['slug'], details['title'], ep_list, base_download_dir=ds.settings[4])
                 
         m_details(details)
         
@@ -733,12 +758,15 @@ def w_default(SLUG, NUMBER, process):
 
 def m_local_library():
     clear()
-    
-    current_dir = os.getcwd()
-    downloads_dir = os.path.join(current_dir, "doccli_downloads")
+        
+    if ds.settings[4] != "":
+        downloads_dir = ds.settings[4]
+    else:
+        current_dir = os.getcwd()
+        downloads_dir = os.path.join(current_dir, "doccli_downloads")
     
     if not os.path.exists(downloads_dir):
-        print(colored("[BŁĄD] Twój folder doccli_downloads jeszcze nie istnieje.", "red"))
+        print(colored(f"[BŁĄD] Twój folder pobierania jeszcze nie istnieje ({downloads_dir}).", "red"))
         print(colored("Najpierw musisz pobrać jakieś anime!", "yellow"))
         print('')
         input(colored("Naciśnij Enter, aby wrócić do menu...", "yellow"))

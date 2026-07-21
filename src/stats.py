@@ -13,7 +13,13 @@ from termcolor import colored
 from storage import ds
 from ui_utils import clear
 
-def get_folder_size(folder_path="doccli_downloads"):
+def get_folder_size():
+        
+    if ds.settings[4] != "":
+        folder_path = ds.settings[4]
+    else:
+        folder_path = os.path.join(os.getcwd(), "doccli_downloads")
+
     total_size = 0
     if os.path.exists(folder_path):
         for dirpath, dirnames, filenames in os.walk(folder_path):

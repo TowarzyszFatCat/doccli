@@ -12,7 +12,7 @@ from termcolor import colored
 from docchi_api_connector import extract_lycoris_direct_link, get_episodes_count_for_serie, get_players_list
 from ui_utils import clear, open_menu
 
-def w_download_season(SLUG, TITLE, episodes_list=None):
+def w_download_season(SLUG, TITLE, episodes_list=None, base_download_dir=""):
     how_many_episodes = get_episodes_count_for_serie(SLUG)
 
     if how_many_episodes == 404:
@@ -43,9 +43,11 @@ def w_download_season(SLUG, TITLE, episodes_list=None):
         res = chosen_quality.replace('p', '')
         quality_args = ["-S", f"res:{res}"]
 
-    current_dir = os.getcwd()
+    if not base_download_dir:
+        base_download_dir = os.path.join(os.getcwd(), "doccli_downloads")
+        
     safe_title = re.sub(r'[\\/*?:"<>|]', "", TITLE).strip()
-    series_dir = os.path.join(current_dir, "doccli_downloads", safe_title)
+    series_dir = os.path.join(base_download_dir, safe_title)
     
     os.makedirs(series_dir, exist_ok=True)
 
