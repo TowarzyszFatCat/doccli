@@ -27,12 +27,13 @@ echo ""
 echo -e "${YELLOW}[4/5] Konfiguruję pliki programu...${NC}"
 sudo chmod +x doccli/doccli
 sudo mv doccli/doccli /usr/local/bin
+
 sudo mv doccli ~/.doccli_src
 
-# Bezpieczne uprawnienia plików
-sudo chmod 755 ~/.doccli_src
-chmod -R 755 ~/.doccli_src/src/
-sudo chmod 644 ~/.doccli_src/*
+sudo chown -R $USER:$USER ~/.doccli_src
+
+find ~/.doccli_src -type d -exec chmod 755 {} \;
+find ~/.doccli_src -type f -exec chmod 644 {} \;
 echo ""
 
 echo -e "${YELLOW}[5/5] Konfiguruję biblioteki Pythona (może to chwilę potrwać)...${NC}"
