@@ -63,9 +63,19 @@ def m_welcome():
     choices.append("Dołącz do discorda")
     choices.append("Zamknij")
 
-    prompt = 'Wybierz co chcesz zrobić: '
+    prompt_txt = 'Wybierz co chcesz zrobić: '
 
-    ans = open_menu(choices=choices, prompt=prompt, height=10, message=MAIN_MENU)
+    # Status anilist
+    has_token = len(ds.settings) > 3 and ds.settings[3] != ""
+    
+    if has_token:
+        status_txt = "🟢 STATUS: Połączono z kontem AniList!"
+    else:
+        status_txt = "🔴 STATUS: Brak połączenia z AniList (Skonfiguruj w Ustawieniach)"    
+
+    dynamic_menu_art = MAIN_MENU + "\n" + status_txt + "\n"
+
+    ans = open_menu(choices=choices, prompt=prompt_txt, height=10, message=dynamic_menu_art)
 
     if ans == choices[0]:
         m_find()
