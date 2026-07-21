@@ -9,18 +9,22 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a> i nie tylko
 NAJWIĘKSZY UPDATE DO TEJ PORY!<br><br>
 </h2>
 
-- Pełna integracja z AniList (automatyczne zapisywanie postępu i oznaczanie zakończonych serii)!<br>
-- Dwustronna synchronizacja "Mojej listy" z "Plan to Watch" na AniList w tle!<br>
-- W pełni natywne wsparcie na Windowsie z automatycznym instalatorem!<br>
-- Wielowątkowe sprawdzanie dostępności źródeł na żywo!<br>
-- Pobieranie pełnych sezonów wraz z biblioteką offline i trybem oglądania automatycznego!<br>
-- Wskaźnik statusu połączenia z kontem AniList w głównym menu!<br>
-- Ulepszone sortowanie "Mojej listy" (najnowsze tytuły wyświetlane na samej górze)!<br>
-- Opisy anime tłumaczone maszynowo na język polski!<br>
-- Statystyki programu oraz unikalne rangi na podstawie czasu oglądania!<br>
-- Wyświetlanie okładek w pełnej rozdzielczości z dopasowaniem do terminala!<br>
+**v2.30:**
+- Pełna integracja z AniList (automatyczne zapisywanie postępu i oznaczanie zakończonych serii),<br>
+- Dwustronna synchronizacja "Mojej listy" z "Plan to Watch" na AniList w tle,<br>
+- W pełni natywne wsparcie na Windowsie z automatycznym instalatorem,<br>
+- Wielowątkowe sprawdzanie dostępności źródeł na żywo,<br>
+- Pobieranie pełnych sezonów wraz z biblioteką offline i trybem oglądania automatycznego,<br>
+- Wskaźnik statusu połączenia z kontem AniList w głównym menu,<br>
+- Ulepszone sortowanie "Mojej listy" (najnowsze tytuły wyświetlane na samej górze),<br>
+- Opisy anime tłumaczone maszynowo na język polski,<br>
+- Statystyki programu oraz unikalne rangi na podstawie czasu oglądania,<br>
+- Wyświetlanie okładek w pełnej rozdzielczości z dopasowaniem do terminala,<br>
 - Liczne poprawki stabilności (m.in. naprawa błędów źródeł oraz obsługa Discord RPC).
 
+**v2.30.1:**
+- Rozbudowane menu pobierania z wyborem jakości,<br>
+- Możliwość wybrania jakości i sortowanie według jakości.
 
 ---
 

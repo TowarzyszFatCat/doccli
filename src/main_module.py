@@ -25,6 +25,7 @@ from discord_integration import update_rpc, set_running
 from docchi_api_connector import get_episodes_count_for_serie, get_players_list, get_details_for_serie, extract_lycoris_direct_link
 from anilist_connector import get_details_from_anilist, update_anilist_progress, get_anilist_plan_to_watch, sync_anilist_list_status
 
+global_player_quality = "best"
 
 def kill_process(process):
     if not process:
@@ -307,7 +308,8 @@ def m_details(details):
     choices = [
         "Oglądaj od pierwszego odcinka",
         "Lista odcinków",
-        "Pobierz cały sezon"
+        "Pobierz cały sezon",
+        "Pobierz wybrane odcinki"
     ]
 
     if details in ds.mylist:
@@ -330,25 +332,71 @@ def m_details(details):
     stars, description = get_details_from_anilist(str(details["mal_id"]))
 
     ans = open_menu(
-        choices=choices, 
-        prompt=prompt_txt, 
-        qmark=f'{details["title"]} / {details["title_en"]} \n [Ilość odcinków: {episode_count}] [Ocena: {stars}]', 
-        message=genres, 
-        height=6, 
+        choices=choices,
+        prompt=prompt_txt,
+        qmark=f'{details["title"]} / {details["title_en"]} \n [Ilość odcinków: {episode_count}] [Ocena: {stars}]',
+        message=genres,
+        height=7,
         image=details['cover'],
-        description=description  
+        description=description 
     )
 
     if ans == choices[0]:
         ds.continue_data[0] = details
         w_first(details['slug'])
+        
     elif ans == choices[1]:
         ds.continue_data[0] = details
         w_list(details['slug'])
-    elif ans == choices[2]:
+        
+    elif ans == choices[2]: 
         w_download_season(details['slug'], details['title'])
         m_details(details)
-    elif ans == choices[3]:
+        
+    elif ans == choices[3]: 
+        questions = [{
+            "type": "input", 
+            "message": f"Wpisz numery do pobrania (np. 3 lub 4-6 lub 1,3,5 lub 1,7-8,11) [Wszystkich odc: {episode_count}]:", 
+            "name": "episodes_input"
+        }]
+        res = prompt(questions)
+        
+        if res['episodes_input']:
+            episodes_to_download = set()
+            
+            for part in res['episodes_input'].split(','):
+                part = part.strip()
+                if not part: 
+                    continue
+                    
+                if '-' in part:
+                    try:
+                        start, end = map(int, part.split('-'))
+                        start, end = min(start, end), max(start, end)
+                        start_safe = max(1, start)
+                        end_safe = min(episode_count, end)
+                        episodes_to_download.update(range(start_safe, end_safe + 1))
+                    except ValueError: 
+                        pass 
+                else:
+                    try:
+                        ep = int(part)
+                        if 1 <= ep <= episode_count:
+                            episodes_to_download.add(ep)
+                    except ValueError: 
+                        pass 
+
+            ep_list = sorted(list(episodes_to_download))
+            
+            if not ep_list:
+                print(colored("Błąd: Nie podano poprawnych numerów odcinków!", "red"))
+                time.sleep(2)
+            else:
+                w_download_season(details['slug'], details['title'], ep_list)
+                
+        m_details(details)
+        
+    elif ans == choices[4]:
         has_token = len(ds.settings) > 3 and ds.settings[3] != ""
         token = ds.settings[3] if has_token else ""
         
@@ -364,9 +412,11 @@ def m_details(details):
             if has_token:
                 threading.Thread(target=sync_anilist_list_status, args=(details['mal_id'], token, True), daemon=True).start()
             m_details(details)
-    elif ans == choices[4]:
-        m_find()
+            
     elif ans == choices[5]:
+        m_find()
+        
+    elif ans == choices[6]:
         m_welcome()
 
 
@@ -402,9 +452,9 @@ def w_list(SLUG):
 
 
 def w_players(SLUG, NUMBER, err=''):
+    global global_player_quality
     players = []
 
-    # Check if site is fine
     if get_players_list(SLUG, NUMBER) == 404:
         clear()
         print(colored("Nie znaleziono strony [Błąd 404]", "red"))
@@ -415,84 +465,122 @@ def w_players(SLUG, NUMBER, err=''):
         player_info = [player['player_hosting'], player['player']]
         players.append(player_info)
 
-
-
-    print(colored("Trwa analizowanie i sprawdzanie źródeł na żywo...", "cyan"))
+    print(colored("Trwa analizowanie, sprawdzanie źródeł na żywo i pobieranie jakości...", "cyan"))
     
     def check_link(player):
         hosting_name, url = player[0], player[1]
         url_lower = url.lower()
         
         if "lycoris" in url_lower:
-            return "ok" if extract_lycoris_direct_link(url) else "error"
+            direct = extract_lycoris_direct_link(url)
+            return ("ok", "Auto") if direct else ("error", "")
             
         elif "mega" in url_lower:
-            return "mega" if shutil.which('megatools') is not None else "error"
+            return ("mega", "MEGA") if shutil.which('megatools') is not None else ("error", "")
             
         else:
             try:
                 res = subprocess.run(
+                    ["yt-dlp", "--print", "%(resolution)s", "--no-warnings", url],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.DEVNULL,
+                    text=True,
+                    timeout=15 
+                )
+                
+                if res.returncode == 0:
+                    lines = [l for l in res.stdout.strip().split('\n') if l]
+                    if lines and lines[-1] != "NA":
+                        raw_res = lines[-1].strip().lower()
+                        
+                        # --- UNIFIKACJA ROZDZIELCZOŚCI ---
+                        if "x" in raw_res:
+                            # Przerabia "1920x1080" na "1080p"
+                            resolved_res = f"{raw_res.split('x')[-1]}p"
+                        elif raw_res.isdigit():
+                            # Przerabia samo "1080" na "1080p"
+                            resolved_res = f"{raw_res}p"
+                        else:
+                            # Zostawia w spokoju to, co już ma np. "1080p"
+                            resolved_res = raw_res
+                    else:
+                        resolved_res = "Nieznana"
+                        
+                    return ("ok", resolved_res)
+                    
+                # System zapasowy dla źródeł odrzucających komendę --print
+                res_fallback = subprocess.run(
                     ["yt-dlp", "-q", "--simulate", "--no-warnings", url],
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
-                    timeout=15 # czas zalezny od predkosci pc oraz sieci
+                    timeout=15 
                 )
-                return "ok" if res.returncode == 0 else "error"
+                
+                if res_fallback.returncode == 0:
+                    return ("ok", "Nieznana")
+                    
+                return ("error", "")
             except:
-                return "error"
+                return ("error", "")
 
-    # Jednoczesne sprawdzanie wszystkich linków naraz
     with ThreadPoolExecutor(max_workers=15) as executor:
         results = list(executor.map(check_link, players))
 
     choices = []
     
-
-    for player, status in zip(players, results):
+    for player, result in zip(players, results):
+        status, res_text = result
         hosting_name = str(player[0])
         source_link = player[1]
 
-
         if status == "ok":
-            prefix = "✅ "  # Działa
+            prefix = f"✅ [{res_text}] "
         elif status == "mega":
-            prefix = "🟡 "  # Mega
+            prefix = "🟡 [MEGA] "
         else:
-            prefix = "❌ "  # Nie działa
+            prefix = "❌ [Brak] "
             
-        display_line = (prefix + hosting_name).ljust(25) + " | Link źródła: " + source_link
-
+        display_line = (prefix + hosting_name).ljust(40) + " | Link źródła: " + source_link
         choices.append(display_line)
 
+    # ZMIANA: Dodajemy opcje zmiany jakości i powrotu na koniec listy
+    choices.append(f"Zmień maksymalną jakość (Obecnie: {global_player_quality})")
     choices.append("Wróć do menu")
 
-
-    last_option = choices[-1]
-
     prompt = 'Wybierz źródło: '
-
     ans = open_menu(choices=choices, prompt=prompt, qmark=err)
 
-    if ans == last_option:
+    if ans == choices[-1]: # Wróć do menu
         m_welcome()
+        return
+        
+    if ans == choices[-2]: # Zmiana jakości
+        quality_choices = ["Źródłowa", "1080p", "720p", "480p", "360p"]
+        chosen = open_menu(choices=quality_choices, prompt="Wybierz preferowaną jakość:", height=6)
+        
+        if chosen.startswith("best"):
+            global_player_quality = "best"
+        else:
+            global_player_quality = chosen
+            
+        w_players(SLUG, NUMBER, err=f'Zmieniono jakość odtwarzacza na {global_player_quality}')
+        return
 
     ans_index_in_choices = choices.index(ans)
     ans_index = players[ans_index_in_choices]
 
     process = mpv_play(ans_index[1])
 
-
-    # Wait 3 sec and check if started playing
     print("Rozpoczynanie odtwarzania...")
-    time.sleep(3)                                      # CZAS ZALEZNY OD PREDKOSCI LACZA
+    time.sleep(3)                                      
     if process == None or process.poll() is not None:
-        w_players(SLUG, NUMBER, err='Wybrane źródło nie jest dostępne, lub nie jest wspierane! Sprawdź czy źródło działa używając linku bezpośredniego. Możesz zgłosić niedziałające źródła na discordzie.')
+        w_players(SLUG, NUMBER, err='Wybrane źródło nie jest dostępne, lub nie jest wspierane!')
 
     w_default(SLUG, NUMBER, process)
 
 
-def mpv_play(URL): #, SKIP_TIMES
-
+def mpv_play(URL):
+    global global_player_quality
     mpv_exec = "mpv.exe" if os.name == "nt" else "mpv"
 
     if shutil.which('mpv') is None:
@@ -513,6 +601,11 @@ def mpv_play(URL): #, SKIP_TIMES
         else:
             print(colored("[-] Nie udało się zdekodować linku. Próbuję odtworzyć domyślnie...", "yellow"))
 
+    ytdl_format_arg = "bestvideo+bestaudio/best"
+    if global_player_quality != "best":
+        height = global_player_quality.replace('p', '')
+        ytdl_format_arg = f"bestvideo[height<=?{height}]+bestaudio/best"
+
     if "mega" in URL:
         if shutil.which('megatools') is None:
             print(colored("[UWAGA]", "yellow"), colored("Aby oglądać z tego źródła wymagana jest instalacja", "white"), colored("megatools", "green"), '\n')
@@ -527,12 +620,11 @@ def mpv_play(URL): #, SKIP_TIMES
                 try:
                     os.remove(file_path)
                 except OSError:
-                    pass # Omijamy błędy usuwania, np. zablokowane pliki na Windowsie
+                    pass 
 
         mega_url = URL.replace('embed', 'file')
         before_files = set(os.listdir(temp_dir))
         
-        # Uwaga: megadl na Windowsie wymaga dodania go do zmiennych środowiskowych PATH
         os.system(f'megadl {mega_url} --path {temp_dir}')
         
         after_files = set(os.listdir(temp_dir))
@@ -556,13 +648,13 @@ def mpv_play(URL): #, SKIP_TIMES
         process = Popen(args=[mpv_exec,
                               "--save-position-on-quit",
                               "--input-terminal=no",
+                              f"--ytdl-format={ytdl_format_arg}",
                               f"--chapters-file={chapters_file}",
                               URL],
                         shell=False,
                         stdout=DEVNULL,
                         stderr=DEVNULL)
         return process
-        #f"--script-opts=doccli_skip-opening_start={SKIP_TIMES[0]},doccli_skip-opening_end={SKIP_TIMES[1]},doccli_skip-ending_start={SKIP_TIMES[2]},doccli_skip-ending_end={SKIP_TIMES[3]}",
 
 
 def _delayed_tracker(details, number, process, total_episodes):
