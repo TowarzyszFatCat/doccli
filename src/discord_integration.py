@@ -7,14 +7,16 @@ from pypresence import Presence, ActivityType
 discord_data = ["Menu główne", "Ładowanie..."]
 start_time = None
 running = False
+RPC = None
 
 try:
     client_ID = '1206583480771936318'
     RPC = Presence(client_ID)
     RPC.connect()
     start_time = time.time()
-except: # ojojoj niebezpiecznie
-    pass
+except Exception: 
+    # Discord jest wyłączony
+    RPC = None
 
 
 def update_rpc(first_line, second_line):
@@ -22,12 +24,30 @@ def update_rpc(first_line, second_line):
     discord_data = [first_line, second_line]
 
 
-def set_running(bool):
+def set_running(val):
     global running
-    running = bool
+    running = val
 
 
 def start_rpc():
     while running:
-        RPC.update(activity_type=ActivityType.WATCHING, state=discord_data[1], details=discord_data[0], large_image='icon_1', large_text="Doccli - oglądaj anime bezpośrednio ze swojego terminalu!", buttons=[{"label": "GitHub", "url": "https://github.com/TowarzyszFatCat/doccli"}, {"label": "Discord Projektu", "url": "https://discord.gg/FgfSM7bSEK"}], start=start_time)
+        # Aktualizuj tylko, jeśli udało się połączyć przy starcie
+        if RPC is not None:
+            try:
+                RPC.update(
+                    activity_type=ActivityType.WATCHING, 
+                    state=discord_data[1], 
+                    details=discord_data[0], 
+                    large_image='icon_1', 
+                    large_text="Doccli - oglądaj anime bezpośrednio ze swojego terminalu!", 
+                    buttons=[
+                        {"label": "GitHub", "url": "https://github.com/TowarzyszFatCat/doccli"}, 
+                        {"label": "Discord Projektu", "url": "https://discord.gg/FgfSM7bSEK"}
+                    ], 
+                    start=start_time
+                )
+            except Exception:
+                # Jeśli ktoś zamknie Discorda w trakcie oglądania
+                pass
+                
         time.sleep(5)

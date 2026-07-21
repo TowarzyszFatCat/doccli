@@ -138,7 +138,6 @@ def m_settings():
         
         print(colored("Zaraz otworzy się przeglądarka z prośbą o autoryzację aplikacji doccli na Twoim koncie AniList.", "cyan"))
         print(colored("Po zatwierdzeniu, skopiuj Token (długi ciąg znaków) i wklej go poniżej.", "cyan"))
-        print(colored("Jeżeli chcesz odłączyć konto AniList zostaw to pole puste i naciśnij ENTER", "cyan"))
         print("")
         
         auth_url = f"https://anilist.co/api/v2/oauth/authorize?client_id={CLIENT_ID}&response_type=token"
