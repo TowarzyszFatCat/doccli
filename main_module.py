@@ -30,6 +30,10 @@ from rich.panel import Panel
 from rich.console import Group
 from rich.align import Align
 
+# Doccli modules
+from storage import DataStorage
+ds = DataStorage()
+
 # Zmienne przechowujące pobrane bazy
 SERIES_CACHE = None
 TRENDING_CACHE = None
@@ -181,7 +185,7 @@ def open_menu(choices, prompt='Prompt', border=True, qmark='', message='', point
 
 def m_welcome():
 
-    load()
+    ds.load()
 
     preload_series_cache()
 
@@ -192,10 +196,10 @@ def m_welcome():
         "Anime na czasie"
     ]
 
-    if continue_data[0] is None:
+    if ds.continue_data[0] is None:
         choices.append("Nie masz nic do wznowienia")
     else:
-        choices.append(f"Wznów {continue_data[0]['title']} / {continue_data[0]['title_en']}, Odc: {continue_data[1]}")
+        choices.append(f"Wznów {ds.continue_data[0]['title']} / {ds.continue_data[0]['title_en']}, Odc: {ds.continue_data[1]}")
 
     choices.append("Moja Biblioteka (Offline)")
     choices.append("Moja lista")
@@ -214,10 +218,10 @@ def m_welcome():
     elif ans == choices[1]:
         m_trending()
     elif ans == choices[2]:
-        if not continue_data:
+        if not ds.continue_data:
             m_welcome()
         else:
-            w_players(continue_data[0]['slug'], continue_data[1])
+            w_players(ds.continue_data[0]['slug'], ds.continue_data[1])
 
     elif ans == choices[3]:
         m_local_library()
@@ -236,20 +240,6 @@ def m_welcome():
         sys.exit()
 
 def m_settings():
-    # choices = [{
-    #     "type": "list",
-    #     "message": "Czy chcesz aby openingi i endingi były automatycznie pomijane?",
-    #     "choices": ["Tak", "Nie"],
-    # }]
-
-    # skip = prompt(questions=choices)
-
-    # if skip[0] == "Tak":
-    #     settings[2] = True
-    #     save()
-    # elif skip[0] == "Nie":
-    #     settings[2] = False
-    #     save()
 
     choices = [{
             "type": "list",
@@ -260,22 +250,22 @@ def m_settings():
     res = prompt(questions=choices)
 
     if res[0] == "Nie":
-        settings[0] = False
-        save()
+        ds.settings[0] = False
+        ds.save()
         m_welcome()
     if res[0] == "Tak":
         clear()
-        settings[0] = True
+        ds.settings[0] = True
         choices2 = [{"type": "input", "message": "Wpisz co tylko zechcesz! Będzie to wyświetlane w II linijce statusu. Zostaw puste jeśli chcesz aby był wyświetlany domyślny status. [Minimalnie 2 znaki] (Domyślna wartość: 'Używa doccli!') \n", "name": "status_dc"}]
         res2 = prompt(questions=choices2)
 
         if not res2['status_dc'] == "" and len(res2['status_dc']) > 1:
-            settings[1] = res2['status_dc']
-            save()
+            ds.settings[1] = res2['status_dc']
+            ds.save()
             m_welcome()
         else:
-            settings[1] = 'Używa doccli!'
-            save()
+            ds.settings[1] = 'Używa doccli!'
+            ds.save()
             m_welcome()
 
 
@@ -287,7 +277,7 @@ def m_discord():
 def m_mylist():
     choices = ['Cofnij']
 
-    for element in mylist:
+    for element in ds.mylist:
         choices.append(f"{element['title']} | {element['title_en']}")
 
     prompt = 'Wybierz anime: '
@@ -296,13 +286,13 @@ def m_mylist():
         m_welcome()
     else:
         index = choices.index(ans)
-        m_details(mylist[index - 1])
+        m_details(ds.mylist[index - 1])
 
 
 def m_history():
     choices = ['Cofnij']
 
-    for element in history:
+    for element in ds.history:
         choices.append(element)
 
     prompt = 'Wyszukaj: '
@@ -366,8 +356,8 @@ def get_user_rank(hours):
 def m_stats():
     clear()
 
-    ep_played = len(history)
-    q_mylist = len(mylist)
+    ep_played = len(ds.history)
+    q_mylist = len(ds.mylist)
 
     ti_c = pathlib.Path(PATH_config).stat().st_mtime
     dt_c = datetime.fromtimestamp(ti_c).strftime("%d/%m/%Y")
@@ -384,8 +374,8 @@ def m_stats():
     size_gb = round(size_bytes / (1024 ** 3), 2)
 
     last_watched = "Brak danych"
-    if history:
-        raw_history = str(history[0]) 
+    if ds.history:
+        raw_history = str(ds.history[0]) 
         if "]" in raw_history:
             clean_title = raw_history.split("]", 1)[1].strip()
         else:
@@ -515,7 +505,7 @@ def m_details(details):
         "Pobierz cały sezon"
     ]
 
-    if details in mylist:
+    if details in ds.mylist:
         choices.append("Usuń z mojej listy")
     else:
         choices.append("Dodaj do mojej listy")
@@ -548,23 +538,23 @@ def m_details(details):
     )
 
     if ans == choices[0]:
-        continue_data[0] = details
+        ds.continue_data[0] = details
         w_first(details['slug'])
     elif ans == choices[1]:
-        continue_data[0] = details
+        ds.continue_data[0] = details
         w_list(details['slug'])
     elif ans == choices[2]:
         w_download_season(details['slug'], details['title'])
     elif ans == choices[3]:
-        if details in mylist:
-            mylist.remove(details)
-            save()
-            load()
+        if details in ds.mylist:
+            ds.mylist.remove(details)
+            ds.save()
+            ds.load()
             m_details(details)
         else:
-            mylist.append(details)
-            save()
-            load()
+            ds.mylist.append(details)
+            ds.save()
+            ds.load()
             m_details(details)
     elif ans == choices[4]:
         m_find()
@@ -573,8 +563,8 @@ def m_details(details):
 
 
 def w_first(SLUG):
-    continue_data[1] = 1
-    save()
+    ds.continue_data[1] = 1
+    ds.save()
     w_players(SLUG, 1)
 
 
@@ -597,8 +587,8 @@ def w_list(SLUG):
         m_details(get_details_for_serie(SLUG))
 
     else:
-        continue_data[1] = ans
-        save()
+        ds.continue_data[1] = ans
+        ds.save()
 
         w_players(SLUG, ans)
 
@@ -867,16 +857,16 @@ def w_default(SLUG, NUMBER, process):
 
     details = get_details_for_serie(SLUG)
 
-    if settings[0]:
-        update_rpc(f"Ogląda: {details['title']} [{str(NUMBER)}/{str(how_many_episodes)}]", settings[1])
+    if ds.settings[0]:
+        update_rpc(f"Ogląda: {details['title']} [{str(NUMBER)}/{str(how_many_episodes)}]", ds.settings[1])
     else:
-        update_rpc(f"Ogląda anime", settings[1])
+        update_rpc(f"Ogląda anime", ds.settings[1])
 
     # Save to history
     now = datetime.now()
     dt_string = now.strftime("%d/%m/%Y %H:%M")
-    history.insert(0, f"[{dt_string}] {details['title']} / {details['title_en']} [Odc: {NUMBER}]")
-    save()
+    ds.history.insert(0, f"[{dt_string}] {details['title']} / {details['title_en']} [Odc: {NUMBER}]")
+    ds.save()
 
     choices = [
         "Zmień źródło",
@@ -898,15 +888,15 @@ def w_default(SLUG, NUMBER, process):
     elif ans == choices[1]:
         kill_process(process)
         update_rpc("Menu główne", "Szuka anime do obejrzenia...")
-        continue_data[1] = NUMBER + 1 if NUMBER < how_many_episodes else NUMBER
-        save()
+        ds.continue_data[1] = NUMBER + 1 if NUMBER < how_many_episodes else NUMBER
+        ds.save()
         w_players(SLUG, NUMBER + 1 if NUMBER < how_many_episodes else NUMBER)
         
     elif ans == choices[2]:
         kill_process(process)
         update_rpc("Menu główne", "Szuka anime do obejrzenia...")
-        continue_data[1] = NUMBER - 1 if NUMBER >= 2 else NUMBER
-        save()
+        ds.continue_data[1] = NUMBER - 1 if NUMBER >= 2 else NUMBER
+        ds.save()
         w_players(SLUG, NUMBER - 1 if NUMBER >= 2 else NUMBER)
         
     elif ans == choices[3]:
@@ -990,8 +980,8 @@ def m_local_library():
                 
                 now = datetime.now()
                 dt_string = now.strftime("%d/%m/%Y %H:%M")
-                history.insert(0, f"[{dt_string}] {selected_series} | Offline [{ep}]")
-                save()
+                ds.history.insert(0, f"[{dt_string}] {selected_series} | Offline [{ep}]")
+                ds.save()
                 
                 try:
                     process = subprocess.run(["mpv", file_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -1013,8 +1003,8 @@ def m_local_library():
             
             now = datetime.now()
             dt_string = now.strftime("%d/%m/%Y %H:%M")
-            history.insert(0, f"[{dt_string}] {selected_series} | Offline [{selected_ep}]")
-            save()
+            ds.history.insert(0, f"[{dt_string}] {selected_series} | Offline [{selected_ep}]")
+            ds.save()
             
             try:
                 subprocess.run(["mpv", file_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -1032,70 +1022,3 @@ def center_text(text: str) -> str:
     
     # Zostawiamy oryginalne .center() bez rstrip()
     return "\n".join(line.center(terminal_width) for line in art_lines)
-
-
-# SAVING SECTION
-if os.name == "nt": # WIN
-    PATH_config = os.path.join(os.getenv("APPDATA"), "doccli")
-else:               # LINUX/MACOS
-    PATH_config = os.path.join(os.path.expanduser("~"), ".config", "doccli")
-
-PATH_mylist = os.path.join(PATH_config, "mylist.json")
-PATH_continue = os.path.join(PATH_config, "continue.json")
-PATH_settings = os.path.join(PATH_config, "settings.json")
-PATH_history = os.path.join(PATH_config, "history.json")
-
-
-def load():
-    if not os.path.exists(PATH_config):
-        os.makedirs(PATH_config)
-
-    if not os.path.exists(PATH_mylist):
-        with open(PATH_mylist, 'w') as file:
-            file.write('[]')
-    if not os.path.exists(PATH_continue):
-        with open(PATH_continue, 'w') as file:
-            global continue_data
-            continue_data = [None, None]
-            json.dump(continue_data, file, indent=4)
-    if not os.path.exists(PATH_settings):
-        with open(PATH_settings, 'w') as file:
-            global settings
-            settings = [True, "Używa doccli!", True]
-            json.dump(settings, file, indent=4)
-    if not os.path.exists(PATH_history):
-        with open(PATH_history, 'w') as file:
-            file.write('[]')
-
-    with open(PATH_mylist, 'r') as json_file:
-        loaded_data = json.load(json_file)
-        global mylist
-        mylist = loaded_data
-
-    with open(PATH_continue, 'r') as json_file:
-        loaded_data = json.load(json_file)
-        continue_data = loaded_data
-
-    with open(PATH_history, 'r') as json_file:
-        loaded_data = json.load(json_file)
-        global history
-        history = loaded_data
-
-    with open(PATH_settings, 'r') as json_file:
-        loaded_data = json.load(json_file)
-        settings = loaded_data
-        # New update bypass
-        if len(settings) != 3:
-            settings.append(True)
-            save()
-
-
-def save():
-    with open(PATH_mylist, 'w') as json_file:
-        json.dump(mylist, json_file, indent=4)
-    with open(PATH_continue, 'w') as json_file:
-        json.dump(continue_data, json_file, indent=4)
-    with open(PATH_settings, 'w') as json_file:
-        json.dump(settings, json_file, indent=4)
-    with open(PATH_history, 'w') as json_file:
-        json.dump(history, json_file, indent=4)
