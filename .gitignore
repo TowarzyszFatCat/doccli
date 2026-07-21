@@ -8,5 +8,5 @@ __pycache__/
 *.pyc
 *.pyo
 
-doccli.zip
+*.zip
 doccli_downloads/

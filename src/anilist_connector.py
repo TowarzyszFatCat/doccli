@@ -70,7 +70,6 @@ def get_details_from_anilist(mal_id):
                 # Obsługa opisu i tłumaczenie na polski
                 if media.get('description'):
                     raw_desc = media['description']
-                    # Szybkie przeczyszczenie z ewentualnych dziwnych tagów HTML, które lubi dawać AniList
                     clean_desc = raw_desc.replace('<br>', '\n').replace('<i>', '').replace('</i>', '')
                     
                     try:
@@ -104,7 +103,6 @@ def update_anilist_progress(mal_id, episode_number, token, is_completed=False):
     except:
         return False
 
-    # Dodaliśmy $status do mutacji
     mutation = '''
     mutation ($mediaId: Int, $progress: Int, $status: MediaListStatus) {
       SaveMediaListEntry(mediaId: $mediaId, progress: $progress, status: $status) {

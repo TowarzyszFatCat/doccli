@@ -4,17 +4,23 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a> i nie tylko
 </h1>
 
 <h2 align="center">
-<u><b>Co nowego w UPDATE v2.20 - v2.22 ?</b><br></br></u>
-
-W pełni natywne wsparcie na Windowsie z automatycznym instalatorem!<br>
-Sprawdzanie dostępności źródeł!</br>
-Pobieranie pełnych sezonów wraz z biblioteką offline i trybem oglądania automatycznego!<br>
-Opisy anime tłumaczone maszynowo na język polski!<br>
-Statystyki programu oraz rangi!<br>
-Przyspieszenie działania wyszukiwarek oraz menu na czasie!<br>
-Wyświetlanie okładek w pełnej rozdzielczości!<br>
-Naprawa błędów odtwarzania z niektórych źródeł.
+<u><b>Co nowego w UPDATE v2.30 ?</b><br></u>
+<br>
+NAJWIĘKSZY UPDATE DO TEJ PORY!<br><br>
 </h2>
+
+- Pełna integracja z AniList (automatyczne zapisywanie postępu i oznaczanie zakończonych serii)!<br>
+- Dwustronna synchronizacja "Mojej listy" z "Plan to Watch" na AniList w tle!<br>
+- W pełni natywne wsparcie na Windowsie z automatycznym instalatorem!<br>
+- Wielowątkowe sprawdzanie dostępności źródeł na żywo!<br>
+- Pobieranie pełnych sezonów wraz z biblioteką offline i trybem oglądania automatycznego!<br>
+- Wskaźnik statusu połączenia z kontem AniList w głównym menu!<br>
+- Ulepszone sortowanie "Mojej listy" (najnowsze tytuły wyświetlane na samej górze)!<br>
+- Opisy anime tłumaczone maszynowo na język polski!<br>
+- Statystyki programu oraz unikalne rangi na podstawie czasu oglądania!<br>
+- Wyświetlanie okładek w pełnej rozdzielczości z dopasowaniem do terminala!<br>
+- Liczne poprawki stabilności (m.in. naprawa błędów źródeł oraz obsługa Discord RPC).
+
 
 ---
 
@@ -36,17 +42,20 @@ https://github.com/user-attachments/assets/b4116bf9-c66c-41a5-9da8-6665ff18d3e6
 - Szybka wyszukiwarka,
 - Wznawianie oglądania,
 - Możliwość ustawienia własnego statusu na discordzie,
-- Statystyki,
-- Podgląd okładki,
-- Pobieranie pełnych sezonów,
-- Pomijanie intr/outr, (TYMCZASOWO NIEDOSTĘPNE)
+- Statystyki programu oraz rangi,
+- Podgląd okładek oraz opisy tłumaczone na język polski,
+- Pobieranie pełnych sezonów, biblioteka offline i auto-odtwarzanie,
 - Anime na czasie,
-- Wyświetlanie ocen z Anilist.
+- Wyświetlanie ocen z AniList,
+- Pełna integracja z kontem AniList (auto-zapis postępu i statusu),
+- Dwustronna synchronizacja "Mojej listy" z zakładką "Plan to Watch" AniList,
+- Sprawdzanie dostępności źródeł na żywo.
 
 </td>
 <td>
 
 - Wsparcie większej ilości źródeł,
+- Pomijanie intr/outr,
 - Wyświetlanie markerów intr i outr w odtwarzaczu.
 
 </td>

@@ -18,7 +18,7 @@ def w_download_season(SLUG, TITLE):
         clear()
         print(colored("Nie znaleziono strony [Błąd 404]", "red"))
         time.sleep(3)
-        return  # Zamiast wracać do menu ręcznie, po prostu przerywamy funkcję
+        return
 
     current_dir = os.getcwd()
     safe_title = re.sub(r'[\\/*?:"<>|]', "", TITLE).strip()
@@ -103,4 +103,4 @@ def w_download_season(SLUG, TITLE):
     print(colored(f"\n[ZAKOŃCZONO] Proces pobierania serii {TITLE} dobiegł końca!", "green"))
     input(colored("Naciśnij Enter, aby wrócić...", "yellow"))
     
-    return  # Sukces! Po prostu wychodzimy z funkcji.
+    return

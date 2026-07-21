@@ -59,7 +59,7 @@ def extract_lycoris_direct_link(embed_url):
         request = get(embed_url, headers=headers, timeout=5)
         
         if request.status_code == 200:
-            # Niezawodna metoda: szuka w całym kodzie jakiegokolwiek linku z końcówką .mp4
+            # szuka w całym kodzie jakiegokolwiek linku z końcówką .mp4
             match = re.search(r'(https?://[^"\']+\.mp4)', request.text, re.IGNORECASE)
             
             if match:
