@@ -14,8 +14,8 @@ if %errorlevel% neq 0 (
     color 0C
     echo [!] Nie wykryto narzedzia 'winget' w systemie!
     echo [i] Na Windows 10 musisz zainstalowac/zaktualizowac "Instalator aplikacji" ze sklepu Microsoft.
-    echo [i] Za 5 sekund otworzy sie strona sklepu. Kliknij 'Pobierz', a nastepnie uruchom instalator PONOWNIE.
-    timeout /t 5 /nobreak >nul
+    echo [i] Za 10 sekund otworzy sie strona sklepu. Kliknij 'Pobierz' lub 'Aktualizuj', a nastepnie uruchom instalator PONOWNIE.
+    timeout /t 10 /nobreak >nul
     start ms-windows-store://pdp/?ProductId=9nblggh4nns1
     exit
 )
@@ -95,8 +95,8 @@ echo  [i] Mozesz teraz uruchamiac ja skrotami na pulpicie.
 echo ====================================================
 echo/
 echo  [!] Folder instalacyjny usunie sie automatycznie.
-echo  [i] Zamykam instalator za 5 sekund...
-timeout /t 5 /nobreak >nul
+echo  [i] Zamykam instalator za 10 sekund...
+timeout /t 10 /nobreak >nul
 
 :: SAMOZNISZCZENIE
 cd /d "%USERPROFILE%\Desktop"
