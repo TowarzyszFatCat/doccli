@@ -7,18 +7,35 @@ echo        Rozpoczynam instalacje Doccli...
 echo ====================================================
 echo/
 
-:: Winget win 10 masakra
+:: Sprawdzanie i automatyczna instalacja winget
 echo [1/9] Sprawdzanie menedzera pakietow winget...
 winget --version >nul 2>&1
-if %errorlevel% neq 0 (
-    color 0C
-    echo [!] Nie wykryto narzedzia 'winget' w systemie!
-    echo [i] Na Windows 10 musisz zainstalowac/zaktualizowac "Instalator aplikacji" ze sklepu Microsoft.
-    echo [i] Za chwile otworzy sie strona sklepu. Kliknij 'Pobierz', a nastepnie uruchom instalator PONOWNIE.
-    pause
-    start ms-windows-store://pdp/?ProductId=9nblggh4nns1
-    exit
+if %errorlevel% equ 0 goto :winget_installed
+
+color 0E
+echo [!] Nie wykryto narzedzia 'winget' w systemie!
+echo [i] Trwa automatyczne pobieranie winget z serwerow Microsoftu...
+echo [i] To moze potrwac kilkadziesiat sekund. Prosze czekac...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest -Uri 'https://github.com/microsoft/winget-cli/releases/latest/download/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle' -OutFile '$env:TEMP\winget.msixbundle'; Add-AppxPackage -Path '$env:TEMP\winget.msixbundle'"
+
+:: Sprawdzamy, czy automatyczna instalacja sie udala
+winget --version >nul 2>&1
+if %errorlevel% equ 0 (
+    color 0A
+    echo [+] Pomyslnie zainstalowano winget w systemie!
+    echo/
+    goto :winget_installed
 )
+
+:: Jesli automatyczna instalacja zawiedzie (np. brak zaleznosci w odchudzonym Windows 10 LTSC)
+color 0C
+echo [!] Automatyczna instalacja zawiodla (brak zaleznosci w systemie).
+echo [i] Otwieram Sklep Microsoft. Zainstaluj "Instalator aplikacji" i uruchom instalator PONOWNIE.
+timeout /t 5 /nobreak >nul
+start ms-windows-store://pdp/?ProductId=9nblggh4nns1
+exit
+
+:winget_installed
 color 0B
 
 :: python jest?
@@ -29,15 +46,15 @@ if %errorlevel% equ 0 goto :python_installed
 color 0E
 echo [!] Nie wykryto Pythona (lub nie jest w systemowym PATH).
 echo [i] Rozpoczynam automatyczna instalacje Pythona 3.12...
-winget install --id Python.Python.3.12 --exact --accept-source-agreements --accept-package-agreements
-color 0C
+winget install --id Python.Python.3.12 --exact --silent --accept-source-agreements --accept-package-agreements
+color 0A
 echo/
 echo ====================================================
-echo  [!] UWAGA: Python zostal wlasnie zainstalowany!
-echo  [!] Aby system zadzialal poprawnie, musisz
-echo      zamknac to okno i uruchomic install.bat PONOWNIE.
+echo  [+] Python zostal wlasnie zainstalowany!
+echo  [i] Instalator zrestartuje sie automatycznie za 3 sekundy...
 echo ====================================================
-pause
+timeout /t 3 /nobreak >nul
+start "" cmd /c "%~f0"
 exit
 
 :python_installed
@@ -61,27 +78,19 @@ echo .venv\Scripts\python.exe run.py %%*>> run.bat
 echo endlocal>> run.bat
 echo/
 
-echo [5/9] Sprawdzam i instaluje narzedzia (mpv, yt-dlp)...
-winget install --id yt-dlp.yt-dlp --accept-source-agreements --accept-package-agreements
-color 0B
-
-winget install --id 9P3JFR0CLLL6 --accept-source-agreements --accept-package-agreements
-color 0B
-echo/
-
-winget install --id hpjansson.Chafa --accept-source-agreements --accept-package-agreements
-color 0B
+echo [5/9] Sprawdzam i instaluje narzedzia (mpv, yt-dlp, chafa)...
+winget install --id yt-dlp.yt-dlp --silent --accept-source-agreements --accept-package-agreements
+winget install --id 9P3JFR0CLLL6 --silent --accept-source-agreements --accept-package-agreements
+winget install --id hpjansson.Chafa --silent --accept-source-agreements --accept-package-agreements
 echo/
 
 echo [6/9] Konfiguruje srodowisko wirtualne Pythona...
 python -m venv .venv
 echo/
 
-echo [7/9] Instaluje wymagane biblioteki...
-.venv\Scripts\pip install requests inquirerpy termcolor climage pillow deep-translator rich
-color 0B
-.venv\Scripts\pip install https://github.com/qwertyquerty/pypresence/archive/master.zip
-color 0B
+echo [7/9] Instaluje wymagane biblioteki (to chwile potrwa)...
+.venv\Scripts\pip install requests inquirerpy termcolor climage pillow deep-translator rich >nul 2>&1
+.venv\Scripts\pip install https://github.com/qwertyquerty/pypresence/archive/master.zip >nul 2>&1
 echo/
 
 echo [8/9] Dodawanie programu do zmiennej PATH...
@@ -99,15 +108,14 @@ color 0A
 echo ====================================================
 echo  [+] Instalacja zakonczona sukcesem!
 echo  [i] Aplikacja Doccli zostala w pelni zainstalowana.
-echo  [i] Mozesz teraz uruchamiac ja skrotami lub wpisujac
-echo      'doccli' w nowym oknie CMD / PowerShell.
+echo  [i] Mozesz teraz uruchamiac ja skrotami na pulpicie.
 echo ====================================================
 echo/
 echo  [!] Folder instalacyjny usunie sie automatycznie.
-echo  [i] Wcisnij ENTER, aby bezpiecznie opuscic instalator...
-pause >nul
+echo  [i] Zamykam instalator za 5 sekund...
+timeout /t 5 /nobreak >nul
 
 :: SAMOZNISZCZENIE
 cd /d "%USERPROFILE%\Desktop"
-start /b "" cmd /c "ping localhost -n 3 >nul & rmdir /s /q "%ORIG_DIR_CLEAN%""
+start /b "" cmd /c "timeout /t 2 >nul & rmdir /s /q "%ORIG_DIR_CLEAN%""
 exit

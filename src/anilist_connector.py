@@ -37,15 +37,19 @@ def get_details_from_anilist(mal_id):
       Media(idMal: $malId, type: ANIME) {
         averageScore
         description(asHtml: false)
+        episodes
+        nextAiringEpisode {
+          episode
+        }
       }
     }
     '''
     
     variables = {"malId": mal_id}
     
-    # Domyślne wartości
     stars = "\U0001F311\U0001F311\U0001F311\U0001F311\U0001F311"
     description = "Brak opisu."
+    episode_count = "?" 
 
     try:
         response = post(url, json={'query': query, 'variables': variables}, timeout=5)
@@ -55,7 +59,6 @@ def get_details_from_anilist(mal_id):
             media = data.get('data', {}).get('Media')
 
             if media:
-                # Obsługa gwiazdek
                 if media.get('averageScore'):
                     avg = media['averageScore']
                     stars_val = avg / 20 
@@ -67,7 +70,6 @@ def get_details_from_anilist(mal_id):
                     full += "\U0001F311" * (5 - len(full))
                     stars = full
                 
-                # Obsługa opisu i tłumaczenie na polski
                 if media.get('description'):
                     raw_desc = media['description']
                     clean_desc = raw_desc.replace('<br>', '\n').replace('<i>', '').replace('</i>', '')
@@ -78,28 +80,59 @@ def get_details_from_anilist(mal_id):
                     except Exception:
                         description = clean_desc
 
+                episodes_total = media.get('episodes')
+                if not episodes_total:
+                    next_airing = media.get('nextAiringEpisode')
+                    if next_airing and next_airing.get('episode'):
+                        aired = next_airing['episode'] - 1
+                        episode_count = f"Trwa emisja (Wydano: {aired})"
+                    else:
+                        episode_count = "Trwa emisja"
+                else:
+                    episode_count = episodes_total
+
     except Exception:
         pass
 
-    return stars, description
+    return stars, description, episode_count
 
 
 def update_anilist_progress(mal_id, episode_number, token, is_completed=False):
     if not token or token == "":
         return False
         
+    headers = {
+        'Authorization': f'Bearer {token}',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+    }
+        
     query_id = '''
     query ($malId: Int) {
       Media(idMal: $malId, type: ANIME) {
         id
+        mediaListEntry {
+          progress
+        }
       }
     }
     '''
     try:
-        req = post("https://graphql.anilist.co", json={'query': query_id, 'variables': {'malId': mal_id}}, timeout=5)
+        req = post("https://graphql.anilist.co", json={'query': query_id, 'variables': {'malId': mal_id}}, headers=headers, timeout=5)
         if req.status_code != 200:
             return False
-        anilist_id = req.json()['data']['Media']['id']
+            
+        media_data = req.json()['data']['Media']
+        anilist_id = media_data['id']
+        
+        current_progress = 0
+        if media_data.get('mediaListEntry'):
+            current_progress = media_data['mediaListEntry'].get('progress', 0)
+            
+        # Zabezpieczenie przed cofaniem postępu
+        if episode_number <= current_progress:
+            return True
+            
     except:
         return False
 
@@ -112,11 +145,7 @@ def update_anilist_progress(mal_id, episode_number, token, is_completed=False):
       }
     }
     '''
-    headers = {
-        'Authorization': f'Bearer {token}',
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-    }
+
     variables = {
         'mediaId': anilist_id,
         'progress': episode_number
@@ -133,7 +162,7 @@ def update_anilist_progress(mal_id, episode_number, token, is_completed=False):
         return req_mut.status_code == 200
     except:
         return False
-    
+
 
 def get_anilist_plan_to_watch(token):
     if not token or token == "":
@@ -162,7 +191,7 @@ def get_anilist_plan_to_watch(token):
 
     query_list = '''
     query ($userId: Int) {
-      MediaListCollection(userId: $userId, type: ANIME, status: PLANNING) {
+      MediaListCollection(userId: $userId, type: ANIME, status_in: [PLANNING, CURRENT]) {
         lists {
           entries {
             media {
@@ -182,9 +211,10 @@ def get_anilist_plan_to_watch(token):
         lists = req2.json()['data'].get('MediaListCollection', {}).get('lists', [])
         
         if lists:
-            for entry in lists[0]['entries']:
-                if entry['media']['idMal']:
-                    mal_ids.append(entry['media']['idMal'])
+            for lst in lists:
+                for entry in lst['entries']:
+                    if entry['media']['idMal']:
+                        mal_ids.append(entry['media']['idMal'])
                     
         return mal_ids
     except:
@@ -268,3 +298,208 @@ def sync_anilist_list_status(mal_id, token, status_add=True):
             return True
         except:
             return False
+
+def get_anilist_history(token):
+    if not token or token == "":
+        return []
+
+    headers = {
+        'Authorization': f'Bearer {token}',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+    }
+
+    query_user = '''
+    query {
+      Viewer {
+        id
+      }
+    }
+    '''
+    try:
+        req1 = post("https://graphql.anilist.co", json={'query': query_user}, headers=headers, timeout=5)
+        if req1.status_code != 200:
+            return []
+        user_id = req1.json()['data']['Viewer']['id']
+    except:
+        return []
+
+    query_activity = '''
+    query ($userId: Int) {
+      Page(page: 1, perPage: 100) {
+        activities(userId: $userId, type: ANIME_LIST, sort: ID_DESC) {
+          ... on ListActivity {
+            progress
+            createdAt
+            status
+            media {
+              title {
+                romaji
+                english
+              }
+            }
+          }
+        }
+      }
+    }
+    '''
+    try:
+        req2 = post("https://graphql.anilist.co", json={'query': query_activity, 'variables': {'userId': user_id}}, headers=headers, timeout=5)
+        if req2.status_code != 200:
+            return []
+            
+        activities = req2.json()['data'].get('Page', {}).get('activities', [])
+        history_list = []
+        
+        for act in activities:
+            status = act.get('status')
+            progress = act.get('progress')
+            
+            if status not in ['watched episode', 'completed']:
+                continue
+                
+            created_at = act.get('createdAt')
+            title_romaji = act.get('media', {}).get('title', {}).get('romaji', 'Nieznany')
+            title_eng = act.get('media', {}).get('title', {}).get('english', 'Nieznany')
+            
+            if not title_eng:
+                title_eng = title_romaji
+                
+            history_list.append({
+                'timestamp': created_at,
+                'title': title_romaji,
+                'title_en': title_eng,
+                'progress': progress,
+                'status': status
+            })
+            
+        return history_list
+    except:
+        return []
+
+def get_anilist_global_stats(token):
+    if not token or token == "":
+        return 0, 0
+        
+    headers = {
+        'Authorization': f'Bearer {token}',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+    }
+    
+    query_stats = '''
+    query {
+      Viewer {
+        statistics {
+          anime {
+            episodesWatched
+            minutesWatched
+          }
+        }
+      }
+    }
+    '''
+    try:
+        req = post("https://graphql.anilist.co", json={'query': query_stats}, headers=headers, timeout=5)
+        if req.status_code == 200:
+            data = req.json()['data']['Viewer']['statistics']['anime']
+            return data['episodesWatched'], data['minutesWatched']
+    except:
+        pass
+    return 0, 0
+
+
+def get_duration_by_malid(mal_id):
+    if not mal_id: return 21
+    query = '''query ($malId: Int) { Media(idMal: $malId, type: ANIME) { duration } }'''
+    try:
+        req = post("https://graphql.anilist.co", json={'query': query, 'variables': {'malId': int(mal_id)}}, timeout=5)
+        if req.status_code == 200:
+            dur = req.json()['data']['Media']['duration']
+            return dur if dur else 21
+    except:
+        pass
+    return 21
+
+def get_anilist_advanced_stats(token):
+    if not token or token == "":
+        return None
+        
+    headers = {
+        'Authorization': f'Bearer {token}',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+    }
+    
+    query_stats = '''
+    query {
+      Viewer {
+        id
+        statistics {
+          anime {
+            meanScore
+            statuses { count status }
+            genres(limit: 3) { genre }
+          }
+        }
+      }
+    }
+    '''
+    
+    try:
+        req = post("https://graphql.anilist.co", json={'query': query_stats}, headers=headers, timeout=5)
+        if req.status_code != 200:
+            return None
+            
+        data = req.json()['data']['Viewer']
+        user_id = data['id']
+        anime_stats = data['statistics']['anime']
+        
+        mean_score = anime_stats.get('meanScore', 0)
+        genres = [g['genre'] for g in anime_stats.get('genres', [])]
+        
+        completed = 0
+        not_completed = 0
+        planning_count = 0
+        
+        for s in anime_stats.get('statuses', []):
+            if s['status'] == 'COMPLETED':
+                completed += s['count']
+            elif s['status'] in ['CURRENT', 'PAUSED', 'DROPPED']:
+                not_completed += s['count']
+            elif s['status'] == 'PLANNING':
+                planning_count += s['count']
+                
+        query_plan = '''
+        query($userId: Int) {
+          MediaListCollection(userId: $userId, type: ANIME, status: PLANNING, sort: ADDED_TIME) {
+            lists {
+              entries {
+                media { title { romaji english } }
+              }
+            }
+          }
+        }
+        '''
+        req_plan = post("https://graphql.anilist.co", json={'query': query_plan, 'variables': {'userId': user_id}}, headers=headers, timeout=5)
+        
+        oldest_title = "Brak"
+        
+        if req_plan.status_code == 200:
+            lists = req_plan.json()['data'].get('MediaListCollection', {}).get('lists', [])
+            if lists and len(lists) > 0:
+                entries = lists[0].get('entries', [])
+                if len(entries) > 0:
+                    t = entries[0]['media']['title']
+                    oldest_title = t.get('romaji') or t.get('english') or "Nieznany"
+                    
+        return {
+            'completed': completed,
+            'not_completed': not_completed,
+            'mean_score': mean_score,
+            'genres': ", ".join(genres) if genres else "Brak",
+            'planning_count': planning_count,
+            'oldest_planning': oldest_title
+        }
+    except:
+        return None

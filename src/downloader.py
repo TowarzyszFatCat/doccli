@@ -12,6 +12,7 @@ from termcolor import colored
 from docchi_api_connector import extract_lycoris_direct_link, get_episodes_count_for_serie, get_players_list
 from ui_utils import clear, open_menu
 
+
 def w_download_season(SLUG, TITLE, episodes_list=None, base_download_dir=""):
     how_many_episodes = get_episodes_count_for_serie(SLUG)
 
@@ -29,7 +30,8 @@ def w_download_season(SLUG, TITLE, episodes_list=None, base_download_dir=""):
         "1080p",
         "720p",
         "480p",
-        "360p"
+        "360p",
+        "Anuluj"
     ]
     
     chosen_quality = open_menu(
@@ -37,6 +39,9 @@ def w_download_season(SLUG, TITLE, episodes_list=None, base_download_dir=""):
         prompt="Wybierz preferowaną jakość obrazu do pobrania: ",
         height=6
     )
+
+    if chosen_quality == "Anuluj":
+        return
 
     quality_args = []
     if chosen_quality != "Najlepsza dostępna (Domyślna)":

@@ -4,32 +4,8 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a> i nie tylko
 </h1>
 
 <h2 align="center">
-<u><b>Co nowego w UPDATE v2.30 ?</b><br></u>
-<br>
-NAJWIĘKSZY UPDATE DO TEJ PORY!<br><br>
+<u><b>NAJNOWSZA WERSJA v2.30.3</b></u>
 </h2>
-
-**v2.30:**
-- Pełna integracja z AniList (automatyczne zapisywanie postępu i oznaczanie zakończonych serii),<br>
-- Dwustronna synchronizacja "Mojej listy" z "Plan to Watch" na AniList w tle,<br>
-- W pełni natywne wsparcie na Windowsie z automatycznym instalatorem,<br>
-- Wielowątkowe sprawdzanie dostępności źródeł na żywo,<br>
-- Pobieranie pełnych sezonów wraz z biblioteką offline i trybem oglądania automatycznego,<br>
-- Wskaźnik statusu połączenia z kontem AniList w głównym menu,<br>
-- Ulepszone sortowanie "Mojej listy" (najnowsze tytuły wyświetlane na samej górze),<br>
-- Opisy anime tłumaczone maszynowo na język polski,<br>
-- Statystyki programu oraz unikalne rangi na podstawie czasu oglądania,<br>
-- Wyświetlanie okładek w pełnej rozdzielczości z dopasowaniem do terminala,<br>
-- Liczne poprawki stabilności (m.in. naprawa błędów źródeł oraz obsługa Discord RPC).
-
-**v2.30.1:**
-- Rozbudowane menu pobierania z wyborem jakości,<br>
-- Możliwość wybrania jakości i sortowanie według jakości.
-
-**v2.30.2:**
-- Możliwość wybrania folderu pobierania.
-
----
 
 <p align="center">
   <img src="https://i.imgur.com/1WbW3Er.png" width="32%" alt="Menu">
@@ -72,6 +48,49 @@ NAJWIĘKSZY UPDATE DO TEJ PORY!<br><br>
 </td>
 </tr>
 </table>
+
+---
+
+<h1 align="center">
+    Historia aktualizacji v2.30.X:
+</h1>
+
+**v2.30:**
+- Pełna integracja z AniList (automatyczne zapisywanie postępu i oznaczanie zakończonych serii),
+- Dwustronna synchronizacja "Mojej listy" z "Plan to Watch" na AniList w tle,
+- W pełni natywne wsparcie na Windowsie z automatycznym instalatorem,
+- Wielowątkowe sprawdzanie dostępności źródeł na żywo,
+- Pobieranie pełnych sezonów wraz z biblioteką offline i trybem oglądania automatycznego,
+- Wskaźnik statusu połączenia z kontem AniList w głównym menu,
+- Ulepszone sortowanie "Mojej listy" (najnowsze tytuły wyświetlane na samej górze),
+- Opisy anime tłumaczone maszynowo na język polski,
+- Statystyki programu oraz unikalne rangi na podstawie czasu oglądania,
+- Wyświetlanie okładek w pełnej rozdzielczości z dopasowaniem do terminala,
+- Liczne poprawki stabilności (m.in. naprawa błędów źródeł oraz obsługa Discord RPC).
+
+**v2.30.1:**
+- Rozbudowane menu pobierania z wyborem jakości,
+- Możliwość wybrania jakości i sortowanie według jakości.
+
+**v2.30.2:**
+- Możliwość wybrania folderu pobierania.
+
+**v2.30.3:**
+- Skrót Ctrl + C działa teraz we wszystkich menu jako błyskawiczne Wróć / Anuluj,
+- Wyeliminowano lagi przy ładowaniu długich serii – menu wyświetla się błyskawicznie,
+- Zlikwidowano lagi przy uruchamianiu się odtwarzacza i wchodzeniu w listy odcinków,
+- Program pokazuje teraz dokładną liczbę wydanych odcinków dla serii, które nadal wychodzą,
+- Naprawiono wyświetlanie opisów z AniList,
+- Dodano opcję Anuluj w menu wyboru jakości pobierania wideo offline,
+- Rozbudowa statystyk i integracja statystyk z Anilist,
+- Menu historia od teraz pokazuje co zostało odtworzone online a co offline w doccli,
+- Menu historia pokazuje teraz historię oglądania z anilist,
+- Menu historia pozwala teraz na wybranie danej pozycji i otworzenia dla niej menu z detalami,
+- Moja lista wyświetla teraz także serie ze statusem watching,
+- Oglądanie poprzednich odcinków serii nie cofa już progresu na Anilist,
+- Instalator na Windowsa jest teraz bardziej przyjazny.
+
+<br>
 
 ---
 <h1 align="center">

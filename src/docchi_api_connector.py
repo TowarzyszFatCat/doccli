@@ -13,6 +13,7 @@ def get_players_list(SLUG, NUMBER):
         return request.status_code
 
 
+# japidi ale to jest wolne gowno nie uzywac pod zadnym pozorem chyba ze program by chodzil za szybko :P
 # Get list of how much episodes series contains
 def get_episodes_count_for_serie(SLUG):
     request = get(f"https://api.docchi.pl/v1/episodes/count/{SLUG}")

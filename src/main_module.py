@@ -1,5 +1,6 @@
 import os
 import sys
+import re
 import time
 import shutil
 import tempfile
@@ -23,9 +24,106 @@ from stats import m_stats
 from menus_decor import MAIN_MENU, SZUKAJ, NA_CZASIE, MOJA_LISTA, HISTORIA, MOJA_BIBLIOTEKA
 from discord_integration import update_rpc, set_running
 from docchi_api_connector import get_episodes_count_for_serie, get_players_list, get_details_for_serie, extract_lycoris_direct_link
-from anilist_connector import get_details_from_anilist, update_anilist_progress, get_anilist_plan_to_watch, sync_anilist_list_status
+from anilist_connector import get_details_from_anilist, update_anilist_progress, get_anilist_plan_to_watch, sync_anilist_list_status, get_anilist_history, get_duration_by_malid
 
 global_player_quality = "best"
+
+SYNC_DONE = False
+
+def sync_history_with_anilist():
+    global SYNC_DONE
+    if SYNC_DONE:
+        return
+    SYNC_DONE = True
+    
+    all_series = get_cached_series_list()
+    
+    migrated_history = []
+    for item in ds.history:
+        if isinstance(item, str):
+            try:
+                date_str = item[1:17]
+                dt_object = datetime.strptime(date_str, "%d/%m/%Y %H:%M")
+                source = "Doccli - Offline" if "| Offline" in item else "Doccli - Online"
+                ep_str, title, slug = "?", item, None
+                
+                if "[Odc: " in item:
+                    ep_str = item.split("[Odc: ")[1].split("]")[0].strip()
+                    title = item.split("] ", 1)[1].split(" [Odc:")[0].split(" / ")[0].strip()
+                elif " | Offline [" in item:
+                    ep_str = item.split(" | Offline [")[1].split("]")[0].strip()
+                    title = item.split("] ", 1)[1].split(" | Offline")[0].strip()
+                    
+                for s in all_series:
+                    if s['title'] == title or s['title_en'] == title:
+                        slug = s['slug']
+                        break
+                        
+                migrated_history.append({
+                    "timestamp": dt_object.timestamp(), 
+                    "dt_string": date_str, 
+                    "title": title, 
+                    "title_en": title, 
+                    "episode": ep_str, 
+                    "source": source, 
+                    "slug": slug,
+                    "duration": 21
+                })
+            except: pass
+        elif isinstance(item, dict):
+            if "duration" not in item:
+                item["duration"] = 21
+            migrated_history.append(item)
+            
+    ds.history = migrated_history
+    ds.save()
+
+    has_token = len(ds.settings) > 3 and ds.settings[3] != ""
+    if not has_token:
+        return
+        
+    print(colored("[INFO] Trwa synchronizacja historii z AniList (To zajmie tylko chwilę)...", "cyan"))
+    token = ds.settings[3]
+    
+    try:
+        al_history = get_anilist_history(token)
+        for al_item in al_history:
+            is_duplicate = False
+            al_progress = str(al_item['progress']) if al_item['progress'] else ("Ukończono" if al_item['status'] == 'completed' else "?")
+            
+            for local_item in ds.history:
+                if local_item.get('episode') == al_progress:
+                    lt_lower = local_item.get('title', '').lower()
+                    le_lower = local_item.get('title_en', '').lower()
+                    at_lower = al_item['title'].lower() if al_item['title'] else ""
+                    ae_lower = al_item['title_en'].lower() if al_item['title_en'] else ""
+                    
+                    if (at_lower and at_lower in lt_lower) or (ae_lower and ae_lower in le_lower) or (lt_lower and lt_lower in at_lower):
+                        is_duplicate = True
+                        break
+                        
+            if not is_duplicate:
+                slug = None
+                for s in all_series:
+                    if s['title'].lower() == (al_item['title'] or "").lower() or (al_item['title_en'] and s['title_en'].lower() == al_item['title_en'].lower()):
+                        slug = s['slug']
+                        break
+                dt_object = datetime.fromtimestamp(al_item['timestamp'])
+                ds.history.append({
+                    "timestamp": al_item['timestamp'], 
+                    "dt_string": dt_object.strftime("%d/%m/%Y %H:%M"), 
+                    "title": al_item['title'], 
+                    "title_en": al_item['title_en'], 
+                    "episode": al_progress, 
+                    "source": "AniList", 
+                    "slug": slug,
+                    "duration": 21
+                })
+    except: pass
+
+    ds.history.sort(key=lambda x: x.get('timestamp', 0), reverse=True)
+    ds.save()
+
 
 def kill_process(process):
     if not process:
@@ -43,6 +141,7 @@ def kill_process(process):
 def m_welcome():
 
     preload_series_cache()
+    sync_history_with_anilist()
 
     update_rpc("Menu główne", "Szuka anime do obejrzenia...")
 
@@ -246,16 +345,32 @@ def m_mylist():
 
 def m_history():
     choices = ['Cofnij']
+    display_map = {}
+    
+    for item in ds.history[:50]:  
+        display_text = f"[{item['dt_string']}] [{item['source']}] {item['title']} [Odc: {item['episode']}]"
+        choices.append(display_text)
+        display_map[display_text] = item
 
-    for element in ds.history:
-        choices.append(element)
-
-    prompt = 'Wyszukaj: '
+    prompt = 'Wybierz wpis aby przejść do szczegółów: '
     ans = open_menu(choices=choices, prompt=prompt, message=HISTORIA)
+    
     if ans == choices[0]:
         m_welcome()
     else:
-        m_history()
+        selected_item = display_map[ans]
+        if selected_item.get('slug'):
+            details = get_details_for_serie(selected_item['slug'])
+            if details and details != 404:
+                m_details(details)
+            else:
+                print(colored("Błąd: Nie udało się pobrać szczegółów z serwera.", "red"))
+                time.sleep(2)
+                m_history()
+        else:
+            print(colored("To anime nie ma przypisanego profilu w Docchi.", "yellow"))
+            time.sleep(3)
+            m_history()
 
 
 def m_find():
@@ -284,10 +399,15 @@ def perform_search(search_key):
     all_series_json = get_cached_series_list()
     
     choices = [serie[search_key] for serie in all_series_json]
-
+    choices.append("Cofnij")
+    
     prompt = 'Szukaj: '
     ans = open_menu(choices=choices, prompt=prompt, message=SZUKAJ)
     
+    if ans == "Cofnij":
+        m_find()
+        return
+        
     ans_index = choices.index(ans)
     ans_details = all_series_json[ans_index]
 
@@ -353,8 +473,9 @@ def m_details(details):
 
     genres += " ]"
 
-    episode_count = get_episodes_count_for_serie(details['slug'])
-    stars, description = get_details_from_anilist(str(details["mal_id"]))
+    stars, description, episode_count = get_details_from_anilist(str(details["mal_id"]))
+
+    max_ep = episode_count if isinstance(episode_count, int) else 9999
 
     ans = open_menu(
         choices=choices,
@@ -399,14 +520,14 @@ def m_details(details):
                         start, end = map(int, part.split('-'))
                         start, end = min(start, end), max(start, end)
                         start_safe = max(1, start)
-                        end_safe = min(episode_count, end)
+                        end_safe = min(max_ep, end)
                         episodes_to_download.update(range(start_safe, end_safe + 1))
                     except ValueError: 
                         pass 
                 else:
                     try:
                         ep = int(part)
-                        if 1 <= ep <= episode_count:
+                        if 1 <= ep <= max_ep:
                             episodes_to_download.add(ep)
                     except ValueError: 
                         pass 
@@ -452,13 +573,36 @@ def w_first(SLUG):
 
 
 def w_list(SLUG):
-    last_episode = get_episodes_count_for_serie(SLUG)
+    # Pobieramy dane o anime, w które właśnie kliknęliśmy (m_details je tam zapisało przed wywołaniem w_list)
+    details = ds.continue_data[0]
+    
+    last_episode = 0
+    
+    # BŁYSKAWICZNA ŚCIEŻKA
+    if details and details.get('slug') == SLUG and details.get('mal_id'):
+        stars, desc, ep_count = get_details_from_anilist(str(details['mal_id']))
+        
+        if isinstance(ep_count, int):
+            last_episode = ep_count
+            
+        elif isinstance(ep_count, str) and "Wydano:" in ep_count:
+            match = re.search(r'Wydano:\s*(\d+)', ep_count)
+            if match:
+                last_episode = int(match.group(1))
 
-    if last_episode == 404:
+    # ŚCIEŻKA AWARYJNA
+    if last_episode <= 0:
         clear()
-        print(colored("Nie znaleziono strony [Błąd 404]", "red"))
+        print(colored("[INFO] Trwa pobieranie ilości odcinków z bazy... (Może to potrwać dłuższą chwilę)", "yellow"))
+        last_episode = get_episodes_count_for_serie(SLUG)
+
+    if last_episode == 404 or last_episode <= 0:
+        clear()
+        print(colored("Nie znaleziono strony lub brak dostępnych odcinków [Błąd 404]", "red"))
         time.sleep(3)
-        m_details(get_details_for_serie(SLUG))
+        fallback_details = details if details else get_details_for_serie(SLUG)
+        m_details(fallback_details)
+        return
 
     choices = list(range(1, last_episode + 1))
     choices.append('Cofnij')
@@ -466,13 +610,13 @@ def w_list(SLUG):
     prompt = 'Wybierz odcinek: '
 
     ans = open_menu(choices=choices, prompt=prompt)
+    
     if ans == "Cofnij":
-        m_details(get_details_for_serie(SLUG))
-
+        fallback_details = details if details else get_details_for_serie(SLUG)
+        m_details(fallback_details)
     else:
         ds.continue_data[1] = ans
         ds.save()
-
         w_players(SLUG, ans)
 
 
@@ -691,7 +835,21 @@ def _delayed_tracker(details, number, process, total_episodes):
     now = datetime.now()
     dt_string = now.strftime("%d/%m/%Y %H:%M")
     
-    ds.history.insert(0, f"[{dt_string}] {details['title']} / {details['title_en']} [Odc: {number}]")
+    # Realną długość dla zapisywanego anime
+    duration = get_duration_by_malid(details['mal_id'])
+    
+    entry = {
+        "timestamp": now.timestamp(),
+        "dt_string": dt_string,
+        "title": details['title'],
+        "title_en": details['title_en'],
+        "episode": str(number),
+        "source": "Doccli - Online",
+        "slug": details['slug'],
+        "duration": duration
+    }
+    
+    ds.history.insert(0, entry)
     ds.save()
     
     if len(ds.settings) > 3:
@@ -702,16 +860,36 @@ def _delayed_tracker(details, number, process, total_episodes):
 
 
 def w_default(SLUG, NUMBER, process):
-    how_many_episodes = get_episodes_count_for_serie(SLUG)
+    details = ds.continue_data[0]
+    if not details or details.get('slug') != SLUG:
+        details = get_details_for_serie(SLUG)
+        
+    how_many_episodes = 0
+    
+    # BŁYSKAWICZNA ŚCIEŻKA
+    if details and details.get('mal_id'):
+        stars, desc, ep_count = get_details_from_anilist(str(details['mal_id']))
+        
+        if isinstance(ep_count, int):
+            how_many_episodes = ep_count
+        elif isinstance(ep_count, str) and "Wydano:" in ep_count:
+            match = re.search(r'Wydano:\s*(\d+)', ep_count)
+            if match:
+                how_many_episodes = int(match.group(1))
 
-    details = get_details_for_serie(SLUG)
+    # ŚCIEŻKA AWARYJNA
+    if how_many_episodes <= 0:
+        clear()
+        print(colored("[INFO] Trwa pobieranie ilości odcinków z bazy... (Może to potrwać dłuższą chwilę)", "yellow"))
+        how_many_episodes = get_episodes_count_for_serie(SLUG)
+        if how_many_episodes == 404:
+            how_many_episodes = NUMBER 
 
     if ds.settings[0]:
-        update_rpc(f"Ogląda: {details['title']} [{str(NUMBER)}/{str(how_many_episodes)}]", ds.settings[1])
+        update_rpc(f"Ogląda: {details.get('title', 'Anime')} [{str(NUMBER)}/{str(how_many_episodes)}]", ds.settings[1])
     else:
         update_rpc(f"Ogląda anime", ds.settings[1])
 
-    # Historia ogladania zapisze sie dopiero wtedy gdy dany odcinek jest oddtwarzany przez ponad 120sek
     threading.Thread(target=_delayed_tracker, args=(details, NUMBER, process, how_many_episodes), daemon=True).start()
 
     choices = [
@@ -734,16 +912,18 @@ def w_default(SLUG, NUMBER, process):
     elif ans == choices[1]:
         kill_process(process)
         update_rpc("Menu główne", "Szuka anime do obejrzenia...")
-        ds.continue_data[1] = NUMBER + 1 if NUMBER < how_many_episodes else NUMBER
+        next_ep = NUMBER + 1 if NUMBER < how_many_episodes else NUMBER
+        ds.continue_data[1] = next_ep
         ds.save()
-        w_players(SLUG, NUMBER + 1 if NUMBER < how_many_episodes else NUMBER)
+        w_players(SLUG, next_ep)
         
     elif ans == choices[2]:
         kill_process(process)
         update_rpc("Menu główne", "Szuka anime do obejrzenia...")
-        ds.continue_data[1] = NUMBER - 1 if NUMBER >= 2 else NUMBER
+        prev_ep = NUMBER - 1 if NUMBER >= 2 else NUMBER
+        ds.continue_data[1] = prev_ep
         ds.save()
-        w_players(SLUG, NUMBER - 1 if NUMBER >= 2 else NUMBER)
+        w_players(SLUG, prev_ep)
         
     elif ans == choices[3]:
         kill_process(process)
@@ -828,9 +1008,28 @@ def m_local_library():
                 print(colored(f"Oglądanie automatyczne: {ep}", "cyan"))
                 print(colored("Wciśnij 'Q' w obrębie okna MPV, lub zamknij je aby przerwać seans i wrócić do menu.", "white"))
                 
+                # Szukamy mal_id w cache, żeby sprawdzić długość odcinka na AniList
+                all_series = get_cached_series_list()
+                mal_id = None
+                for s in all_series:
+                    if s['title'] == selected_series or s['title_en'] == selected_series:
+                        mal_id = s['mal_id']
+                        break
+                        
+                duration = get_duration_by_malid(mal_id) if mal_id else 21
+
                 now = datetime.now()
-                dt_string = now.strftime("%d/%m/%Y %H:%M")
-                ds.history.insert(0, f"[{dt_string}] {selected_series} | Offline [{ep}]")
+                entry = {
+                    "timestamp": now.timestamp(),
+                    "dt_string": now.strftime("%d/%m/%Y %H:%M"),
+                    "title": selected_series,
+                    "title_en": selected_series,
+                    "episode": ep,
+                    "source": "Doccli - Offline",
+                    "slug": None,
+                    "duration": duration # Zapisujemy czas trwania dla plików z dysku
+                }
+                ds.history.insert(0, entry)
                 ds.save()
                 
                 try:
@@ -851,9 +1050,28 @@ def m_local_library():
             print(colored(f"Odtwarzam z dysku: {selected_ep}", "cyan"))
             print(colored("Wciśnij 'Q' w obrębie okna MPV, lub zamknij je aby przerwać seans i wrócić do menu.", "white"))
             
+            # Szukamy mal_id w cache, żeby sprawdzić długość odcinka na AniList
+            all_series = get_cached_series_list()
+            mal_id = None
+            for s in all_series:
+                if s['title'] == selected_series or s['title_en'] == selected_series:
+                    mal_id = s['mal_id']
+                    break
+                    
+            duration = get_duration_by_malid(mal_id) if mal_id else 21
+
             now = datetime.now()
-            dt_string = now.strftime("%d/%m/%Y %H:%M")
-            ds.history.insert(0, f"[{dt_string}] {selected_series} | Offline [{selected_ep}]")
+            entry = {
+                "timestamp": now.timestamp(),
+                "dt_string": now.strftime("%d/%m/%Y %H:%M"),
+                "title": selected_series,
+                "title_en": selected_series,
+                "episode": ep,
+                "source": "Doccli - Offline",
+                "slug": None,
+                "duration": duration # Zapisujemy czas trwania dla plików z dysku
+            }
+            ds.history.insert(0, entry)
             ds.save()
             
             try:

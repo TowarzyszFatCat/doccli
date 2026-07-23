@@ -3,6 +3,8 @@ import shutil
 import sys
 import tempfile
 import textwrap
+import html
+import re
 
 # From pip
 from InquirerPy import inquirer
@@ -28,7 +30,6 @@ def center_text(text: str) -> str:
 def open_menu(choices, prompt='Prompt', border=True, qmark='', message='', pointer='>', cycle=True, height=10, image=None, description=None):
     clear()
 
-    # nie mam pojęcia co tu sie dzieje ale działa
     if image:
         try:
             response = requests.get(image)
@@ -38,7 +39,7 @@ def open_menu(choices, prompt='Prompt', border=True, qmark='', message='', point
 
             term_width, term_height = get_terminal_size()
             
-            avail_height = max(5, term_height - height - 6) 
+            avail_height = max(5, term_height - height - 7) 
             chafa_height = max(3, avail_height)
 
             img_ratio = 0.7
@@ -80,10 +81,18 @@ def open_menu(choices, prompt='Prompt', border=True, qmark='', message='', point
                 os.system(f"chafa -s {term_width}x{chafa_height} {image_path}")
                 
                 if description:
-                    clean_desc = description.replace('<br>', '\n')
+                    # 1. Odkodowanie znaków specjalnych
+                    clean_desc = html.unescape(description)
+                    
+                    # 2. Zamiana tagów HTML na pojedynczą spację
+                    clean_desc = re.sub(r'<[^>]+>', ' ', clean_desc)
+                    
+                    # 3. Zgniecenie wszystkich spacji i enterów w jedną spację
+                    clean_desc = re.sub(r'\s+', ' ', clean_desc).strip()
+                    
                     wrapped_desc = textwrap.wrap(clean_desc, width=text_width)
                     
-                    header_text = "Tłumaczenie maszynowe opisu z AniList:"
+                    header_text = "Opis z AniList:"
                     colored_header = colored(header_text, "cyan") 
                     
                     wrapped_desc.insert(0, colored_header)
@@ -105,18 +114,27 @@ def open_menu(choices, prompt='Prompt', border=True, qmark='', message='', point
         except Exception as e:
             pass
 
-    action = inquirer.fuzzy(
-        message=message if message.startswith('[') else center_text(message),    # Message above border
-        choices=choices,
-        border=border,
-        qmark=qmark,    # Before message above border
-        prompt=prompt,
-        pointer=pointer,
-        cycle=cycle,
-        height=height,
-    ).execute()
+    try:
+        action = inquirer.fuzzy(
+            message=message if message.startswith('[') else center_text(message),
+            choices=choices,
+            border=border,
+            qmark=qmark,
+            prompt=prompt,
+            long_instruction="Ctrl+C = Cofnij / Menu główne",
+            pointer=pointer,
+            cycle=cycle,
+            height=height,
+        ).execute()
+    except KeyboardInterrupt:
+        clear()
+        back_keywords = ["cofnij", "wróć", "menu główne", "zamknij", "anuluj"]
+        for choice in choices:
+            if any(kw in str(choice).lower() for kw in back_keywords):
+                return choice
+        return choices[0]
 
-    clear() # Remember to always keep things tidy :P
+    clear() 
 
     try:
         return choices[choices.index(action)]
