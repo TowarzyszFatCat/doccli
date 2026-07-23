@@ -4,7 +4,7 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a> i nie tylko
 </h1>
 
 <h2 align="center">
-<u><b>NAJNOWSZA WERSJA v2.30.3</b></u>
+<u><b>NAJNOWSZA WERSJA v2.31</b></u>
 </h2>
 
 <p align="center">
@@ -75,7 +75,7 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a> i nie tylko
 **v2.30.2:**
 - Możliwość wybrania folderu pobierania.
 
-**v2.30.3:**
+**v2.31:**
 - Skrót Ctrl + C działa teraz we wszystkich menu jako błyskawiczne Wróć / Anuluj,
 - Wyeliminowano lagi przy ładowaniu długich serii – menu wyświetla się błyskawicznie,
 - Zlikwidowano lagi przy uruchamianiu się odtwarzacza i wchodzeniu w listy odcinków,
