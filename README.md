@@ -92,6 +92,7 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a> i nie tylko
 - Markery openingów i endingów,
 - Nowe menu wznawiania oglądania,
 - Sortowanie po gatunku,
+- Kalendarz premier,    
 - Opcja losowania spośród gatunku,
 - Ocenianie bezpośrednio z aplikacji,
 <br>

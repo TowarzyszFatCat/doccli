@@ -734,3 +734,32 @@ def rate_anilist_anime(mal_id, score_raw, token):
         req_mut = post("https://graphql.anilist.co", json={'query': mutation, 'variables': {'mediaId': anilist_id, 'scoreRaw': int(score_raw)}}, headers=headers, timeout=5)
         return req_mut.status_code == 200
     except Exception: return False
+
+def get_anilist_schedule(days=3):
+    """Pobiera harmonogram premier anime na najbliższe dni z AniList."""
+    import time
+    from requests import post
+    
+    now = int(time.time())
+    end_time = now + (days * 24 * 60 * 60)
+    
+    query = '''
+    query ($start: Int, $end: Int) {
+      Page(page: 1, perPage: 50) {
+        airingSchedules(airingAt_greater: $start, airingAt_lesser: $end, sort: TIME) {
+          airingAt
+          episode
+          media {
+            idMal
+          }
+        }
+      }
+    }
+    '''
+    try:
+        req = post("https://graphql.anilist.co", json={'query': query, 'variables': {'start': now, 'end': end_time}}, timeout=5)
+        if req.status_code == 200:
+            return req.json()['data']['Page']['airingSchedules']
+    except Exception:
+        pass
+    return []

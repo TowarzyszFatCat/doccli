@@ -21,7 +21,7 @@ from cache import preload_series_cache, get_cached_series_list, get_cached_trend
 from ui_utils import clear, open_menu
 from downloader import w_download_season
 from stats import m_stats
-from menus_decor import MAIN_MENU, SZUKAJ, NA_CZASIE, MOJA_LISTA, HISTORIA, MOJA_BIBLIOTEKA
+from menus_decor import MAIN_MENU, SZUKAJ, NA_CZASIE, MOJA_LISTA, HISTORIA, MOJA_BIBLIOTEKA, KALENDARZ
 from discord_integration import update_rpc, set_running
 from docchi_api_connector import get_episodes_count_for_serie, get_players_list, get_details_for_serie, extract_lycoris_direct_link
 from anilist_connector import get_details_from_anilist, update_anilist_progress, get_anilist_plan_to_watch, sync_anilist_list_status, get_anilist_history, get_duration_by_malid, sync_history_with_anilist
@@ -35,20 +35,20 @@ def m_welcome():
 
     choices = [
         "Wyszukaj",
-        "Anime na czasie",
         "Kontynuuj oglądanie",
-        "Moja Biblioteka (Offline)",
+        "Anime na czasie",
+        "Kalendarz Premier",
         "Moja lista",
+        "Moja Biblioteka (Offline)",
         "Historia oglądania",
-        "Ustawienia",
         "Statystyki doccli",
         "Dołącz do discorda",
+        "Ustawienia",
         "Zamknij"
     ]
 
     prompt_txt = 'Wybierz co chcesz zrobić: '
 
-    # Sprawdzanie tokenu nowym sposobem ze słownika
     has_token = ds.settings.get("anilist_token", "") != ""
     
     if has_token:
@@ -58,18 +58,19 @@ def m_welcome():
 
     dynamic_menu_art = MAIN_MENU + "\n" + status_txt + "\n"
 
-    ans = open_menu(choices=choices, prompt=prompt_txt, height=10, message=dynamic_menu_art)
+    ans = open_menu(choices=choices, prompt=prompt_txt, height=12, message=dynamic_menu_art)
 
     if ans == choices[0]: m_find()
-    elif ans == choices[1]: m_trending()
-    elif ans == choices[2]: m_resume()
-    elif ans == choices[3]: m_local_library()
+    elif ans == choices[1]: m_resume()
+    elif ans == choices[2]: m_trending()
+    elif ans == choices[3]: m_calendar()
     elif ans == choices[4]: m_mylist()
-    elif ans == choices[5]: m_history()
-    elif ans == choices[6]: m_settings()
+    elif ans == choices[5]: m_local_library()
+    elif ans == choices[6]: m_history()
     elif ans == choices[7]: m_stats(); m_welcome()
     elif ans == choices[8]: m_discord()
-    elif ans == choices[9]: set_running(False); sys.exit()
+    elif ans == choices[9]: m_settings()
+    elif ans == choices[10]: set_running(False); sys.exit()
 
 
 def m_settings():
@@ -942,3 +943,67 @@ def m_resume():
         ds.save()
         
         w_players(slug, next_ep)
+
+def m_calendar():
+    from anilist_connector import get_anilist_schedule
+    from datetime import datetime
+    
+    clear()
+    print(colored("[INFO] Pobieranie kalendarza premier z AniList...", "cyan"))
+    
+    schedule = get_anilist_schedule(days=7) 
+    
+    if not schedule:
+        print(colored("[-] Nie udało się pobrać kalendarza lub brak nadchodzących premier.", "red"))
+        time.sleep(2)
+        m_welcome()
+        return
+
+    all_series = get_cached_series_list()
+    local_db = {str(s.get('mal_id')): s for s in all_series if s.get('mal_id')}
+
+    choices_map = {}
+    choices = []
+
+    days_pl = ["Pon", "Wto", "Śro", "Czw", "Pią", "Sob", "Nie"]
+
+    for item in schedule:
+        if not item.get('media') or not item['media'].get('idMal'):
+            continue
+            
+        mal_id = str(item['media']['idMal'])
+        
+        if mal_id in local_db:
+            local_anime = local_db[mal_id]
+            air_time = int(item['airingAt'])
+            ep_num = item['episode']
+
+            dt = datetime.fromtimestamp(air_time)
+            day_name = days_pl[dt.weekday()]
+            time_str = dt.strftime("%H:%M")
+            date_str = dt.strftime("%d.%m")
+
+            display_str = f"[{day_name} {date_str} | {time_str}] {local_anime.get('title', 'Brak')} (Odc. {ep_num})"
+            choices.append(display_str)
+            choices_map[display_str] = local_anime
+
+    if not choices:
+        print(colored("[-] Wśród 50 najbliższych premier na świecie, nie znaleziono żadnej w polskiej bazie.", "yellow"))
+        time.sleep(3)
+        m_welcome()
+        return
+
+    choices.append("Cofnij")
+
+    ans = open_menu(
+        choices=choices, 
+        prompt="Najbliższe premiery (Posortowane chronologicznie):", 
+        height=12,
+        message=KALENDARZ
+    )
+
+    if ans == "Cofnij":
+        m_welcome()
+    else:
+        selected_anime = choices_map[ans]
+        m_details(selected_anime)
