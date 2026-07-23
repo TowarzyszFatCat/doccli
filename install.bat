@@ -7,35 +7,18 @@ echo        Rozpoczynam instalacje Doccli...
 echo ====================================================
 echo/
 
-:: Sprawdzanie i automatyczna instalacja winget
+:: Winget win 10 masakra
 echo [1/9] Sprawdzanie menedzera pakietow winget...
 winget --version >nul 2>&1
-if %errorlevel% equ 0 goto :winget_installed
-
-color 0E
-echo [!] Nie wykryto narzedzia 'winget' w systemie!
-echo [i] Trwa automatyczne pobieranie winget z serwerow Microsoftu...
-echo [i] To moze potrwac kilkadziesiat sekund. Prosze czekac...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest -Uri 'https://github.com/microsoft/winget-cli/releases/latest/download/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle' -OutFile '$env:TEMP\winget.msixbundle'; Add-AppxPackage -Path '$env:TEMP\winget.msixbundle'"
-
-:: Sprawdzamy, czy automatyczna instalacja sie udala
-winget --version >nul 2>&1
-if %errorlevel% equ 0 (
-    color 0A
-    echo [+] Pomyslnie zainstalowano winget w systemie!
-    echo/
-    goto :winget_installed
+if %errorlevel% neq 0 (
+    color 0C
+    echo [!] Nie wykryto narzedzia 'winget' w systemie!
+    echo [i] Na Windows 10 musisz zainstalowac/zaktualizowac "Instalator aplikacji" ze sklepu Microsoft.
+    echo [i] Za 5 sekund otworzy sie strona sklepu. Kliknij 'Pobierz', a nastepnie uruchom instalator PONOWNIE.
+    timeout /t 5 /nobreak >nul
+    start ms-windows-store://pdp/?ProductId=9nblggh4nns1
+    exit
 )
-
-:: Jesli automatyczna instalacja zawiedzie (np. brak zaleznosci w odchudzonym Windows 10 LTSC)
-color 0C
-echo [!] Automatyczna instalacja zawiodla (brak zaleznosci w systemie).
-echo [i] Otwieram Sklep Microsoft. Zainstaluj "Instalator aplikacji" i uruchom instalator PONOWNIE.
-timeout /t 5 /nobreak >nul
-start ms-windows-store://pdp/?ProductId=9nblggh4nns1
-exit
-
-:winget_installed
 color 0B
 
 :: python jest?
