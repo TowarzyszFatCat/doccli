@@ -672,3 +672,49 @@ def generate_aniskip_chapters(mal_id, ep_number, filepath):
             
     except Exception as e:
         print(colored(f"[BŁĄD] AniSkip awaria pobierania: {e}", "red"))
+
+
+def rate_anilist_anime(mal_id, score_1_to_10, token):
+    """Wysyła ocenę ukończonego anime w skali 1-10 bezpośrednio na profil AniList."""
+    if not token or token == "":
+        return False
+        
+    headers = {
+        'Authorization': f'Bearer {token}',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+    }
+    
+    query_id = '''
+    query ($malId: Int) {
+      Media(idMal: $malId, type: ANIME) {
+        id
+      }
+    }
+    '''
+    try:
+        req = post("https://graphql.anilist.co", json={'query': query_id, 'variables': {'malId': mal_id}}, headers=headers, timeout=5)
+        if req.status_code != 200:
+            return False
+        anilist_id = req.json()['data']['Media']['id']
+    except Exception:
+        return False
+
+    mutation = '''
+    mutation ($mediaId: Int, $scoreRaw: Int) {
+      SaveMediaListEntry(mediaId: $mediaId, scoreRaw: $scoreRaw) {
+        id
+        score
+      }
+    }
+    '''
+    variables = {
+        'mediaId': anilist_id,
+        'scoreRaw': int(score_1_to_10) * 10
+    }
+    
+    try:
+        req_mut = post("https://graphql.anilist.co", json={'query': mutation, 'variables': variables}, headers=headers, timeout=5)
+        return req_mut.status_code == 200
+    except Exception:
+        return False

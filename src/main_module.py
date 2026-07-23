@@ -741,7 +741,6 @@ def w_default(SLUG, NUMBER, process):
         
     how_many_episodes = 0
     
-    # BŁYSKAWICZNA ŚCIEŻKA
     if details and details.get('mal_id'):
         stars, desc, ep_count = get_details_from_anilist(str(details['mal_id']))
         
@@ -752,7 +751,6 @@ def w_default(SLUG, NUMBER, process):
             if match:
                 how_many_episodes = int(match.group(1))
 
-    # ŚCIEŻKA AWARYJNA
     if how_many_episodes <= 0:
         clear()
         print(colored("[INFO] Trwa pobieranie ilości odcinków z bazy... (Może to potrwać dłuższą chwilę)", "yellow"))
@@ -760,39 +758,70 @@ def w_default(SLUG, NUMBER, process):
         if how_many_episodes == 404:
             how_many_episodes = NUMBER 
 
-    if ds.settings["rpc_enabled"]:
-        update_rpc(f"Ogląda: {details.get('title', 'Anime')} [{str(NUMBER)}/{str(how_many_episodes)}]", ds.settings["rpc_status"])
+    if ds.settings.get("rpc_enabled", True):
+        update_rpc(f"Ogląda: {details.get('title', 'Anime')} [{str(NUMBER)}/{str(how_many_episodes)}]", ds.settings.get("rpc_status", "Używa doccli!"))
     else:
-        update_rpc(f"Ogląda anime", ds.settings["rpc_status"])
+        update_rpc("Ogląda anime", ds.settings.get("rpc_status", "Używa doccli!"))
 
     threading.Thread(target=delayed_tracker, args=(details, NUMBER, process, how_many_episodes), daemon=True).start()
 
     choices = [
         "Zmień źródło",
-        "Następny odcinek",
+    ]
+
+    if NUMBER < how_many_episodes:
+        choices.append("Następny odcinek")
+    else:
+        choices.append("Oceń serię (AniList)")
+
+    choices.extend([
         "Poprzedni odcinek",
         "Lista odcinków",
         "Menu główne"
-    ]
+    ])
 
     prompt = 'Co chcesz zrobić? '
-
-    ans = open_menu(choices=choices, prompt=prompt, qmark=f'Odcinek: {NUMBER}/{how_many_episodes}', height=5)
+    ans = open_menu(choices=choices, prompt=prompt, qmark=f'Odcinek: {NUMBER}/{how_many_episodes}', height=7)
 
     if ans == choices[0]:
         kill_process(process)
         update_rpc("Menu główne", "Szuka anime do obejrzenia...")
         w_players(SLUG, NUMBER)
 
-    elif ans == choices[1]:
+    elif ans == "Następny odcinek":
         kill_process(process)
         update_rpc("Menu główne", "Szuka anime do obejrzenia...")
-        next_ep = NUMBER + 1 if NUMBER < how_many_episodes else NUMBER
+        next_ep = NUMBER + 1
         ds.continue_data[1] = next_ep
         ds.save()
         w_players(SLUG, next_ep)
         
-    elif ans == choices[2]:
+    elif ans == "Ukończono! Oceń serię (AniList)":
+        kill_process(process)
+        token = ds.settings.get("anilist_token", "")
+        if token != "":
+            clear()
+            print(colored(f"🎉 Gratulacje! Ukończono anime: {details.get('title', 'Brak tytułu')}", "green"))
+            ans_rate = open_menu(
+                choices=[str(i) for i in range(10, 0, -1)] + ["Nie chcę oceniać"],
+                prompt="Jak oceniasz tę serię w skali od 1 do 10?",
+                height=12
+            )
+            
+            if ans_rate != "Nie chcę oceniać":
+                from anilist_connector import rate_anilist_anime 
+                
+                print(colored("[INFO] Wysyłanie oceny do AniList...", "cyan"))
+                if rate_anilist_anime(details.get('mal_id'), int(ans_rate), token):
+                    print(colored("[+] Ocena została pomyślnie zapisana na profilu!", "green"))
+                else:
+                    print(colored("[-] Wystąpił błąd podczas wysyłania oceny.", "red"))
+                time.sleep(2)
+                
+        update_rpc("Menu główne", "Szuka anime do obejrzenia...")
+        m_welcome()
+
+    elif ans == "Poprzedni odcinek":
         kill_process(process)
         update_rpc("Menu główne", "Szuka anime do obejrzenia...")
         prev_ep = NUMBER - 1 if NUMBER >= 2 else NUMBER
@@ -800,12 +829,12 @@ def w_default(SLUG, NUMBER, process):
         ds.save()
         w_players(SLUG, prev_ep)
         
-    elif ans == choices[3]:
+    elif ans == "Lista odcinków":
         kill_process(process)
         update_rpc("Menu główne", "Szuka anime do obejrzenia...")
         w_list(SLUG)
         
-    elif ans == choices[4]:
+    elif ans == "Menu główne":
         kill_process(process)
         update_rpc("Menu główne", "Szuka anime do obejrzenia...")
         m_welcome()

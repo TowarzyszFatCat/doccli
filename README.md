@@ -90,7 +90,9 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a> i nie tylko
 - Oglądanie poprzednich odcinków serii nie cofa już progresu na Anilist,
 - Instalator na Windowsa jest teraz bardziej przyjazny,
 - Markery openingów i endingów,
-
+- Nowe menu wznawiania oglądania,
+- Sortowanie po gatunku,
+- Opcja losowania spośród gatunku,
 <br>
 
 ---
