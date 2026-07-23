@@ -769,10 +769,13 @@ def w_default(SLUG, NUMBER, process):
         "Zmień źródło",
     ]
 
+    token = ds.settings.get("anilist_token", "")
+
     if NUMBER < how_many_episodes:
         choices.append("Następny odcinek")
     else:
-        choices.append("Oceń serię (AniList)")
+        if token != "":
+            choices.append("Oceń serię (AniList)")
 
     choices.extend([
         "Poprzedni odcinek",
@@ -796,28 +799,73 @@ def w_default(SLUG, NUMBER, process):
         ds.save()
         w_players(SLUG, next_ep)
         
-    elif ans == "Ukończono! Oceń serię (AniList)":
-        kill_process(process)
-        token = ds.settings.get("anilist_token", "")
+    elif ans == "Oceń serię (AniList)":
+        kill_process(process) 
         if token != "":
             clear()
-            print(colored(f"🎉 Gratulacje! Ukończono anime: {details.get('title', 'Brak tytułu')}", "green"))
+            
+            from anilist_connector import rate_anilist_anime, get_anilist_score_format
+            
+            print(colored("[INFO] Pobieranie Twojej skali ocen z AniList...", "cyan"))
+            score_format = get_anilist_score_format(token)
+            
+            rate_choices = []
+            
+            if score_format == "POINT_100":
+                # Liczby całkowite 1-100
+                rate_choices = [str(i) for i in range(100, 0, -1)]
+            elif score_format == "POINT_10_DECIMAL":
+                # Ułamki 1.0 - 10.0
+                rate_choices = [f"{i/10:.1f}" for i in range(100, 0, -1)]
+            elif score_format == "POINT_5":
+                # Reprezentacja w gwiazdkach
+                rate_choices = ["5 ⭐", "4 ⭐", "3 ⭐", "2 ⭐", "1 ⭐"]
+            elif score_format == "POINT_3":
+                # Reprezentacja w emotikonach
+                rate_choices = ["🙂 (Dobrze)", "😐 (Średnio)", "🙁 (Źle)"]
+            else: 
+                # POINT_10 - domyślne liczby całkowite 1-10
+                rate_choices = [str(i) for i in range(10, 0, -1)]
+                
+            rate_choices.append("Nie chcę oceniać")
+            
             ans_rate = open_menu(
-                choices=[str(i) for i in range(10, 0, -1)] + ["Nie chcę oceniać"],
-                prompt="Jak oceniasz tę serię w skali od 1 do 10?",
+                choices=rate_choices,
+                prompt="Jak oceniasz tę serię w swojej skali?",
                 height=12
             )
             
             if ans_rate != "Nie chcę oceniać":
-                from anilist_connector import rate_anilist_anime 
+                score_raw = 0
+                
+                if score_format == "POINT_100":
+                    score_raw = int(ans_rate)
+                elif score_format == "POINT_10_DECIMAL":
+                    score_raw = int(float(ans_rate) * 10)
+                elif score_format == "POINT_5":
+                    score_raw = int(ans_rate.split()[0]) * 20  
+                elif score_format == "POINT_3":
+                    if ":)" in ans_rate: score_raw = 100
+                    elif ":|" in ans_rate: score_raw = 67
+                    else: score_raw = 33
+                else:
+                    score_raw = int(ans_rate) * 10
                 
                 print(colored("[INFO] Wysyłanie oceny do AniList...", "cyan"))
-                if rate_anilist_anime(details.get('mal_id'), int(ans_rate), token):
+                if rate_anilist_anime(details.get('mal_id'), score_raw, token):
                     print(colored("[+] Ocena została pomyślnie zapisana na profilu!", "green"))
                 else:
                     print(colored("[-] Wystąpił błąd podczas wysyłania oceny.", "red"))
                 time.sleep(2)
                 
+        update_rpc("Menu główne", "Szuka anime do obejrzenia...")
+        m_welcome()
+
+    elif ans == "Ukończono serię (Wróć do menu głównego)":
+        kill_process(process)
+        clear()
+        print(colored(f"🎉 Gratulacje! Ukończono anime: {details.get('title', 'Brak tytułu')}", "green"))
+        time.sleep(2)
         update_rpc("Menu główne", "Szuka anime do obejrzenia...")
         m_welcome()
 

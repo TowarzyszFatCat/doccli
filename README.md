@@ -93,6 +93,7 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a> i nie tylko
 - Nowe menu wznawiania oglądania,
 - Sortowanie po gatunku,
 - Opcja losowania spośród gatunku,
+- Ocenianie bezpośrednio z aplikacji,
 <br>
 
 ---

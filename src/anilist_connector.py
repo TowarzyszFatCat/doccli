@@ -674,8 +674,39 @@ def generate_aniskip_chapters(mal_id, ep_number, filepath):
         print(colored(f"[BŁĄD] AniSkip awaria pobierania: {e}", "red"))
 
 
-def rate_anilist_anime(mal_id, score_1_to_10, token):
-    """Wysyła ocenę ukończonego anime w skali 1-10 bezpośrednio na profil AniList."""
+def get_anilist_score_format(token):
+    """Pobiera preferowaną skalę ocen z profilu użytkownika (np. POINT_10, POINT_100, POINT_5)."""
+    if not token or token == "":
+        return "POINT_10"
+        
+    headers = {
+        'Authorization': f'Bearer {token}',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+    }
+    
+    query = '''
+    query {
+      Viewer {
+        mediaListOptions {
+          scoreFormat
+        }
+      }
+    }
+    '''
+    try:
+        from requests import post
+        req = post("https://graphql.anilist.co", json={'query': query}, headers=headers, timeout=5)
+        if req.status_code == 200:
+            return req.json()['data']['Viewer']['mediaListOptions']['scoreFormat']
+    except Exception:
+        pass
+        
+    return "POINT_10"
+
+
+def rate_anilist_anime(mal_id, score_raw, token):
+    """Wysyła ocenę (jako wartość 0-100) na profil AniList."""
     if not token or token == "":
         return False
         
@@ -685,36 +716,21 @@ def rate_anilist_anime(mal_id, score_1_to_10, token):
         'Accept': 'application/json',
     }
     
-    query_id = '''
-    query ($malId: Int) {
-      Media(idMal: $malId, type: ANIME) {
-        id
-      }
-    }
-    '''
+    query_id = '''query ($malId: Int) { Media(idMal: $malId, type: ANIME) { id } }'''
     try:
+        from requests import post
         req = post("https://graphql.anilist.co", json={'query': query_id, 'variables': {'malId': mal_id}}, headers=headers, timeout=5)
-        if req.status_code != 200:
-            return False
+        if req.status_code != 200: return False
         anilist_id = req.json()['data']['Media']['id']
-    except Exception:
-        return False
+    except Exception: return False
 
     mutation = '''
     mutation ($mediaId: Int, $scoreRaw: Int) {
-      SaveMediaListEntry(mediaId: $mediaId, scoreRaw: $scoreRaw) {
-        id
-        score
-      }
+      SaveMediaListEntry(mediaId: $mediaId, scoreRaw: $scoreRaw) { id }
     }
     '''
-    variables = {
-        'mediaId': anilist_id,
-        'scoreRaw': int(score_1_to_10) * 10
-    }
-    
     try:
-        req_mut = post("https://graphql.anilist.co", json={'query': mutation, 'variables': variables}, headers=headers, timeout=5)
+        from requests import post
+        req_mut = post("https://graphql.anilist.co", json={'query': mutation, 'variables': {'mediaId': anilist_id, 'scoreRaw': int(score_raw)}}, headers=headers, timeout=5)
         return req_mut.status_code == 200
-    except Exception:
-        return False
+    except Exception: return False
