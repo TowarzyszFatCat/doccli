@@ -10,7 +10,7 @@ from termcolor import colored
 # Doccli modules
 from storage import ds
 from docchi_api_connector import extract_lycoris_direct_link
-from anilist_connector import get_duration_by_malid, update_anilist_progress
+from anilist_connector import get_duration_by_malid, update_anilist_progress, generate_aniskip_chapters
 
 
 def kill_process(process):
@@ -27,7 +27,7 @@ def kill_process(process):
         process.terminate()
 
 
-def mpv_play(URL, quality="best"):
+def mpv_play(URL, quality="best", mal_id=None, ep_number=None):
     """Uruchamia odtwarzacz mpv z odpowiednimi parametrami."""
     mpv_exec = "mpv.exe" if os.name == "nt" else "mpv"
 
@@ -40,6 +40,8 @@ def mpv_play(URL, quality="best"):
         
     temp_dir = tempfile.gettempdir()
     chapters_file = os.path.join(temp_dir, "doccli_chapters")
+
+    generate_aniskip_chapters(mal_id, ep_number, chapters_file)
 
     if "lycoris" in URL.lower():
         direct_url = extract_lycoris_direct_link(URL)

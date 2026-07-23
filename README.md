@@ -88,7 +88,8 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a> i nie tylko
 - Menu historia pozwala teraz na wybranie danej pozycji i otworzenia dla niej menu z detalami,
 - Moja lista wyświetla teraz także serie ze statusem watching,
 - Oglądanie poprzednich odcinków serii nie cofa już progresu na Anilist,
-- Instalator na Windowsa jest teraz bardziej przyjazny.
+- Instalator na Windowsa jest teraz bardziej przyjazny,
+- Markery openingów i endingów,
 
 <br>
 

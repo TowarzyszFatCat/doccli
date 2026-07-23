@@ -1,10 +1,13 @@
 import time
 from datetime import datetime
 from termcolor import colored
+import os
+import requests
 
 # From pip
 from deep_translator import GoogleTranslator
 from requests import post
+from termcolor import colored
 
 # Doccli modules
 from storage import ds
@@ -605,3 +608,67 @@ def sync_history_with_anilist():
 
     ds.history.sort(key=lambda x: x.get('timestamp', 0), reverse=True)
     ds.save()
+
+
+def generate_aniskip_chapters(mal_id, ep_number, filepath):
+    """
+    Pobiera czasy pomijania z AniSkip i generuje plik FFMETADATA, który MPV natywnie rozumie.
+    """
+    if os.path.exists(filepath):
+        try:
+            os.remove(filepath)
+        except Exception:
+            pass
+            
+    if not mal_id or not ep_number:
+        print(colored("[-] AniSkip: Brak MAL ID lub numeru odcinka. Markery wyłączone.", "dark_grey"))
+        return
+        
+    try:
+        url = f"https://api.aniskip.com/v2/skip-times/{mal_id}/{ep_number}?types=op&types=ed&types=mixed-op&types=mixed-ed&types=recap&episodeLength=0"
+        req = requests.get(url, timeout=3)
+        
+        if req.status_code == 200:
+            data = req.json()
+            if data.get("found"):
+                results = data.get("results", [])
+                results.sort(key=lambda x: x['interval']['startTime'])
+                
+                content = ";FFMETADATA1\n"
+                current_time = 0.0
+                
+                for res in results:
+                    start_time = float(res['interval']['startTime'])
+                    end_time = float(res['interval']['endTime'])
+                    skip_type = res['skipType']
+                    
+                    if start_time > current_time:
+                        content += "\n[CHAPTER]\nTIMEBASE=1/1000\n"
+                        content += f"START={int(current_time * 1000)}\n"
+                        content += f"END={int(start_time * 1000)}\n"
+                        content += "title=Odcinek\n"
+                        
+                    title = "Opening" if "op" in skip_type else "Ending" if "ed" in skip_type else skip_type.capitalize()
+                    content += "\n[CHAPTER]\nTIMEBASE=1/1000\n"
+                    content += f"START={int(start_time * 1000)}\n"
+                    content += f"END={int(end_time * 1000)}\n"
+                    content += f"title={title}\n"
+                    
+                    current_time = end_time
+                    
+                content += "\n[CHAPTER]\nTIMEBASE=1/1000\n"
+                content += f"START={int(current_time * 1000)}\n"
+                content += "END=99999999\n"
+                content += "title=Odcinek\n"
+                
+                with open(filepath, "w", encoding="utf-8") as f:
+                    f.write(content)
+                
+                print(colored(f"[+] Znaleziono markery AniSkip! Wygenerowano {len(results)} przedziałów.", "green"))
+            else:
+                print(colored("[-] Baza AniSkip nie posiada jeszcze markerów dla tego odcinka.", "yellow"))
+        else:
+            print(colored(f"[-] Odrzucenie z serwera AniSkip (Błąd {req.status_code})", "red"))
+            
+    except Exception as e:
+        print(colored(f"[BŁĄD] AniSkip awaria pobierania: {e}", "red"))
