@@ -52,7 +52,7 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a> i nie tylko
 ---
 
 <h1 align="center">
-    Historia aktualizacji v2.30.X:
+    Historia aktualizacji v2.30.X - v2.31.X:
 </h1>
 
 **v2.30:**
