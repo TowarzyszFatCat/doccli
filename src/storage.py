@@ -14,16 +14,25 @@ class DataStorage:
         self.path_settings = os.path.join(self.config_dir, "settings.json")
         self.path_history = os.path.join(self.config_dir, "history.json")
 
-        # Dane (ZMIANA: 5 elementów)
+        # Dane
         self.mylist = []
         self.continue_data = [None, None]
-        self.settings = [True, "Używa doccli!", True, "", ""]
         self.history = []
+        
+        # Domyślne ustawienia
+        self.settings = {
+            "rpc_enabled": True,
+            "rpc_status": "Używa doccli!",
+            "auto_sync": True,
+            "anilist_token": "",
+            "download_path": "",
+            "player_quality": "best"
+        }
 
         self.load()
 
     def load(self):
-        """Wczytuje dane z dysku do zmiennych."""
+        """Wczytuje dane z dysku do zmiennych i w razie potrzeby aktualizuje strukturę plików."""
         if not os.path.exists(self.config_dir):
             os.makedirs(self.config_dir)
 
@@ -45,15 +54,29 @@ class DataStorage:
         with open(self.path_history, 'r') as file:
             self.history = json.load(file)
 
-        # Ustawienia
+        # Ustawienia (Z logiką migracji ze starej wersji)
         if not os.path.exists(self.path_settings):
-            with open(self.path_settings, 'w') as file: json.dump([True, "Używa doccli!", True, "", ""], file, indent=4)
-        with open(self.path_settings, 'r') as file:
-            self.settings = json.load(file)
+            with open(self.path_settings, 'w') as file: json.dump(self.settings, file, indent=4)
             
-            while len(self.settings) < 5:
-                self.settings.append("")
-            self.save()
+        with open(self.path_settings, 'r') as file:
+            loaded_settings = json.load(file)
+            
+            # MIGRACJA: Jeśli u kogoś na dysku ustawienia to stara lista, przerób ją na słownik
+            if isinstance(loaded_settings, list):
+                self.settings["rpc_enabled"] = loaded_settings[0] if len(loaded_settings) > 0 else True
+                self.settings["rpc_status"] = loaded_settings[1] if len(loaded_settings) > 1 else "Używa doccli!"
+                self.settings["auto_sync"] = loaded_settings[2] if len(loaded_settings) > 2 else True
+                self.settings["anilist_token"] = loaded_settings[3] if len(loaded_settings) > 3 else ""
+                self.settings["download_path"] = loaded_settings[4] if len(loaded_settings) > 4 else ""
+                self.save() # Zapisujemy już jako słownik
+                
+            # Jeśli to już słownik, po prostu go ładujemy i sprawdzamy czy nie brakuje nowych kluczy
+            elif isinstance(loaded_settings, dict):
+                for key, default_value in self.settings.items():
+                    if key not in loaded_settings:
+                        loaded_settings[key] = default_value
+                self.settings = loaded_settings
+                self.save()
 
     def save(self):
         """Zapisuje obecne zmienne na dysk."""

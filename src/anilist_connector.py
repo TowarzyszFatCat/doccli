@@ -1,9 +1,15 @@
 import time
+from datetime import datetime
+from termcolor import colored
 
 # From pip
 from deep_translator import GoogleTranslator
 from requests import post
 
+# Doccli modules
+from storage import ds
+
+SYNC_DONE = False
 url = "https://graphql.anilist.co"
 
 def get_trending_anime_malids():
@@ -503,3 +509,99 @@ def get_anilist_advanced_stats(token):
         }
     except:
         return None
+
+
+def sync_history_with_anilist():
+    global SYNC_DONE
+    if SYNC_DONE:
+        return
+    SYNC_DONE = True
+    
+    from cache import get_cached_series_list # Import wewnątrz, aby uniknąć pętli
+    all_series = get_cached_series_list()
+    
+    migrated_history = []
+    for item in ds.history:
+        if isinstance(item, str):
+            try:
+                date_str = item[1:17]
+                dt_object = datetime.strptime(date_str, "%d/%m/%Y %H:%M")
+                source = "Doccli - Offline" if "| Offline" in item else "Doccli - Online"
+                ep_str, title, slug = "?", item, None
+                
+                if "[Odc: " in item:
+                    ep_str = item.split("[Odc: ")[1].split("]")[0].strip()
+                    title = item.split("] ", 1)[1].split(" [Odc:")[0].split(" / ")[0].strip()
+                elif " | Offline [" in item:
+                    ep_str = item.split(" | Offline [")[1].split("]")[0].strip()
+                    title = item.split("] ", 1)[1].split(" | Offline")[0].strip()
+                    
+                for s in all_series:
+                    if s['title'] == title or s['title_en'] == title:
+                        slug = s['slug']
+                        break
+                        
+                migrated_history.append({
+                    "timestamp": dt_object.timestamp(), 
+                    "dt_string": date_str, 
+                    "title": title, 
+                    "title_en": title, 
+                    "episode": ep_str, 
+                    "source": source, 
+                    "slug": slug,
+                    "duration": 21
+                })
+            except: pass
+        elif isinstance(item, dict):
+            if "duration" not in item:
+                item["duration"] = 21
+            migrated_history.append(item)
+            
+    ds.history = migrated_history
+    ds.save()
+
+    has_token = ds.settings.get("anilist_token") != ""
+    if not has_token:
+        return
+        
+    print(colored("[INFO] Trwa synchronizacja historii z AniList (To zajmie tylko chwilę)...", "cyan"))
+    token = ds.settings["anilist_token"]
+    
+    try:
+        al_history = get_anilist_history(token)
+        for al_item in al_history:
+            is_duplicate = False
+            al_progress = str(al_item['progress']) if al_item['progress'] else ("Ukończono" if al_item['status'] == 'completed' else "?")
+            
+            for local_item in ds.history:
+                if local_item.get('episode') == al_progress:
+                    lt_lower = local_item.get('title', '').lower()
+                    le_lower = local_item.get('title_en', '').lower()
+                    at_lower = al_item['title'].lower() if al_item['title'] else ""
+                    ae_lower = al_item['title_en'].lower() if al_item['title_en'] else ""
+                    
+                    if (at_lower and at_lower in lt_lower) or (ae_lower and ae_lower in le_lower) or (lt_lower and lt_lower in at_lower):
+                        is_duplicate = True
+                        break
+                        
+            if not is_duplicate:
+                slug = None
+                for s in all_series:
+                    if s['title'].lower() == (al_item['title'] or "").lower() or (al_item['title_en'] and s['title_en'].lower() == al_item['title_en'].lower()):
+                        slug = s['slug']
+                        break
+                dt_object = datetime.fromtimestamp(al_item['timestamp'])
+                ds.history.append({
+                    "timestamp": al_item['timestamp'], 
+                    "dt_string": dt_object.strftime("%d/%m/%Y %H:%M"), 
+                    "title": al_item['title'], 
+                    "title_en": al_item['title_en'], 
+                    "episode": al_progress, 
+                    "source": "AniList", 
+                    "slug": slug,
+                    "duration": 21
+                })
+    except: pass
+
+    ds.history.sort(key=lambda x: x.get('timestamp', 0), reverse=True)
+    ds.save()

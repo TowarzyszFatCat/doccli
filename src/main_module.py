@@ -24,118 +24,9 @@ from stats import m_stats
 from menus_decor import MAIN_MENU, SZUKAJ, NA_CZASIE, MOJA_LISTA, HISTORIA, MOJA_BIBLIOTEKA
 from discord_integration import update_rpc, set_running
 from docchi_api_connector import get_episodes_count_for_serie, get_players_list, get_details_for_serie, extract_lycoris_direct_link
-from anilist_connector import get_details_from_anilist, update_anilist_progress, get_anilist_plan_to_watch, sync_anilist_list_status, get_anilist_history, get_duration_by_malid
-
-global_player_quality = "best"
-
-SYNC_DONE = False
-
-def sync_history_with_anilist():
-    global SYNC_DONE
-    if SYNC_DONE:
-        return
-    SYNC_DONE = True
-    
-    all_series = get_cached_series_list()
-    
-    migrated_history = []
-    for item in ds.history:
-        if isinstance(item, str):
-            try:
-                date_str = item[1:17]
-                dt_object = datetime.strptime(date_str, "%d/%m/%Y %H:%M")
-                source = "Doccli - Offline" if "| Offline" in item else "Doccli - Online"
-                ep_str, title, slug = "?", item, None
-                
-                if "[Odc: " in item:
-                    ep_str = item.split("[Odc: ")[1].split("]")[0].strip()
-                    title = item.split("] ", 1)[1].split(" [Odc:")[0].split(" / ")[0].strip()
-                elif " | Offline [" in item:
-                    ep_str = item.split(" | Offline [")[1].split("]")[0].strip()
-                    title = item.split("] ", 1)[1].split(" | Offline")[0].strip()
-                    
-                for s in all_series:
-                    if s['title'] == title or s['title_en'] == title:
-                        slug = s['slug']
-                        break
-                        
-                migrated_history.append({
-                    "timestamp": dt_object.timestamp(), 
-                    "dt_string": date_str, 
-                    "title": title, 
-                    "title_en": title, 
-                    "episode": ep_str, 
-                    "source": source, 
-                    "slug": slug,
-                    "duration": 21
-                })
-            except: pass
-        elif isinstance(item, dict):
-            if "duration" not in item:
-                item["duration"] = 21
-            migrated_history.append(item)
-            
-    ds.history = migrated_history
-    ds.save()
-
-    has_token = len(ds.settings) > 3 and ds.settings[3] != ""
-    if not has_token:
-        return
-        
-    print(colored("[INFO] Trwa synchronizacja historii z AniList (To zajmie tylko chwilę)...", "cyan"))
-    token = ds.settings[3]
-    
-    try:
-        al_history = get_anilist_history(token)
-        for al_item in al_history:
-            is_duplicate = False
-            al_progress = str(al_item['progress']) if al_item['progress'] else ("Ukończono" if al_item['status'] == 'completed' else "?")
-            
-            for local_item in ds.history:
-                if local_item.get('episode') == al_progress:
-                    lt_lower = local_item.get('title', '').lower()
-                    le_lower = local_item.get('title_en', '').lower()
-                    at_lower = al_item['title'].lower() if al_item['title'] else ""
-                    ae_lower = al_item['title_en'].lower() if al_item['title_en'] else ""
-                    
-                    if (at_lower and at_lower in lt_lower) or (ae_lower and ae_lower in le_lower) or (lt_lower and lt_lower in at_lower):
-                        is_duplicate = True
-                        break
-                        
-            if not is_duplicate:
-                slug = None
-                for s in all_series:
-                    if s['title'].lower() == (al_item['title'] or "").lower() or (al_item['title_en'] and s['title_en'].lower() == al_item['title_en'].lower()):
-                        slug = s['slug']
-                        break
-                dt_object = datetime.fromtimestamp(al_item['timestamp'])
-                ds.history.append({
-                    "timestamp": al_item['timestamp'], 
-                    "dt_string": dt_object.strftime("%d/%m/%Y %H:%M"), 
-                    "title": al_item['title'], 
-                    "title_en": al_item['title_en'], 
-                    "episode": al_progress, 
-                    "source": "AniList", 
-                    "slug": slug,
-                    "duration": 21
-                })
-    except: pass
-
-    ds.history.sort(key=lambda x: x.get('timestamp', 0), reverse=True)
-    ds.save()
-
-
-def kill_process(process):
-    if not process:
-        return
-    
-    if os.name == "nt":
-        subprocess.run(
-            ["taskkill", "/F", "/T", "/PID", str(process.pid)], 
-            capture_output=True
-        )
-    else:
-        process.terminate()
+from anilist_connector import get_details_from_anilist, update_anilist_progress, get_anilist_plan_to_watch, sync_anilist_list_status, get_anilist_history, get_duration_by_malid, sync_history_with_anilist
+from player import mpv_play, kill_process, delayed_tracker
+from local_lib import m_local_library
 
 
 def m_welcome():
@@ -166,7 +57,7 @@ def m_welcome():
     prompt_txt = 'Wybierz co chcesz zrobić: '
 
     # Status anilist
-    has_token = len(ds.settings) > 3 and ds.settings[3] != ""
+    has_token = ds.settings.get("anilist_token") != ""
     
     if has_token:
         status_txt = "🟢 STATUS: Połączono z kontem AniList!"
@@ -204,18 +95,21 @@ def m_welcome():
         set_running(False)
         sys.exit()
 
+
 def m_settings():
-    current_dl_path = ds.settings[4] if ds.settings[4] != "" else "Domyślny"
+    current_dl_path = ds.settings.get("download_path", "") if ds.settings.get("download_path", "") != "" else "Domyślny"
+    current_quality = ds.settings.get("player_quality", "best")
 
     choices = [
         "Ustawienia Discord RPC",
         "Połącz / Zaktualizuj konto AniList",
         f"Zmień folder pobierania (Obecnie: {current_dl_path})",
+        f"Zmień domyślną jakość wideo (Obecnie: {current_quality})",
         "Wróć do menu głównego"
     ]
     
     prompt_text = 'Wybierz co chcesz skonfigurować: '
-    ans = open_menu(choices=choices, prompt=prompt_text, height=6)
+    ans = open_menu(choices=choices, prompt=prompt_text, height=7)
     
     if ans == choices[0]:
         rpc_choices = [{
@@ -226,21 +120,21 @@ def m_settings():
         res = prompt(questions=rpc_choices)
 
         if res[0] == "Nie":
-            ds.settings[0] = False
+            ds.settings["rpc_enabled"] = False
             ds.save()
             m_welcome()
         if res[0] == "Tak":
             clear()
-            ds.settings[0] = True
+            ds.settings["rpc_enabled"] = True
             choices2 = [{"type": "input", "message": "Wpisz co tylko zechcesz! Będzie to wyświetlane w II linijce statusu. Zostaw puste jeśli chcesz aby był wyświetlany domyślny status. [Minimalnie 2 znaki] (Domyślna wartość: 'Używa doccli!') \n", "name": "status_dc"}]
             res2 = prompt(questions=choices2)
 
             if not res2['status_dc'] == "" and len(res2['status_dc']) > 1:
-                ds.settings[1] = res2['status_dc']
+                ds.settings["rpc_status"] = res2['status_dc']
                 ds.save()
                 m_welcome()
             else:
-                ds.settings[1] = 'Używa doccli!'
+                ds.settings["rpc_status"] = 'Używa doccli!'
                 ds.save()
                 m_welcome()
                 
@@ -260,7 +154,7 @@ def m_settings():
         res = prompt(questions)
         
         if res['token']:
-            ds.settings[3] = res['token'].strip()
+            ds.settings["anilist_token"] = res['token'].strip()
             ds.save()
             print(colored("\n[+] Pomyślnie zapisano token! Od teraz doccli będzie automatycznie zapisywać postęp.", "green"))
             time.sleep(3)
@@ -277,14 +171,14 @@ def m_settings():
         new_input = res['new_path'].strip()
         
         if new_input == "":
-            ds.settings[4] = ""
+            ds.settings["download_path"] = ""
             ds.save()
             print(colored("\n[+] Przywrócono domyślny folder pobierania!", "green"))
         else:
             try:
                 # Tworzy podany folder, jeśli jeszcze nie istnieje
                 os.makedirs(new_input, exist_ok=True)
-                ds.settings[4] = new_input
+                ds.settings["download_path"] = new_input
                 ds.save()
                 print(colored(f"\n[+] Pomyślnie zmieniono folder zapisu na: {new_input}", "green"))
             except Exception as e:
@@ -294,6 +188,20 @@ def m_settings():
         m_settings()
         
     elif ans == choices[3]:
+        quality_choices = ["Źródłowa", "1080p", "720p", "480p", "360p", "Cofnij"]
+        chosen = open_menu(choices=quality_choices, prompt="Wybierz domyślną jakość dla odtwarzacza:", height=7)
+        
+        if chosen != "Cofnij":
+            if chosen == "Źródłowa" or chosen.startswith("best"):
+                ds.settings["player_quality"] = "best"
+            else:
+                ds.settings["player_quality"] = chosen
+            ds.save()
+            print(colored(f"\n[+] Pomyślnie zmieniono jakość na: {ds.settings['player_quality']}", "green"))
+            time.sleep(2)
+        m_settings()
+
+    elif ans == choices[4]:
         m_welcome()
 
 
@@ -303,13 +211,13 @@ def m_discord():
 
 
 def m_mylist():
-    has_token = len(ds.settings) > 3 and ds.settings[3] != ""
+    has_token = ds.settings.get("anilist_token") != ""
     
     if has_token:
         clear()
         print(colored("[INFO] Trwa automatyczna synchronizacja z AniList...", "cyan"))
         
-        token = ds.settings[3]
+        token = ds.settings["anilist_token"]
         mal_ids = get_anilist_plan_to_watch(token)
         
         if mal_ids is not None:
@@ -496,7 +404,7 @@ def m_details(details):
         w_list(details['slug'])
         
     elif ans == choices[2]: 
-        w_download_season(details['slug'], details['title'], base_download_dir=ds.settings[4])
+        w_download_season(details['slug'], details['title'], base_download_dir=ds.settings["download_path"])
         m_details(details)
         
     elif ans == choices[3]: 
@@ -538,13 +446,13 @@ def m_details(details):
                 print(colored("Błąd: Nie podano poprawnych numerów odcinków!", "red"))
                 time.sleep(2)
             else:
-                w_download_season(details['slug'], details['title'], ep_list, base_download_dir=ds.settings[4])
+                w_download_season(details['slug'], details['title'], ep_list, base_download_dir=ds.settings["download_path"])
                 
         m_details(details)
         
     elif ans == choices[4]:
-        has_token = len(ds.settings) > 3 and ds.settings[3] != ""
-        token = ds.settings[3] if has_token else ""
+        has_token = ds.settings.get("anilist_token") != ""
+        token = ds.settings["anilist_token"] if has_token else ""
         
         if details in ds.mylist:
             ds.mylist.remove(details)
@@ -621,7 +529,6 @@ def w_list(SLUG):
 
 
 def w_players(SLUG, NUMBER, err=''):
-    global global_player_quality
     players = []
 
     if get_players_list(SLUG, NUMBER) == 404:
@@ -712,8 +619,8 @@ def w_players(SLUG, NUMBER, err=''):
         display_line = (prefix + hosting_name).ljust(40) + " | Link źródła: " + source_link
         choices.append(display_line)
 
-    # ZMIANA: Dodajemy opcje zmiany jakości i powrotu na koniec listy
-    choices.append(f"Zmień maksymalną jakość (Obecnie: {global_player_quality})")
+    current_quality = ds.settings.get("player_quality", "best")
+    choices.append(f"Zmień maksymalną jakość (Obecnie: {current_quality})")
     choices.append("Wróć do menu")
 
     prompt = 'Wybierz źródło: '
@@ -727,18 +634,19 @@ def w_players(SLUG, NUMBER, err=''):
         quality_choices = ["Źródłowa", "1080p", "720p", "480p", "360p"]
         chosen = open_menu(choices=quality_choices, prompt="Wybierz preferowaną jakość:", height=6)
         
-        if chosen.startswith("best"):
-            global_player_quality = "best"
+        if chosen == "Źródłowa" or chosen.startswith("best"):
+            ds.settings["player_quality"] = "best"
         else:
-            global_player_quality = chosen
+            ds.settings["player_quality"] = chosen
             
-        w_players(SLUG, NUMBER, err=f'Zmieniono jakość odtwarzacza na {global_player_quality}')
+        ds.save() # Zapisujemy od razu na dysk!
+        w_players(SLUG, NUMBER, err=f'Zmieniono jakość odtwarzacza na {ds.settings["player_quality"]}')
         return
 
     ans_index_in_choices = choices.index(ans)
     ans_index = players[ans_index_in_choices]
 
-    process = mpv_play(ans_index[1])
+    process = mpv_play(ans_index[1], quality=ds.settings.get("player_quality", "best"))
 
     print("Rozpoczynanie odtwarzania...")
     time.sleep(3)                                      
@@ -746,117 +654,6 @@ def w_players(SLUG, NUMBER, err=''):
         w_players(SLUG, NUMBER, err='Wybrane źródło nie jest dostępne, lub nie jest wspierane!')
 
     w_default(SLUG, NUMBER, process)
-
-
-def mpv_play(URL):
-    global global_player_quality
-    mpv_exec = "mpv.exe" if os.name == "nt" else "mpv"
-
-    if shutil.which('mpv') is None:
-        print(colored("[BŁĄD]", "red"), colored("Aby program działał wymagana jest instalacja", "white"), colored("mpv", "green"), '\n')
-        sys.exit()
-    if shutil.which('yt-dlp') is None:
-        print(colored("[BŁĄD]", "red"), colored("Aby program działał wymagana jest instalacja", "white"), colored("yt-dlp", "green"), '\n')
-        sys.exit()
-        
-    temp_dir = tempfile.gettempdir()
-    chapters_file = os.path.join(temp_dir, "doccli_chapters")
-
-    if "lycoris" in URL.lower():
-        direct_url = extract_lycoris_direct_link(URL)
-        if direct_url:
-            URL = direct_url
-            print(colored("[+] Sukces! Znaleziono bezpośredni link wideo.", "green"))
-        else:
-            print(colored("[-] Nie udało się zdekodować linku. Próbuję odtworzyć domyślnie...", "yellow"))
-
-    ytdl_format_arg = "bestvideo+bestaudio/best"
-    if global_player_quality != "best":
-        height = global_player_quality.replace('p', '')
-        ytdl_format_arg = f"bestvideo[height<=?{height}]+bestaudio/best"
-
-    if "mega" in URL:
-        if shutil.which('megatools') is None:
-            print(colored("[UWAGA]", "yellow"), colored("Aby oglądać z tego źródła wymagana jest instalacja", "white"), colored("megatools", "green"), '\n')
-            sys.exit()
-
-        video_extensions = ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.webm']
-        files_in_directory = os.listdir(temp_dir)
-
-        for file in files_in_directory:
-            if file.lower().endswith(tuple(video_extensions)):
-                file_path = os.path.join(temp_dir, file)
-                try:
-                    os.remove(file_path)
-                except OSError:
-                    pass 
-
-        mega_url = URL.replace('embed', 'file')
-        before_files = set(os.listdir(temp_dir))
-        
-        os.system(f'megadl {mega_url} --path {temp_dir}')
-        
-        after_files = set(os.listdir(temp_dir))
-        new_files = after_files - before_files
-        video_files = [file for file in new_files if file.lower().endswith(tuple(video_extensions))]
-
-        try:
-            process = Popen(args=[mpv_exec,
-                                  "--save-position-on-quit",
-                                  "--input-terminal=no",
-                                  f"--chapters-file={chapters_file}",
-                                  os.path.join(temp_dir, video_files[0])],
-                            shell=False,
-                            stdout=DEVNULL,
-                            stderr=DEVNULL,)
-            return process
-        except IndexError:
-            return
-
-    else:
-        process = Popen(args=[mpv_exec,
-                              "--save-position-on-quit",
-                              "--input-terminal=no",
-                              f"--ytdl-format={ytdl_format_arg}",
-                              f"--chapters-file={chapters_file}",
-                              URL],
-                        shell=False,
-                        stdout=DEVNULL,
-                        stderr=DEVNULL)
-        return process
-
-
-def _delayed_tracker(details, number, process, total_episodes):
-    for _ in range(100):
-        if process is None or process.poll() is not None:
-            return  
-        time.sleep(1)
-        
-    now = datetime.now()
-    dt_string = now.strftime("%d/%m/%Y %H:%M")
-    
-    # Realną długość dla zapisywanego anime
-    duration = get_duration_by_malid(details['mal_id'])
-    
-    entry = {
-        "timestamp": now.timestamp(),
-        "dt_string": dt_string,
-        "title": details['title'],
-        "title_en": details['title_en'],
-        "episode": str(number),
-        "source": "Doccli - Online",
-        "slug": details['slug'],
-        "duration": duration
-    }
-    
-    ds.history.insert(0, entry)
-    ds.save()
-    
-    if len(ds.settings) > 3:
-        token = ds.settings[3]
-        if token != "":
-            is_completed = (number == total_episodes)
-            update_anilist_progress(details['mal_id'], number, token, is_completed)
 
 
 def w_default(SLUG, NUMBER, process):
@@ -885,12 +682,12 @@ def w_default(SLUG, NUMBER, process):
         if how_many_episodes == 404:
             how_many_episodes = NUMBER 
 
-    if ds.settings[0]:
-        update_rpc(f"Ogląda: {details.get('title', 'Anime')} [{str(NUMBER)}/{str(how_many_episodes)}]", ds.settings[1])
+    if ds.settings["rpc_enabled"]:
+        update_rpc(f"Ogląda: {details.get('title', 'Anime')} [{str(NUMBER)}/{str(how_many_episodes)}]", ds.settings["rpc_status"])
     else:
-        update_rpc(f"Ogląda anime", ds.settings[1])
+        update_rpc(f"Ogląda anime", ds.settings["rpc_status"])
 
-    threading.Thread(target=_delayed_tracker, args=(details, NUMBER, process, how_many_episodes), daemon=True).start()
+    threading.Thread(target=delayed_tracker, args=(details, NUMBER, process, how_many_episodes), daemon=True).start()
 
     choices = [
         "Zmień źródło",
@@ -934,150 +731,3 @@ def w_default(SLUG, NUMBER, process):
         kill_process(process)
         update_rpc("Menu główne", "Szuka anime do obejrzenia...")
         m_welcome()
-
-
-def m_local_library():
-    clear()
-        
-    if ds.settings[4] != "":
-        downloads_dir = ds.settings[4]
-    else:
-        current_dir = os.getcwd()
-        downloads_dir = os.path.join(current_dir, "doccli_downloads")
-    
-    if not os.path.exists(downloads_dir):
-        print(colored(f"[BŁĄD] Twój folder pobierania jeszcze nie istnieje ({downloads_dir}).", "red"))
-        print(colored("Najpierw musisz pobrać jakieś anime!", "yellow"))
-        print('')
-        input(colored("Naciśnij Enter, aby wrócić do menu...", "yellow"))
-        m_welcome()
-        return
-        
-    series_list = [d for d in os.listdir(downloads_dir) if os.path.isdir(os.path.join(downloads_dir, d))]
-    
-    if not series_list:
-        print(colored("[INFO] Twój folder doccli_downloads jest pusty.", "yellow"))
-        print('')
-        input(colored("Naciśnij Enter, aby wrócić do menu...", "yellow"))
-        m_welcome()
-        return
-        
-    series_list.append("Wróć do menu głównego")
-    
-    selected_series = open_menu(
-        choices=series_list, 
-        prompt='Wybierz serię z dysku: ', 
-        height=10, 
-        message=MOJA_BIBLIOTEKA
-    )
-    
-    if selected_series == "Wróć do menu głównego":
-        m_welcome()
-        return
-
-    while True:
-        clear()
-        series_path = os.path.join(downloads_dir, selected_series)
-        
-        episodes_list = [f for f in os.listdir(series_path) if os.path.isfile(os.path.join(series_path, f))]
-        episodes_list.sort()
-        
-        if not episodes_list:
-            print(colored(f"Brak plików wideo w folderze {selected_series}.", "red"))
-            input(colored("Naciśnij Enter, aby wrócić do menu...", "yellow"))
-            m_welcome()
-            return
-            
-        choices = ["Oglądaj automatycznie"] + episodes_list + ["Wróć do wyboru serii"]
-        
-        selected_ep = open_menu(
-            choices=choices, 
-            prompt=f'Wybierz odcinek ({selected_series}): ', 
-            height=10, 
-            message=MOJA_BIBLIOTEKA
-        )
-        
-        if selected_ep == "Wróć do wyboru serii":
-            m_local_library()
-            return
-            
-        elif selected_ep == "Oglądaj automatycznie":
-            for ep in episodes_list:
-                file_path = os.path.join(series_path, ep)
-                clear()
-                print(colored(f"Oglądanie automatyczne: {ep}", "cyan"))
-                print(colored("Wciśnij 'Q' w obrębie okna MPV, lub zamknij je aby przerwać seans i wrócić do menu.", "white"))
-                
-                # Szukamy mal_id w cache, żeby sprawdzić długość odcinka na AniList
-                all_series = get_cached_series_list()
-                mal_id = None
-                for s in all_series:
-                    if s['title'] == selected_series or s['title_en'] == selected_series:
-                        mal_id = s['mal_id']
-                        break
-                        
-                duration = get_duration_by_malid(mal_id) if mal_id else 21
-
-                now = datetime.now()
-                entry = {
-                    "timestamp": now.timestamp(),
-                    "dt_string": now.strftime("%d/%m/%Y %H:%M"),
-                    "title": selected_series,
-                    "title_en": selected_series,
-                    "episode": ep,
-                    "source": "Doccli - Offline",
-                    "slug": None,
-                    "duration": duration # Zapisujemy czas trwania dla plików z dysku
-                }
-                ds.history.insert(0, entry)
-                ds.save()
-                
-                try:
-                    process = subprocess.run(["mpv", file_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                    
-                    if process.returncode != 0:
-                        print(colored("\n[INFO] Przerwano oglądanie automatyczne.", "yellow"))
-                        input("Naciśnij Enter...")
-                        break
-                except FileNotFoundError:
-                    print(colored("[BŁĄD] Nie znaleziono odtwarzacza mpv!", "red"))
-                    input("Naciśnij Enter...")
-                    m_welcome()
-                    return
-        else:
-            file_path = os.path.join(series_path, selected_ep)
-            clear()
-            print(colored(f"Odtwarzam z dysku: {selected_ep}", "cyan"))
-            print(colored("Wciśnij 'Q' w obrębie okna MPV, lub zamknij je aby przerwać seans i wrócić do menu.", "white"))
-            
-            # Szukamy mal_id w cache, żeby sprawdzić długość odcinka na AniList
-            all_series = get_cached_series_list()
-            mal_id = None
-            for s in all_series:
-                if s['title'] == selected_series or s['title_en'] == selected_series:
-                    mal_id = s['mal_id']
-                    break
-                    
-            duration = get_duration_by_malid(mal_id) if mal_id else 21
-
-            now = datetime.now()
-            entry = {
-                "timestamp": now.timestamp(),
-                "dt_string": now.strftime("%d/%m/%Y %H:%M"),
-                "title": selected_series,
-                "title_en": selected_series,
-                "episode": ep,
-                "source": "Doccli - Offline",
-                "slug": None,
-                "duration": duration # Zapisujemy czas trwania dla plików z dysku
-            }
-            ds.history.insert(0, entry)
-            ds.save()
-            
-            try:
-                subprocess.run(["mpv", file_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            except FileNotFoundError:
-                print(colored("[BŁĄD] Nie znaleziono odtwarzacza mpv!", "red"))
-                input("Naciśnij Enter...")
-                m_welcome()
-                return

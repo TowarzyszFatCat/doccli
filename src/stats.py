@@ -16,8 +16,8 @@ from anilist_connector import get_anilist_global_stats, get_anilist_advanced_sta
 
 def get_folder_size():
         
-    if ds.settings[4] != "":
-        folder_path = ds.settings[4]
+    if ds.settings.get("download_path") != "":
+        folder_path = ds.settings["download_path"]
     else:
         folder_path = os.path.join(os.getcwd(), "doccli_downloads")
 
@@ -105,14 +105,14 @@ def m_stats():
     max_maraton_date = max(maraton_dict, key=maraton_dict.get) if maraton_dict else "Brak"
     ulubiona_pora = max(pora_dict, key=pora_dict.get) if sum(pora_dict.values()) > 0 else "Brak danych"
 
-    has_token = len(ds.settings) > 3 and ds.settings[3] != ""
+    has_token = ds.settings.get("anilist_token") != ""
     ep_anilist = 0
     minutes_anilist = 0
     adv_stats = None
     
     if has_token:
-        ep_anilist, minutes_anilist = get_anilist_global_stats(ds.settings[3])
-        adv_stats = get_anilist_advanced_stats(ds.settings[3])
+        ep_anilist, minutes_anilist = get_anilist_global_stats(ds.settings["anilist_token"])
+        adv_stats = get_anilist_advanced_stats(ds.settings["anilist_token"])
 
     ep_total = max(ep_doccli, ep_anilist) if has_token else ep_doccli
     minutes_total = max(minutes_doccli, minutes_anilist) if has_token else minutes_doccli
