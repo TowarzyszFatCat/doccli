@@ -145,7 +145,7 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a> i nie tylko
 
 Instalacja wymaganych paczek na Arch:
 ```bash
-sudo pacman -S mpv yt-dlp python3-pip python3-venv chafa
+sudo pacman -S mpv yt-dlp python-pip chafa
 ```
 
 Instalacja wymaganych paczek na Debian/Ubuntu/Pop:
