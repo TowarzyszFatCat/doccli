@@ -23,7 +23,7 @@ from downloader import w_download_season
 from stats import m_stats
 from menus_decor import MAIN_MENU, SZUKAJ, NA_CZASIE, MOJA_LISTA, HISTORIA, MOJA_BIBLIOTEKA, KALENDARZ
 from discord_integration import update_rpc, set_running
-from docchi_api_connector import get_episodes_count_for_serie, get_players_list, get_details_for_serie, extract_lycoris_direct_link
+from docchi_api_connector import get_episodes_count_for_serie, get_players_list, get_details_for_serie, extract_lycoris_direct_link, get_english_players
 from anilist_connector import get_details_from_anilist, update_anilist_progress, get_anilist_plan_to_watch, sync_anilist_list_status, get_anilist_history, get_duration_by_malid, sync_history_with_anilist
 from player import mpv_play, kill_process, delayed_tracker
 from local_lib import m_local_library
@@ -601,22 +601,45 @@ def w_list(SLUG):
 
 
 def w_players(SLUG, NUMBER, err=''):
+    from docchi_api_connector import get_players_list, extract_lycoris_direct_link, get_english_players
+    import shutil
+    import subprocess
+    from concurrent.futures import ThreadPoolExecutor
+
     players = []
+    details = ds.continue_data[0]
 
-    if get_players_list(SLUG, NUMBER) == 404:
+    clear()
+    print(colored(f"[INFO] Odcinek {NUMBER} - Ładowanie źródeł...", "cyan"))
+    
+    print(colored("Pobieranie polskich źródeł (docchi.pl)...", "yellow"))
+    pl_players_list = get_players_list(SLUG, NUMBER)
+    if pl_players_list != 404 and isinstance(pl_players_list, list):
+        for player in pl_players_list:
+            # Lista z 3 elementami: [TAG, HOSTING, URL]
+            players.append(["[PL]", player['player_hosting'], player['player']])
+
+    print(colored("Pobieranie angielskich źródeł (anidb.app z weryfikacją MAL ID)...", "yellow"))
+    if details:
+        en_players_list = get_english_players(details, NUMBER)
+        if en_players_list:
+            for player in en_players_list:
+                players.append(["[EN]", player['player_hosting'], player['player']])
+
+    if not players:
         clear()
-        print(colored("Nie znaleziono strony [Błąd 404]", "red"))
+        print(colored("Nie znaleziono odcinka w żadnej z baz (PL/EN) [Błąd 404]", "red"))
         time.sleep(3)
-        m_details(get_details_for_serie(SLUG))
+        if details:
+            m_details(details)
+        else:
+            m_details(get_details_for_serie(SLUG))
+        return
 
-    for player in get_players_list(SLUG, NUMBER):
-        player_info = [player['player_hosting'], player['player']]
-        players.append(player_info)
-
-    print(colored("Trwa analizowanie, sprawdzanie źródeł na żywo i pobieranie jakości...", "cyan"))
+    print(colored("\nTrwa analizowanie, sprawdzanie źródeł na żywo i pobieranie jakości...", "cyan"))
     
     def check_link(player):
-        hosting_name, url = player[0], player[1]
+        hosting_name, url = player[1], player[2]
         url_lower = url.lower()
         
         if "lycoris" in url_lower:
@@ -640,23 +663,17 @@ def w_players(SLUG, NUMBER, err=''):
                     lines = [l for l in res.stdout.strip().split('\n') if l]
                     if lines and lines[-1] != "NA":
                         raw_res = lines[-1].strip().lower()
-                        
-                        # --- UNIFIKACJA ROZDZIELCZOŚCI ---
                         if "x" in raw_res:
-                            # Przerabia "1920x1080" na "1080p"
                             resolved_res = f"{raw_res.split('x')[-1]}p"
                         elif raw_res.isdigit():
-                            # Przerabia samo "1080" na "1080p"
                             resolved_res = f"{raw_res}p"
                         else:
-                            # Zostawia w spokoju to, co już ma np. "1080p"
                             resolved_res = raw_res
                     else:
                         resolved_res = "Nieznana"
                         
                     return ("ok", resolved_res)
                     
-                # System zapasowy dla źródeł odrzucających komendę --print
                 res_fallback = subprocess.run(
                     ["yt-dlp", "-q", "--simulate", "--no-warnings", url],
                     stdout=subprocess.DEVNULL,
@@ -678,17 +695,18 @@ def w_players(SLUG, NUMBER, err=''):
     
     for player, result in zip(players, results):
         status, res_text = result
-        hosting_name = str(player[0])
-        source_link = player[1]
+        lang_tag = player[0]
+        hosting_name = player[1]
+        source_link = player[2]
 
         if status == "ok":
-            prefix = f"✅ [{res_text}] "
+            prefix = f"✅ {lang_tag} [{res_text}] "
         elif status == "mega":
-            prefix = "🟡 [MEGA] "
+            prefix = f"🟡 {lang_tag} [MEGA] "
         else:
-            prefix = "❌ [Brak] "
+            prefix = f"❌ {lang_tag} [Brak] "
             
-        display_line = (prefix + hosting_name).ljust(40) + " | Link źródła: " + source_link
+        display_line = (prefix + hosting_name).ljust(45) + " | Link źródła: " + source_link
         choices.append(display_line)
 
     current_quality = ds.settings.get("player_quality", "best")
@@ -698,7 +716,7 @@ def w_players(SLUG, NUMBER, err=''):
     prompt = 'Wybierz źródło: '
     ans = open_menu(choices=choices, prompt=prompt, qmark=err)
 
-    if ans == choices[-1]: # Wróć do menu
+    if ans == choices[-1]:
         m_welcome()
         return
         
@@ -716,12 +734,13 @@ def w_players(SLUG, NUMBER, err=''):
         return
 
     ans_index_in_choices = choices.index(ans)
-    ans_index = players[ans_index_in_choices]
+    
+    selected_player_url = players[ans_index_in_choices][2]
 
     mal_id = ds.continue_data[0].get('mal_id') if ds.continue_data[0] else None
 
     process = mpv_play(
-        URL=ans_index[1], 
+        URL=selected_player_url, 
         quality=ds.settings.get("player_quality", "best"),
         mal_id=mal_id,
         ep_number=NUMBER
