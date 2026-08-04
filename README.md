@@ -4,7 +4,7 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a> i nie tylko
 </h1>
 
 <h2 align="center">
-<u><b>NAJNOWSZA WERSJA v2.31</b></u>
+<u><b>NAJNOWSZA WERSJA v2.32</b></u>
 </h2>
 
 <p align="center">
@@ -43,7 +43,8 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a> i nie tylko
 
 - Wsparcie większej ilości źródeł,
 - Pomijanie intr/outr,
-- Wyświetlanie markerów intr i outr w odtwarzaczu.
+- Wyświetlanie markerów intr i outr w odtwarzaczu,
+- Pełne wsparcie dla języka angielskiego.
 
 </td>
 </tr>
@@ -52,28 +53,8 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a> i nie tylko
 ---
 
 <h1 align="center">
-    Historia aktualizacji v2.30.X - v2.31.X:
+    Historia aktualizacji v2.31.X - v2.32.X:
 </h1>
-
-**v2.30:**
-- Pełna integracja z AniList (automatyczne zapisywanie postępu i oznaczanie zakończonych serii),
-- Dwustronna synchronizacja "Mojej listy" z "Plan to Watch" na AniList w tle,
-- W pełni natywne wsparcie na Windowsie z automatycznym instalatorem,
-- Wielowątkowe sprawdzanie dostępności źródeł na żywo,
-- Pobieranie pełnych sezonów wraz z biblioteką offline i trybem oglądania automatycznego,
-- Wskaźnik statusu połączenia z kontem AniList w głównym menu,
-- Ulepszone sortowanie "Mojej listy" (najnowsze tytuły wyświetlane na samej górze),
-- Opisy anime tłumaczone maszynowo na język polski,
-- Statystyki programu oraz unikalne rangi na podstawie czasu oglądania,
-- Wyświetlanie okładek w pełnej rozdzielczości z dopasowaniem do terminala,
-- Liczne poprawki stabilności (m.in. naprawa błędów źródeł oraz obsługa Discord RPC).
-
-**v2.30.1:**
-- Rozbudowane menu pobierania z wyborem jakości,
-- Możliwość wybrania jakości i sortowanie według jakości.
-
-**v2.30.2:**
-- Możliwość wybrania folderu pobierania.
 
 **v2.31:**
 - Skrót Ctrl + C działa teraz we wszystkich menu jako błyskawiczne Wróć / Anuluj,
@@ -95,6 +76,12 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a> i nie tylko
 - Kalendarz premier,    
 - Opcja losowania spośród gatunku,
 - Ocenianie bezpośrednio z aplikacji,
+
+**v2.32:**
+- Dodano wsparcie dla wielu źródeł anglojęzycznych z filtrowaniem napisów i dubbingu,
+- Całkowicie przebudowano moduł pobierania – dodano menu wyboru języka oraz nazywanie folderów z prefiksami (np. `[PL]`, `[EN Napisy]`, `[EN Dubbing]`),
+- Naprawiono wyświetlanie tytułów na pasku okna MPV podczas strumieniowania źródeł,
+- Ulepszono pasek postępu pobierania – program potrafi wyświetlić bezpośrednie komunikaty błędów z narzędzia `yt-dlp` (np. przyczyny zablokowania pobierania przez serwer).
 <br>
 
 ---

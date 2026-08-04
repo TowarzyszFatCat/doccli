@@ -482,7 +482,7 @@ def m_details(details):
         w_list(details['slug'])
         
     elif ans == choices[2]: 
-        w_download_season(details['slug'], details['title'], base_download_dir=ds.settings["download_path"])
+        w_download_season(details, base_download_dir=ds.settings["download_path"])
         m_details(details)
         
     elif ans == choices[3]: 
@@ -524,8 +524,8 @@ def m_details(details):
                 print(colored("Błąd: Nie podano poprawnych numerów odcinków!", "red"))
                 time.sleep(2)
             else:
-                w_download_season(details['slug'], details['title'], ep_list, base_download_dir=ds.settings["download_path"])
-                
+                w_download_season(details, ep_list, base_download_dir=ds.settings["download_path"])
+
         m_details(details)
         
     elif ans == choices[4]:

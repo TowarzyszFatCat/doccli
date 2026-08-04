@@ -56,6 +56,10 @@ def mpv_play(URL, quality="best", mal_id=None, ep_number=None):
         height = quality.replace('p', '')
         ytdl_format_arg = f"bestvideo[height<=?{height}]+bestaudio/best"
 
+    details = ds.continue_data[0]
+    anime_title = details.get('title', 'Nieznane Anime') if details else 'Nieznane Anime'
+    media_title = f"{anime_title} - Odcinek {ep_number}"
+
     if "mega" in URL:
         if shutil.which('megatools') is None:
             print(colored("[UWAGA]", "yellow"), colored("Aby oglądać z tego źródła wymagana jest instalacja", "white"), colored("megatools", "green"), '\n')
@@ -85,6 +89,7 @@ def mpv_play(URL, quality="best", mal_id=None, ep_number=None):
             process = Popen(args=[mpv_exec,
                                   "--save-position-on-quit",
                                   "--input-terminal=no",
+                                  f"--force-media-title={media_title}",
                                   f"--chapters-file={chapters_file}",
                                   os.path.join(temp_dir, video_files[0])],
                             shell=False,
@@ -98,6 +103,7 @@ def mpv_play(URL, quality="best", mal_id=None, ep_number=None):
         process = Popen(args=[mpv_exec,
                               "--save-position-on-quit",
                               "--input-terminal=no",
+                              f"--force-media-title={media_title}",
                               f"--ytdl-format={ytdl_format_arg}",
                               f"--chapters-file={chapters_file}",
                               URL],

@@ -38,7 +38,7 @@ echo ""
 
 echo -e "${YELLOW}[5/5] Konfiguruję biblioteki Pythona (może to chwilę potrwać)...${NC}"
 cd ~/.doccli_src && python3 -m venv .venv
-cd ~/.doccli_src && .venv/bin/pip install requests inquirerpy termcolor pillow deep-translator rich
+cd ~/.doccli_src && .venv/bin/pip install requests inquirerpy termcolor pillow deep-translator rich curl-cffi
 cd ~/.doccli_src && .venv/bin/pip install https://github.com/qwertyquerty/pypresence/archive/master.zip
 echo ""
 
