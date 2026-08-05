@@ -21,4 +21,4 @@ echo/
 echo ====================================================
 echo  [+] Wszystko gotowe! Konfiguracja zakonczona.
 echo ====================================================
-timeout /t 3 /nobreak >nul
+timeout /t 1 /nobreak >nul
