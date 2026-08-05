@@ -101,7 +101,7 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a> i nie tylko
 > 5. Kliknij Zapisz. Od teraz każde uruchomienie `doccli` odpali się w nowym, pięknym oknie!
 
 ### Możliwe problemy:
-- Na windowsie 10 może pojawić się problem z Instalatorem Aplikacji (App Installer), instalator doccli powinien wyświetlić o tym komunikat i otworzyć okno Microsoft Store, w którym należy zaktualizować aplikację a następnie uruchomić instalator ponownie.
+- Czasami trzeba odpalić instalator 2 razy, bo system nie zdąży zaktualizować zmiennych środowiskowych
 
 ### Jak odinstalować:
 - Możesz odinstalować program standardowo poprzez menu systemu Windows (*Dodaj lub usuń programy*) lub uruchamiając plik `unins000.exe` znajdujący się w folderze programu (domyślnie: `%LOCALAPPDATA%\Doccli`). Proces ten usunie aplikację oraz jej skróty.
