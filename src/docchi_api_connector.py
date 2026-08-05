@@ -2,6 +2,7 @@ import re
 import time
 import subprocess
 import json
+import difflib
 
 
 # From pip
@@ -91,7 +92,9 @@ def get_english_players(details, ep_number):
     """
     Pobiera absolutnie wszystkie angielskie źródła z anidb.app omijając CF
     i flagując SUB/DUB na podstawie zawartości JSON-a.
+    Zawiera system punktacji sezonów oraz offset Absolute Numbering.
     """
+    
     players = []
     titles_to_try = [details.get('title_en'), details.get('title')]
     
@@ -113,16 +116,42 @@ def get_english_players(details, ep_number):
                 anidb_id = match.group(1)
                 break
 
-        match = re.search(r'/anime/[^"\'>]+?-([0-9]+)', search_page)
-        if match:
-            anidb_id = match.group(1)
-            break
+        matches = re.findall(r'/anime/([^"\'\>]+)-([0-9]+)["\']', search_page)
+            
+        if matches:
+            target_slug = str(t).lower().replace(' ', '-').replace(':', '')
+            
+            best_id = None
+            best_ratio = 0.45 
+            
+            for slug, anime_id in matches:
+                ratio = difflib.SequenceMatcher(None, target_slug, slug.lower()).ratio()
+                
+                target_numbers = re.findall(r'\d+', target_slug)
+                slug_numbers = re.findall(r'\d+', slug.lower())
+                
+                if target_numbers:
+                    for num in target_numbers:
+                        if num in slug_numbers:
+                            ratio += 0.5 
+                        else:
+                            ratio -= 0.5 
+                            
+                if ratio > best_ratio:
+                    best_ratio = ratio
+                    best_id = anime_id
+                    
+            if best_id:
+                anidb_id = best_id
+                break
 
     if not anidb_id:
         return []
 
     eps_json, _ = anidb_curl(f"https://anidb.app/api/frontend/anime/{anidb_id}/episodes")
-    if not eps_json: return []
+    
+    if not eps_json: 
+        return []
     
     try:
         eps_data = json.loads(eps_json)
@@ -132,15 +161,31 @@ def get_english_players(details, ep_number):
         return []
         
     ep_id = None
+    
+    # 1. Klasyczne szukanie (gdy odcinek 1 = 1)
     for ep in eps_data:
         if isinstance(ep, dict) and str(ep.get('number')) == str(ep_number):
             ep_id = ep.get('id')
             break
             
-    if not ep_id: return []
+    # 2. System Absolute Numbering (np. gdy odcinek 1 = 25)
+    if not ep_id and len(eps_data) > 0:
+        valid_eps = [ep for ep in eps_data if isinstance(ep, dict) and ep.get('number') is not None]
+        try:
+            valid_eps.sort(key=lambda x: float(x['number']))
+            target_index = int(ep_number) - 1
+            if 0 <= target_index < len(valid_eps):
+                ep_id = valid_eps[target_index]['id']
+        except Exception:
+            pass
+            
+    if not ep_id: 
+        return []
         
     langs_json, _ = anidb_curl(f"https://anidb.app/api/frontend/episode/{ep_id}/languages")
-    if not langs_json: return []
+    
+    if not langs_json: 
+        return []
     
     try:
         langs_data = json.loads(langs_json)
@@ -156,7 +201,8 @@ def get_english_players(details, ep_number):
             continue
             
         embed_url = lang.get('embed_url')
-        if not embed_url: continue
+        if not embed_url: 
+            continue
         
         embed_url = embed_url.replace('\\/', '/')
         
