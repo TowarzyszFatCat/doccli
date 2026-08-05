@@ -103,22 +103,76 @@ def check_update() -> bool:
         )
         response.raise_for_status()
         
-        latest_version = response.json().get("name")
+        data = response.json()
+        latest_version = data.get("name")
 
         if latest_version and latest_version != VERSION:
             print(colored("Wersja programu: ", "white"), colored(VERSION, "red"))
             print(colored("Najnowsza wersja:", "white"), colored(latest_version, "green"))
             print("")
             print(colored("Dostępna jest nowa wersja doccli!", "white"))
-            print(colored("Szczegóły aktualizacji oraz instrukcję aktualizacji znajdziesz tutaj:", "white"))
-            print(colored("https://github.com/TowarzyszFatCat/doccli", "cyan"))
-            print("")
-            return True
+            
+            # DLA WINDOWSA
+            if os.name == "nt":
+                download_url = None
+                for asset in data.get("assets", []):
+                    if asset["name"].endswith(".exe"):
+                        download_url = asset["browser_download_url"]
+                        break
+                
+                if download_url:
+                    from InquirerPy import prompt
+                    questions = [{
+                        "type": "confirm",
+                        "message": "Czy chcesz pobrać i zainstalować aktualizację automatycznie teraz?",
+                        "name": "update",
+                        "default": True
+                    }]
+                    ans = prompt(questions)
+                    
+                    if ans["update"]:
+                        perform_update_windows(download_url)
+                        return True
+                else:
+                    print(colored("Szczegóły aktualizacji oraz instrukcję znajdziesz tutaj:", "white"))
+                    print(colored("https://github.com/TowarzyszFatCat/doccli", "cyan"))
+                    print("")
+                    return True
+                    
+            # DLA LINUX / MACOS ---
+            else:
+                print(colored("Szczegóły aktualizacji oraz instrukcję znajdziesz tutaj:", "white"))
+                print(colored("https://github.com/TowarzyszFatCat/doccli", "cyan"))
+                print("")
+                return True
             
     except exceptions.RequestException:
         pass
         
     return False
+
+
+def perform_update_windows(download_url):
+    import tempfile
+    print(colored("\n[*] Pobieranie aktualizacji z GitHuba... To potrwa tylko chwilę.", "cyan"))
+    
+    try:
+        req = get(download_url, stream=True)
+        exe_path = os.path.join(tempfile.gettempdir(), "Doccli_Update.exe")
+        
+        with open(exe_path, 'wb') as f:
+            for chunk in req.iter_content(chunk_size=8192):
+                f.write(chunk)
+                
+        print(colored("[+] Pobrano pomyślnie. Rozpoczynam instalację...", "green"))
+        
+        subprocess.Popen([exe_path, "/VERYSILENT", "/SUPPRESSMSGBOXES", "/FORCECLOSEAPPLICATIONS"])
+        sys.exit()
+        
+    except Exception as e:
+        print(colored(f"[-] Błąd podczas pobierania/instalacji aktualizacji: {e}", "red"))
+        time.sleep(3)
+
 
 if __name__ == "__main__":
     os.system("cls" if os.name == "nt" else "clear")
