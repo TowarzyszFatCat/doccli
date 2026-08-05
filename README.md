@@ -37,6 +37,7 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a> i nie tylko
 - Pełna integracja z kontem AniList (auto-zapis postępu i statusu),
 - Dwustronna synchronizacja "Mojej listy" z zakładką "Plan to Watch" AniList,
 - Sprawdzanie dostępności źródeł na żywo.
+- Autoupdater windows oraz prosty instalator [BETA]
 
 </td>
 <td>
@@ -53,29 +54,8 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a> i nie tylko
 ---
 
 <h1 align="center">
-    Historia aktualizacji v2.31.X - v2.32.X:
+    Historia aktualizacji v2.32.X - v2.33.X:
 </h1>
-
-**v2.31:**
-- Skrót Ctrl + C działa teraz we wszystkich menu jako błyskawiczne Wróć / Anuluj,
-- Wyeliminowano lagi przy ładowaniu długich serii – menu wyświetla się błyskawicznie,
-- Zlikwidowano lagi przy uruchamianiu się odtwarzacza i wchodzeniu w listy odcinków,
-- Program pokazuje teraz dokładną liczbę wydanych odcinków dla serii, które nadal wychodzą,
-- Naprawiono wyświetlanie opisów z AniList,
-- Dodano opcję Anuluj w menu wyboru jakości pobierania wideo offline,
-- Rozbudowa statystyk i integracja statystyk z Anilist,
-- Menu historia od teraz pokazuje co zostało odtworzone online a co offline w doccli,
-- Menu historia pokazuje teraz historię oglądania z anilist,
-- Menu historia pozwala teraz na wybranie danej pozycji i otworzenia dla niej menu z detalami,
-- Moja lista wyświetla teraz także serie ze statusem watching,
-- Oglądanie poprzednich odcinków serii nie cofa już progresu na Anilist,
-- Instalator na Windowsa jest teraz bardziej przyjazny,
-- Markery openingów i endingów,
-- Nowe menu wznawiania oglądania,
-- Sortowanie po gatunku,
-- Kalendarz premier,    
-- Opcja losowania spośród gatunku,
-- Ocenianie bezpośrednio z aplikacji,
 
 **v2.32:**
 - Dodano wsparcie dla wielu źródeł anglojęzycznych z filtrowaniem napisów i dubbingu,
@@ -87,6 +67,7 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a> i nie tylko
 - Naprawiono błąd ze złym wyświetlaniem sezonów (Błąd zgłoszony przez @Bolo121 DC),
 - Naprawiono pobieranie gdy seria ma tylko angielskie źródła (Błąd zgłoszony przez @Bolo121 [#27](https://github.com/TowarzyszFatCat/doccli/issues/27)),
 - Dodano pełnoprawny instalator (Powinien on rozwiązywać problem zgłoszony przez @Paczek1200 [#26](https://github.com/TowarzyszFatCat/doccli/issues/26))
+- [BETA] Autoupdater windows!
 <br>
 
 ---
@@ -95,12 +76,11 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a> i nie tylko
 </h1>
 
 ### Jak zainstalować:
-1. Pobierz najnowszą wersję Doccli (plik `.zip`) z zakładki **[Releases](https://github.com/TowarzyszFatCat/doccli/releases)**,
-2. Wypakuj pliki w dowolne miejsce (np. do folderu Pobrane),
-3. Wejdź do wypakowanego folderu i uruchom plik `install.bat`,
-4. Instalator automatycznie pobierze wymagane narzędzia (`winget`, `mpv`, `yt-dlp`, `chafa`), skonfiguruje pythona, a na koniec **utworzy skrót z ikoną na Twoim Pulpicie**,
-5. (Opcjonalne) Ustaw [Windows Terminal](https://apps.microsoft.com/store/detail/windows-terminal/9N0DX20HK701) jako domyślny terminal, jeżeli go nie masz lub nie wiesz jak to zrobić patrz niżej, 
-6. Po udanej instalacji, pobrany folder usunie się sam.
+1. Pobierz najnowszy instalator (plik `.exe`, np. `InstallDoccli_v2.33.exe`) z zakładki **[Releases](https://github.com/TowarzyszFatCat/doccli/releases)**,
+2. Uruchom pobrany plik instalatora,
+3. Postępuj zgodnie z instrukcjami instalatora – aplikacja automatycznie wypakuje się do odpowiedniego katalogu, utworzy skróty na Twoim Pulpicie oraz w Menu Start, a także doda `doccli` do zmiennej systemowej PATH,
+4. Po zakończeniu instalacji uruchomi się automatyczny skrypt konfiguracyjny, który pobierze i skonfiguruje wymagane zależności systemowe oraz pakiety Pythona,
+5. (Opcjonalne) Ustaw [Windows Terminal](https://apps.microsoft.com/store/detail/windows-terminal/9N0DX20HK701) jako domyślny terminal – szczegóły poniżej.
 
 > [!TIP]
 > Aby wyciągnąć 100% możliwości z interfejsu `doccli`, **zalecam** korzystanie z [Windows Terminal](https://apps.microsoft.com/store/detail/windows-terminal/9N0DX20HK701). 
@@ -121,8 +101,8 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a> i nie tylko
 - Na windowsie 10 może pojawić się problem z Instalatorem Aplikacji (App Installer), instalator doccli powinien wyświetlić o tym komunikat i otworzyć okno Microsoft Store, w którym należy zaktualizować aplikację a następnie uruchomić instalator ponownie.
 
 ### Jak odinstalować:
-- Naciśnij kombinację klawiszy `Win + R`, wpisz `%LOCALAPPDATA%\Doccli` i wciśnij Enter. W otwartym folderze znajdziesz plik `uninstall.bat`, który usunie program i skróty z Twojego komputera, ale zostawi ustawienia użytkownika.
-- Configi i ustawienia zapisane są w folderze `%APPDATA%\doccli`, który należy usunąć ręcznie (o ile jest taka potrzeba).
+- Możesz odinstalować program standardowo poprzez menu systemu Windows (*Dodaj lub usuń programy*) lub uruchamiając plik `unins000.exe` znajdujący się w folderze programu (domyślnie: `%LOCALAPPDATA%\Doccli`). Proces ten usunie aplikację oraz jej skróty.
+- Configi i ustawienia użytkownika zapisane są w osobnym folderze `%APPDATA%\doccli`, który należy usunąć ręcznie (o ile chcesz wyczyścić całkowicie dane aplikacji).
 
 ---
 <h1 align="center">
