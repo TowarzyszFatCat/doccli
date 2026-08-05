@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "src
 from discord_integration import set_running, start_rpc
 from main_module import m_welcome
 
-VERSION = "v2.32"
+VERSION = "v2.33"
 
 def get_cmd_version(cmd, args=["--version"]):
     try:
