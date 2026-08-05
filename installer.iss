@@ -1,12 +1,14 @@
+#define MyAppVersion "2.33"
+
 [Setup]
 ; Info
 AppName=Doccli
-AppVersion=2.33
+AppVersion={#MyAppVersion}
 AppPublisher=TFC
 DefaultDirName={localappdata}\Doccli
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
-OutputBaseFilename=InstallDoccli
+OutputBaseFilename=InstallDoccli_v{#MyAppVersion}
 SetupIconFile=icon.ico
 UninstallDisplayIcon={app}\icon.ico
 Compression=lzma2
