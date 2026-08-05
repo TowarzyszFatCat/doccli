@@ -24,7 +24,7 @@ from stats import m_stats
 from menus_decor import MAIN_MENU, SZUKAJ, NA_CZASIE, MOJA_LISTA, HISTORIA, MOJA_BIBLIOTEKA, KALENDARZ
 from discord_integration import update_rpc, set_running
 from docchi_api_connector import get_episodes_count_for_serie, get_players_list, get_details_for_serie, extract_lycoris_direct_link, get_english_players
-from anilist_connector import get_details_from_anilist, update_anilist_progress, get_anilist_plan_to_watch, sync_anilist_list_status, get_anilist_history, get_duration_by_malid, sync_history_with_anilist
+from anilist_connector import get_details_from_anilist, update_anilist_progress, get_anilist_plan_to_watch, sync_anilist_list_status, get_anilist_history, get_duration_by_malid, sync_history_with_anilist, get_quick_episode_count
 from player import mpv_play, kill_process, delayed_tracker
 from local_lib import m_local_library
 
@@ -553,47 +553,29 @@ def m_details(details):
 
 
 def w_list(SLUG):
-    # Pobieramy dane o anime, w które właśnie kliknęliśmy (m_details je tam zapisało przed wywołaniem w_list)
     details = ds.continue_data[0]
     
-    last_episode = 0
-    
-    # BŁYSKAWICZNA ŚCIEŻKA
-    if details and details.get('slug') == SLUG and details.get('mal_id'):
-        stars, desc, ep_count = get_details_from_anilist(str(details['mal_id']))
+    if not details or details.get('slug') != SLUG:
+        details = get_details_for_serie(SLUG)
+        ds.continue_data[0] = details
         
-        if isinstance(ep_count, int):
-            last_episode = ep_count
-            
-        elif isinstance(ep_count, str) and "Wydano:" in ep_count:
-            match = re.search(r'Wydano:\s*(\d+)', ep_count)
-            if match:
-                last_episode = int(match.group(1))
+    last_episode = get_quick_episode_count(details.get('mal_id'))
 
-    # ŚCIEŻKA AWARYJNA
     if last_episode <= 0:
         clear()
-        print(colored("[INFO] Trwa pobieranie ilości odcinków z bazy... (Może to potrwać dłuższą chwilę)", "yellow"))
-        last_episode = get_episodes_count_for_serie(SLUG)
-
-    if last_episode == 404 or last_episode <= 0:
-        clear()
-        print(colored("Nie znaleziono strony lub brak dostępnych odcinków [Błąd 404]", "red"))
+        print(colored("Nie znaleziono ilości odcinków [Błąd AniList lub brak MAL ID]", "red"))
         time.sleep(3)
-        fallback_details = details if details else get_details_for_serie(SLUG)
-        m_details(fallback_details)
+        m_details(details)
         return
 
     choices = list(range(1, last_episode + 1))
     choices.append('Cofnij')
 
     prompt = 'Wybierz odcinek: '
-
     ans = open_menu(choices=choices, prompt=prompt)
     
     if ans == "Cofnij":
-        fallback_details = details if details else get_details_for_serie(SLUG)
-        m_details(fallback_details)
+        m_details(details)
     else:
         ds.continue_data[1] = ans
         ds.save()
@@ -759,24 +741,10 @@ def w_default(SLUG, NUMBER, process):
     if not details or details.get('slug') != SLUG:
         details = get_details_for_serie(SLUG)
         
-    how_many_episodes = 0
-    
-    if details and details.get('mal_id'):
-        stars, desc, ep_count = get_details_from_anilist(str(details['mal_id']))
-        
-        if isinstance(ep_count, int):
-            how_many_episodes = ep_count
-        elif isinstance(ep_count, str) and "Wydano:" in ep_count:
-            match = re.search(r'Wydano:\s*(\d+)', ep_count)
-            if match:
-                how_many_episodes = int(match.group(1))
+    how_many_episodes = get_quick_episode_count(details.get('mal_id'))
 
     if how_many_episodes <= 0:
-        clear()
-        print(colored("[INFO] Trwa pobieranie ilości odcinków z bazy... (Może to potrwać dłuższą chwilę)", "yellow"))
-        how_many_episodes = get_episodes_count_for_serie(SLUG)
-        if how_many_episodes == 404:
-            how_many_episodes = NUMBER 
+        how_many_episodes = NUMBER # Awaryjne zabezpieczenie, gdyby AniList padł
 
     if ds.settings.get("rpc_enabled", True):
         update_rpc(f"Ogląda: {details.get('title', 'Anime')} [{str(NUMBER)}/{str(how_many_episodes)}]", ds.settings.get("rpc_status", "Używa doccli!"))

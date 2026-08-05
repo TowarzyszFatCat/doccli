@@ -763,3 +763,35 @@ def get_anilist_schedule(days=3):
     except Exception:
         pass
     return []
+    
+    
+def get_quick_episode_count(mal_id):
+    if not mal_id: 
+        return 0
+        
+    query = '''
+    query ($malId: Int) { 
+      Media(idMal: $malId, type: ANIME) { 
+        episodes 
+        nextAiringEpisode { episode } 
+      } 
+    }
+    '''
+    try:
+        from requests import post
+        req = post("https://graphql.anilist.co", json={'query': query, 'variables': {'malId': int(mal_id)}}, timeout=3)
+        if req.status_code == 200:
+            media = req.json().get('data', {}).get('Media')
+            if not media: return 0
+            
+            # Jeśli anime jest w pełni wyemitowane (zakończone)
+            if media.get('episodes'): 
+                return media['episodes']
+                
+            # Jeśli anime wciąż wychodzi, pobieramy odcinek - 1 (czyli ostatni wydany)
+            if media.get('nextAiringEpisode') and media.get('nextAiringEpisode').get('episode'):
+                return media['nextAiringEpisode']['episode'] - 1
+    except Exception:
+        pass
+        
+    return 0

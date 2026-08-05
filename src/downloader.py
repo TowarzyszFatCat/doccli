@@ -9,18 +9,20 @@ from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn
 from termcolor import colored
 
 # Doccli modules
-from docchi_api_connector import extract_lycoris_direct_link, get_episodes_count_for_serie, get_players_list, get_english_players
+from docchi_api_connector import extract_lycoris_direct_link, get_players_list, get_english_players
 from ui_utils import clear, open_menu
+from anilist_connector import get_quick_episode_count
 
 def w_download_season(details, episodes_list=None, base_download_dir=""):
     SLUG = details['slug']
     TITLE = details['title']
+    MAL_ID = details.get('mal_id')
     
-    how_many_episodes = get_episodes_count_for_serie(SLUG)
+    how_many_episodes = get_quick_episode_count(MAL_ID)
 
-    if how_many_episodes == 404:
+    if how_many_episodes <= 0:
         clear()
-        print(colored("Nie znaleziono strony [Błąd 404]", "red"))
+        print(colored("Nie udało się ustalić liczby odcinków z AniList", "red"))
         time.sleep(3)
         return
 
