@@ -30,11 +30,20 @@ Name: "{userprograms}\Doccli"; Filename: "{app}\run.bat"; IconFilename: "{app}\i
 Root: HKCU; Subkey: "Environment"; ValueType: expandsz; ValueName: "Path"; ValueData: "{olddata};{app}"; Check: NeedsAddPath(ExpandConstant('{app}'))
 
 [Run]
-; Uruchamia skrypt aby doinstalować Pythona i moduły
-Filename: "{app}\setup_env.bat"; Description: "Pobierz pakiety i skonfiguruj srodowisko (Wymagane)"; Flags: postinstall runascurrentuser waituntilterminated
+Filename: "winget"; Parameters: "install --id Python.Python.3.12 --exact --silent --accept-source-agreements --accept-package-agreements"; Flags: runascurrentuser waituntilterminated; Check: CheckWinget
+Filename: "winget"; Parameters: "install --id yt-dlp.yt-dlp --silent --accept-source-agreements --accept-package-agreements"; Flags: runascurrentuser waituntilterminated; Check: CheckWinget
+Filename: "winget"; Parameters: "install --id 9P3JFR0CLLL6 --silent --accept-source-agreements --accept-package-agreements"; Flags: runascurrentuser waituntilterminated; Check: CheckWinget
+Filename: "winget"; Parameters: "install --id hpjansson.Chafa --silent --accept-source-agreements --accept-package-agreements"; Flags: runascurrentuser waituntilterminated; Check: CheckWinget
+Filename: "{app}\setup_env.bat"; Description: "Konfiguracja środowiska Python i pobieranie bibliotek"; Flags: postinstall runascurrentuser waituntilterminated
 
 [Code]
-// Sprawdzenie path
+function CheckWinget: boolean;
+var
+  ResultCode: Integer;
+begin
+  Result := Exec('cmd.exe', '/c winget --version >nul 2>&1', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) and (ResultCode = 0);
+end;
+
 function NeedsAddPath(Param: string): boolean;
 var
   OrigPath: string;
