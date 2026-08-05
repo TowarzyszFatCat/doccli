@@ -4,7 +4,7 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a> i nie tylko
 </h1>
 
 <h2 align="center">
-<u><b>NAJNOWSZA WERSJA v2.32</b></u>
+<u><b>NAJNOWSZA WERSJA v2.33</b></u>
 </h2>
 
 <p align="center">
@@ -64,7 +64,7 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a> i nie tylko
 - Ulepszono pasek postępu pobierania – program potrafi wyświetlić bezpośrednie komunikaty błędów z narzędzia `yt-dlp` (np. przyczyny zablokowania pobierania przez serwer).
 
 **v2.33:**
-- Naprawiono błąd ze złym wyświetlaniem sezonów (Błąd zgłoszony przez @Bolo121 DC),
+- **Naprawiono błąd ze złym wyświetlaniem sezonów** (Błąd zgłoszony przez @Bolo121 DC),
 - Naprawiono pobieranie gdy seria ma tylko angielskie źródła (Błąd zgłoszony przez @Bolo121 [#27](https://github.com/TowarzyszFatCat/doccli/issues/27)),
 - Dodano pełnoprawny instalator (Powinien on rozwiązywać problem zgłoszony przez @Paczek1200 [#26](https://github.com/TowarzyszFatCat/doccli/issues/26))
 - [BETA] Autoupdater windows!
