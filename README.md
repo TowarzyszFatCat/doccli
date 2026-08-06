@@ -4,7 +4,7 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a> i nie tylko
 </h1>
 
 <h2 align="center">
-<u><b>NAJNOWSZA WERSJA v2.33.1</b></u>
+<u><b>NAJNOWSZA WERSJA v2.33.2</b></u>
 </h2>
 
 <p align="center">
@@ -71,6 +71,10 @@ CLI do oglądania anime z <a href="https://docchi.pl/">docchi.pl</a> i nie tylko
 
 **v2.33.1:**
 - Poprawki instalatora Windows
+
+**v2.33.2:**
+- Poprawa autoupdatera,
+- Naprawa błędu, który sprawiał, że oglądanie najnowszego odcinka serii, która nadal wychodzi oznaczało serię jako COMPLETED na AniList.
 <br>
 
 ---
