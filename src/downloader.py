@@ -12,17 +12,18 @@ from termcolor import colored
 from docchi_api_connector import extract_lycoris_direct_link, get_players_list, get_english_players
 from ui_utils import clear, open_menu
 from anilist_connector import get_quick_episode_count
+from i18n import t
 
 def w_download_season(details, episodes_list=None, base_download_dir=""):
     SLUG = details['slug']
-    TITLE = details['title']
+    TITLE = details.get('title_en') if ds.settings.get('language') == 'en' and details.get('title_en') else details['title']
     MAL_ID = details.get('mal_id')
     
     how_many_episodes = get_quick_episode_count(MAL_ID)
 
     if how_many_episodes <= 0:
         clear()
-        print(colored("Nie udało się ustalić liczby odcinków z AniList", "red"))
+        print(colored(t("dl_err_ep_count"), "red"))
         time.sleep(3)
         return
 
@@ -30,41 +31,41 @@ def w_download_season(details, episodes_list=None, base_download_dir=""):
         episodes_list = list(range(1, how_many_episodes + 1))
 
     lang_choices = [
-        "Polski (Napisy PL)",
-        "Angielski (Napisy EN)",
-        "Angielski (Dubbing EN)",
-        "Anuluj"
+        t("dl_lang_pl_sub"),
+        t("dl_lang_en_sub"),
+        t("dl_lang_en_dub"),
+        t("cancel")
     ]
     
     chosen_lang = open_menu(
         choices=lang_choices,
-        prompt="Wybierz preferowaną wersję językową dla pobieranych plików: ",
+        prompt=t("dl_prompt_lang"),
         height=6
     )
 
-    if chosen_lang == "Anuluj":
+    if chosen_lang == t("cancel"):
         return
 
     quality_choices = [
-        "Najlepsza dostępna (Domyślna)",
+        t("dl_qual_best"),
         "1080p",
         "720p",
         "480p",
         "360p",
-        "Anuluj"
+        t("cancel")
     ]
     
     chosen_quality = open_menu(
         choices=quality_choices,
-        prompt="Wybierz preferowaną jakość obrazu do pobrania: ",
+        prompt=t("dl_prompt_qual"),
         height=6
     )
 
-    if chosen_quality == "Anuluj":
+    if chosen_quality == t("cancel"):
         return
 
     quality_args = []
-    if chosen_quality != "Najlepsza dostępna (Domyślna)":
+    if chosen_quality != t("dl_qual_best"):
         res = chosen_quality.replace('p', '')
         quality_args = ["-S", f"res:{res}"]
 
@@ -73,26 +74,26 @@ def w_download_season(details, episodes_list=None, base_download_dir=""):
         
     safe_title = re.sub(r'[\\/*?:"<>|]', "", TITLE).strip()
     
-    if chosen_lang == "Polski (Napisy PL)":
-        folder_name = f"[PL] {safe_title}"
-    elif chosen_lang == "Angielski (Napisy EN)":
-        folder_name = f"[EN Napisy] {safe_title}"
-    elif chosen_lang == "Angielski (Dubbing EN)":
-        folder_name = f"[EN Dubbing] {safe_title}"
+    if chosen_lang == t("dl_lang_pl_sub"):
+        folder_name = f"{t('dl_folder_pl')} {safe_title}"
+    elif chosen_lang == t("dl_lang_en_sub"):
+        folder_name = f"{t('dl_folder_en_sub')} {safe_title}"
+    elif chosen_lang == t("dl_lang_en_dub"):
+        folder_name = f"{t('dl_folder_en_dub')} {safe_title}"
         
     series_dir = os.path.join(base_download_dir, folder_name)
     os.makedirs(series_dir, exist_ok=True)
 
     clear()
-    print(colored(f"[INFO] Przygotowywanie do pobrania {TITLE} (Wybrano {len(episodes_list)} odc.)...", "cyan"))
-    print(colored(f"[INFO] Ustawiona wersja: {chosen_lang}", "cyan"))
-    print(colored(f"[INFO] Ustawiona jakość: {chosen_quality}", "cyan"))
-    print(colored(f"[INFO] Lokalizacja zapisu: {series_dir}", "yellow"))
+    print(colored(t("dl_info_prep").format(TITLE, len(episodes_list)), "cyan"))
+    print(colored(t("dl_info_ver").format(chosen_lang), "cyan"))
+    print(colored(t("dl_info_qual").format(chosen_quality), "cyan"))
+    print(colored(t("dl_info_loc").format(series_dir), "yellow"))
     
     for ep_number in episodes_list:
         players = []
         
-        if chosen_lang == "Polski (Napisy PL)":
+        if chosen_lang == t("dl_lang_pl_sub"):
             pl_sources = get_players_list(SLUG, ep_number)
             if isinstance(pl_sources, list):
                 players = pl_sources
@@ -101,19 +102,20 @@ def w_download_season(details, episodes_list=None, base_download_dir=""):
             if isinstance(en_sources, list):
                 for p in en_sources:
                     hosting_label = p['player_hosting'].lower()
-                    if chosen_lang == "Angielski (Napisy EN)" and "napisy" in hosting_label:
+                    # Sprawdzamy używając słów ze słownika (napisy/sub, dubbing/dub)
+                    if chosen_lang == t("dl_lang_en_sub") and t("anidb_sub").lower() in hosting_label:
                         players.append(p)
-                    elif chosen_lang == "Angielski (Dubbing EN)" and "dubbing" in hosting_label:
+                    elif chosen_lang == t("dl_lang_en_dub") and t("anidb_dub").lower() in hosting_label:
                         players.append(p)
         
         if not players:
-            print(colored(f"\n[BŁĄD] Nie znaleziono źródeł w wybranym języku dla odcinka {ep_number}. Pomijam...", "red"))
+            print(colored(t("dl_err_no_src").format(ep_number), "red"))
             continue
         
-        file_name_template = os.path.join(series_dir, f"{safe_title} - Odcinek {ep_number:02d}.%(ext)s")
+        file_name_template = os.path.join(series_dir, f"{safe_title}{t('dl_ep_file_prefix')} {ep_number:02d}.%(ext)s")
         downloaded = False
         
-        print(f"\r\033[K" + colored(f"[*] Skanowanie jakości źródeł dla odcinka {ep_number}...", "cyan"), end="", flush=True)
+        print(f"\r\033[K" + colored(t("dl_scan").format(ep_number), "cyan"), end="", flush=True)
 
         def check_dl_link(player):
             hosting_name, url = player['player_hosting'], player['player']
@@ -147,7 +149,7 @@ def w_download_season(details, episodes_list=None, base_download_dir=""):
                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=15 
                     )
                     if res_fallback.returncode == 0:
-                        return (player, "ok", "Nieznana", url)
+                        return (player, "ok", t("pl_unknown"), url)
                     return (player, "error", "", url)
                 except:
                     return (player, "error", "", url)
@@ -158,12 +160,12 @@ def w_download_season(details, episodes_list=None, base_download_dir=""):
         valid_sources = [s for s in scanned_sources if s[1] in ("ok", "mega")]
 
         if not valid_sources:
-            print(colored(f"\n[BŁĄD] Żadne ze źródeł dla odcinka {ep_number} nie działa.", "red"))
+            print(colored(t("dl_err_all_dead").format(ep_number), "red"))
             continue
 
         def sort_key(source_tuple):
             _, _, res_text, _ = source_tuple
-            if chosen_quality != "Najlepsza dostępna (Domyślna)":
+            if chosen_quality != t("dl_qual_best"):
                 if res_text == chosen_quality: return 0  
                 if res_text == "Auto": return 1          
                 return 2                                 
@@ -177,7 +179,7 @@ def w_download_season(details, episodes_list=None, base_download_dir=""):
         for index, source_data in enumerate(valid_sources, 1):
             player, status, res_text, target_url = source_data
             
-            print(colored(f"[*] Próbuję pobrać z: {player['player_hosting']} [{res_text}] (Źródło {index}/{len(valid_sources)})...", "yellow"))
+            print(colored(t("dl_try_dl").format(player['player_hosting'], res_text, index, len(valid_sources)), "yellow"))
             
             command = ["yt-dlp", "--newline", "--no-warnings", "--merge-output-format", "mp4"]
             
@@ -193,7 +195,7 @@ def w_download_season(details, episodes_list=None, base_download_dir=""):
                 TaskProgressColumn(),
                 TimeRemainingColumn(),
             ) as progress:                
-                task_id = progress.add_task(description=f"Pobieranie odc. {ep_number} [bold yellow](Ścieżka VIDEO)", total=100)
+                task_id = progress.add_task(description=t("dl_prog_vid").format(ep_number), total=100)
                 
                 process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
                 current_percent = 0.0
@@ -209,7 +211,7 @@ def w_download_season(details, episodes_list=None, base_download_dir=""):
                         try:
                             percent = float(match.group(1))
                             if percent < current_percent - 50:
-                                progress.update(task_id, description=f"Pobieranie odc. {ep_number} [bold yellow](Ścieżka AUDIO)")
+                                progress.update(task_id, description=t("dl_prog_aud").format(ep_number))
                             current_percent = percent
                             progress.update(task_id, completed=percent)
                         except ValueError:
@@ -219,15 +221,15 @@ def w_download_season(details, episodes_list=None, base_download_dir=""):
                 
                 if process.returncode == 0:
                     downloaded = True
-                    progress.update(task_id, completed=100, description=f"[bold green]Ukończono odc. {ep_number}!")
+                    progress.update(task_id, completed=100, description=t("dl_prog_done").format(ep_number))
                     break 
                 else:
-                    progress.update(task_id, description=f"[bold red]Błąd pobierania odc. {ep_number}!")
+                    progress.update(task_id, description=t("dl_prog_err").format(ep_number))
                     if error_msgs:
-                        print(colored(f"\n   [Szczegóły błędu yt-dlp]: {error_msgs[-1]}", "red"))
+                        print(colored(t("dl_ytdlp_err").format(error_msgs[-1]), "red"))
 
         if not downloaded:
-            print(colored(f"[BŁĄD] Żadne ze źródeł dla odcinka {ep_number} nie zadziałało.", "red"))
+            print(colored(t("dl_err_failed_all").format(ep_number), "red"))
         
-    print(colored(f"\n[ZAKOŃCZONO] Proces pobierania serii {TITLE} dobiegł końca!", "green"))
-    input(colored("Naciśnij Enter, aby wrócić...", "yellow"))
+    print(colored(t("dl_finished_all").format(TITLE), "green"))
+    input(colored(t("dl_enter_to_return"), "yellow"))

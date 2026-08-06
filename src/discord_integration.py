@@ -4,7 +4,10 @@ import time
 import pypresence.exceptions
 from pypresence import Presence, ActivityType
 
-discord_data = ["Menu główne", "Ładowanie..."]
+# Doccli modules
+from i18n import t
+
+discord_data = [t("menu_main"), t("rpc_loading")]
 start_time = None
 running = False
 RPC = None
@@ -39,10 +42,10 @@ def start_rpc():
                     state=discord_data[1], 
                     details=discord_data[0], 
                     large_image='icon_1', 
-                    large_text="Doccli - oglądaj anime bezpośrednio ze swojego terminalu!", 
+                    large_text=t("rpc_large_text"), 
                     buttons=[
                         {"label": "GitHub", "url": "https://github.com/TowarzyszFatCat/doccli"}, 
-                        {"label": "Discord Projektu", "url": "https://discord.gg/FgfSM7bSEK"}
+                        {"label": t("rpc_discord_btn"), "url": "https://discord.gg/FgfSM7bSEK"}
                     ], 
                     start=start_time
                 )

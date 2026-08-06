@@ -13,6 +13,7 @@ from termcolor import colored
 from storage import ds
 from ui_utils import clear
 from anilist_connector import get_anilist_global_stats, get_anilist_advanced_stats
+from i18n import t
 
 def get_folder_size():
         
@@ -31,31 +32,31 @@ def get_folder_size():
     return total_size
 
 def get_user_rank(hours):
-    if hours < 10: return "[#FFFFFF]🌱 Świeżak[/#FFFFFF]"
-    elif hours < 25: return "[#E6F2FF]🌸 Widz[/#E6F2FF]"
-    elif hours < 50: return "[#CCE6FF]🍙 Nowicjusz[/#CCE6FF]"
-    elif hours < 75: return "[#99CCFF]🗡️ Uczeń[/#99CCFF]"
-    elif hours < 100: return "[#66B3FF]🛡️ Giermek[/#66B3FF]"
-    elif hours < 125: return "[#3399FF]🥷 Genin[/#3399FF]"
-    elif hours < 150: return "[#0080FF]📜 Chuunin[/#0080FF]"
-    elif hours < 200: return "[#0066CC]🌪️ Jonin[/#0066CC]"
-    elif hours < 250: return "[#004C99]⚔️ Samuraj[/#004C99]"
-    elif hours < 300: return "[#009999]🍂 Ronin[/#009999]"
-    elif hours < 400: return "[#00CC99]🦊 Shinobi[/#00CC99]"
-    elif hours < 500: return "[#00FF99]⭐ Otaku[/#00FF99]"
-    elif hours < 600: return "[#33FF33]🦅 Zwiadowca[/#33FF33]"
-    elif hours < 700: return "[#99FF33]🩸 Łowca[/#99FF33]"
-    elif hours < 850: return "[#CCFF33]👁️ Zabójca[/#CCFF33]"
-    elif hours < 1000: return "[#FFFF00]🏴‍☠️ Supernova[/#FFFF00]"
-    elif hours < 1200: return "[#FFCC00]⚓ Kapitan[/#FFCC00]"
-    elif hours < 1400: return "[#FF9900]🔮 Mistrz[/#FF9900]"
-    elif hours < 1600: return "[#FF6600]🦸 Bohater[/#FF6600]"
-    elif hours < 1800: return "[#FF3300]🧙‍♂️ Arcymag[/#FF3300]"
-    elif hours < 2000: return "[#FF0000]👑 Król[/#FF0000]"
-    elif hours < 2250: return "[#CC0000]🐉 Cesarz[/#CC0000]"
-    elif hours < 2500: return "[#FF0066]🌌 Bóstwo[/#FF0066]"
-    elif hours < 3000: return "[#FF00CC]👹 Tytan[/#FF00CC]"
-    else: return "[#9900CC]👑 Hikikomori[/#9900CC]"
+    if hours < 10: return f"[#FFFFFF]🌱 {t('rank_freshman')}[/#FFFFFF]"
+    elif hours < 25: return f"[#E6F2FF]🌸 {t('rank_viewer')}[/#E6F2FF]"
+    elif hours < 50: return f"[#CCE6FF]🍙 {t('rank_novice')}[/#CCE6FF]"
+    elif hours < 75: return f"[#99CCFF]🗡️ {t('rank_disciple')}[/#99CCFF]"
+    elif hours < 100: return f"[#66B3FF]🛡️ {t('rank_squire')}[/#66B3FF]"
+    elif hours < 125: return f"[#3399FF]🥷 {t('rank_genin')}[/#3399FF]"
+    elif hours < 150: return f"[#0080FF]📜 {t('rank_chuunin')}[/#0080FF]"
+    elif hours < 200: return f"[#0066CC]🌪️ {t('rank_jonin')}[/#0066CC]"
+    elif hours < 250: return f"[#004C99]⚔️ {t('rank_samurai')}[/#004C99]"
+    elif hours < 300: return f"[#009999]🍂 {t('rank_ronin')}[/#009999]"
+    elif hours < 400: return f"[#00CC99]🦊 {t('rank_shinobi')}[/#00CC99]"
+    elif hours < 500: return f"[#00FF99]⭐ {t('rank_otaku')}[/#00FF99]"
+    elif hours < 600: return f"[#33FF33]🦅 {t('rank_scout')}[/#33FF33]"
+    elif hours < 700: return f"[#99FF33]🩸 {t('rank_hunter')}[/#99FF33]"
+    elif hours < 850: return f"[#CCFF33]👁️ {t('rank_assassin')}[/#CCFF33]"
+    elif hours < 1000: return f"[#FFFF00]🏴‍☠️ {t('rank_supernova')}[/#FFFF00]"
+    elif hours < 1200: return f"[#FFCC00]⚓ {t('rank_captain')}[/#FFCC00]"
+    elif hours < 1400: return f"[#FF9900]🔮 {t('rank_master')}[/#FF9900]"
+    elif hours < 1600: return f"[#FF6600]🦸 {t('rank_hero')}[/#FF6600]"
+    elif hours < 1800: return f"[#FF3300]🧙‍♂️ {t('rank_archmage')}[/#FF3300]"
+    elif hours < 2000: return f"[#FF0000]👑 {t('rank_king')}[/#FF0000]"
+    elif hours < 2250: return f"[#CC0000]🐉 {t('rank_emperor')}[/#CC0000]"
+    elif hours < 2500: return f"[#FF0066]🌌 {t('rank_deity')}[/#FF0066]"
+    elif hours < 3000: return f"[#FF00CC]👹 {t('rank_titan')}[/#FF00CC]"
+    else: return f"[#9900CC]👑 {t('rank_hikikomori')}[/#99CCFF]"
 
 def m_stats():
     clear()
@@ -65,7 +66,12 @@ def m_stats():
     
     # --- OBLICZANIE NAWYKÓW ---
     maraton_dict = {}
-    pora_dict = {"Nocny Marek (22-04)": 0, "Ranny Ptaszek (04-12)": 0, "Popołudniowy Chill (12-17)": 0, "Wieczorny Seans (17-22)": 0}
+    pora_dict = {
+        t("stat_night"): 0, 
+        t("stat_early"): 0, 
+        t("stat_chill"): 0, 
+        t("stat_evening"): 0
+    }
     online_count = 0
     offline_count = 0
     
@@ -92,18 +98,18 @@ def m_stats():
             
             try:
                 hour = int(date_str[11:13])
-                if 4 <= hour < 12: pora_dict["Ranny Ptaszek (04-12)"] += 1
-                elif 12 <= hour < 17: pora_dict["Popołudniowy Chill (12-17)"] += 1
-                elif 17 <= hour < 22: pora_dict["Wieczorny Seans (17-22)"] += 1
-                else: pora_dict["Nocny Marek (22-04)"] += 1
+                if 4 <= hour < 12: pora_dict[t("stat_early")] += 1
+                elif 12 <= hour < 17: pora_dict[t("stat_chill")] += 1
+                elif 17 <= hour < 22: pora_dict[t("stat_evening")] += 1
+                else: pora_dict[t("stat_night")] += 1
             except: pass
             
             if is_offline: offline_count += 1
             else: online_count += 1
 
     max_maraton = max(maraton_dict.values()) if maraton_dict else 0
-    max_maraton_date = max(maraton_dict, key=maraton_dict.get) if maraton_dict else "Brak"
-    ulubiona_pora = max(pora_dict, key=pora_dict.get) if sum(pora_dict.values()) > 0 else "Brak danych"
+    max_maraton_date = max(maraton_dict, key=maraton_dict.get) if maraton_dict else t("stat_none")
+    ulubiona_pora = max(pora_dict, key=pora_dict.get) if sum(pora_dict.values()) > 0 else t("stat_no_data")
 
     has_token = ds.settings.get("anilist_token") != ""
     ep_anilist = 0
@@ -121,7 +127,6 @@ def m_stats():
     if ep_total > 0:
         percent_doccli = round((ep_doccli / ep_total) * 100, 1)
 
-    q_mylist = len(ds.mylist)
     ti_c = pathlib.Path(ds.config_dir).stat().st_mtime
     dt_c = datetime.fromtimestamp(ti_c).strftime("%d/%m/%Y")
 
@@ -142,7 +147,7 @@ def m_stats():
     size_bytes = get_folder_size()
     size_gb = round(size_bytes / (1024 ** 3), 2)
 
-    last_watched = "Brak danych"
+    last_watched = t("stat_no_data")
     if ds.history:
         first_entry = ds.history[0]
         if isinstance(first_entry, dict): clean_title = first_entry.get("title", "Nieznany")
@@ -169,21 +174,21 @@ def m_stats():
     table_activity = Table(show_header=False, box=None, padding=(0, 2), expand=True)
     table_activity.add_column("Statystyka", style="cyan")
     table_activity.add_column("Wartość", justify="right")
-    table_activity.add_row("Obecna Ranga:", user_rank)
-    table_activity.add_row("Obejrzane w doccli:", f"[cyan]{ep_doccli}[/cyan]")
-    table_activity.add_row("Czas oglądania w doccli:", f"[cyan]{doccli_hours}h {doccli_minutes}m[/cyan]")
-    table_activity.add_row("Odcinki obejrzane ogółem:", f"[red]{ep_total}[/red]")
-    table_activity.add_row("Czas oglądania ogółem:", f"[cyan]{hours}h {minutes}m[/cyan]")
-    table_activity.add_row("Ostatnio oglądane:", f"[white]{last_watched}[/white]")
+    table_activity.add_row(t("stat_lbl_rank"), user_rank)
+    table_activity.add_row(t("stat_lbl_doccli_eps"), f"[cyan]{ep_doccli}[/cyan]")
+    table_activity.add_row(t("stat_lbl_doccli_time"), f"[cyan]{doccli_hours}h {doccli_minutes}m[/cyan]")
+    table_activity.add_row(t("stat_lbl_total_eps"), f"[red]{ep_total}[/red]")
+    table_activity.add_row(t("stat_lbl_total_time"), f"[cyan]{hours}h {minutes}m[/cyan]")
+    table_activity.add_row(t("stat_lbl_last"), f"[white]{last_watched}[/white]")
 
     # 2. NAWYKI (Lokalne)
     table_habits = Table(show_header=False, box=None, padding=(0, 2), expand=True)
     table_habits.add_column("Statystyka", style="cyan")
     table_habits.add_column("Wartość", justify="right")
-    table_habits.add_row("Życiowy maraton (1 dzień):", f"[red]{max_maraton}[/red] odc. ({max_maraton_date})")
-    table_habits.add_row("Średnia tygodniowa:", f"[yellow]{weekly_avg}[/yellow] odc.")
-    table_habits.add_row("Główna pora seansów:", f"[cyan]{ulubiona_pora}[/cyan]")
-    table_habits.add_row("Sieć vs Dysk:", f"[cyan]{online_count}[/cyan] sieć / [green]{offline_count}[/green] dysk")
+    table_habits.add_row(t("stat_lbl_marathon"), f"[red]{max_maraton}[/red] odc. ({max_maraton_date})")
+    table_habits.add_row(t("stat_lbl_weekly"), f"[yellow]{weekly_avg}[/yellow] odc.")
+    table_habits.add_row(t("stat_lbl_prime_time"), f"[cyan]{ulubiona_pora}[/cyan]")
+    table_habits.add_row(t("stat_lbl_net_disk"), f"[cyan]{online_count}[/cyan] {t('stat_net_str')} / [green]{offline_count}[/green] {t('stat_disk_str')}")
 
     # 3. ANILIST (Zewnętrzne)
     table_al = Table(show_header=False, box=None, padding=(0, 2), expand=True)
@@ -192,61 +197,62 @@ def m_stats():
     
     if adv_stats:
         oldest_plan = adv_stats['oldest_planning'][:22] + "..." if len(adv_stats['oldest_planning']) > 25 else adv_stats['oldest_planning']
-        table_al.add_row("Ukończone vs Reszta:", f"[green]{adv_stats['completed']}[/green] / [red]{adv_stats['not_completed']}[/red]")
-        table_al.add_row("Kupka wstydu (Planowane):", f"[yellow]{adv_stats['planning_count']}[/yellow]")
-        table_al.add_row("Najdłużej w kolejce:", f"[white]{oldest_plan}[/white]")
-        table_al.add_row("Ulubione gatunki (Top 3):", f"[cyan]{adv_stats['genres']}[/cyan]")
-        mean_s = f"{adv_stats['mean_score']}/100" if adv_stats['mean_score'] > 0 else "Brak"
-        table_al.add_row("Średnia przyznanych ocen:", f"[bright_green]{mean_s}[/bright_green]")
+        table_al.add_row(t("stat_lbl_completed_rest"), f"[green]{adv_stats['completed']}[/green] / [red]{adv_stats['not_completed']}[/red]")
+        table_al.add_row(t("stat_lbl_planning"), f"[yellow]{adv_stats['planning_count']}[/yellow]")
+        table_al.add_row(t("stat_lbl_oldest_queue"), f"[white]{oldest_plan}[/white]")
+        table_al.add_row(t("stat_lbl_top_genres"), f"[cyan]{adv_stats['genres']}[/cyan]")
+        mean_s = f"{adv_stats['mean_score']}/100" if adv_stats['mean_score'] > 0 else t("stat_none")
+        table_al.add_row(t("stat_lbl_mean_score"), f"[bright_green]{mean_s}[/bright_green]")
     else:
-        table_al.add_row("Status połączenia:", "[red]Brak danych z AniList[/red]")
+        table_al.add_row(t("stat_lbl_al_status"), f"[red]{t('stat_al_no_data')}[/red]")
 
     # 4. BIBLIOTEKA
     table_app = Table(show_header=False, box=None, padding=(0, 2), expand=True)
     table_app.add_column("Statystyka", style="cyan")
     table_app.add_column("Wartość", justify="right")
-    table_app.add_row("Udział doccli w historii:", f"[yellow]{percent_doccli}%[/yellow]")
-    table_app.add_row("Zajęte miejsce na dysku:", f"[green]{size_gb} GB[/green]")
-    table_app.add_row("Instalacja doccli:", f"[white]{dt_c}[/white]")
-    table_app.add_row("Wiek profilu:", f"[white]{delta_dt.days} dni[/white]")
+    table_app.add_row(t("stat_lbl_share"), f"[yellow]{percent_doccli}%[/yellow]")
+    table_app.add_row(t("stat_lbl_size"), f"[green]{size_gb} GB[/green]")
+    table_app.add_row(t("stat_lbl_install"), f"[white]{dt_c}[/white]")
+    table_app.add_row(t("stat_lbl_age"), f"[white]{delta_dt.days} {t('stat_days')}[/white]")
 
     # RANGI - DUŻA LISTA
+    req_h = t("stat_req_hours")
     table_legend = Table(show_header=False, box=None, padding=(0, 2), expand=True)
     table_legend.add_column("Ranga", style="white") 
     table_legend.add_column("Wymaganie", justify="right", style="white")
-    table_legend.add_row("[#FFFFFF]🌱 Świeżak[/#FFFFFF]", "0 - 9 godz.")
-    table_legend.add_row("[#E6F2FF]🌸 Widz[/#E6F2FF]", "10 - 24 godz.")
-    table_legend.add_row("[#CCE6FF]🍙 Nowicjusz[/#CCE6FF]", "25 - 49 godz.")
-    table_legend.add_row("[#99CCFF]🗡️ Uczeń[/#99CCFF]", "50 - 74 godz.")
-    table_legend.add_row("[#66B3FF]🛡️ Giermek[/#66B3FF]", "75 - 99 godz.")
-    table_legend.add_row("[#3399FF]🥷 Genin[/#3399FF]", "100 - 124 godz.")
-    table_legend.add_row("[#0080FF]📜 Chuunin[/#0080FF]", "125 - 149 godz.")
-    table_legend.add_row("[#0066CC]🌪️ Jonin[/#0066CC]", "150 - 199 godz.")
-    table_legend.add_row("[#004C99]⚔️ Samuraj[/#004C99]", "200 - 249 godz.")
-    table_legend.add_row("[#009999]🍂 Ronin[/#009999]", "250 - 299 godz.")
-    table_legend.add_row("[#00CC99]🦊 Shinobi[/#00CC99]", "300 - 399 godz.")
-    table_legend.add_row("[#00FF99]⭐ Otaku[/#00FF99]", "400 - 499 godz.")
-    table_legend.add_row("[#33FF33]🦅 Zwiadowca[/#33FF33]", "500 - 599 godz.")
-    table_legend.add_row("[#99FF33]🩸 Łowca[/#99FF33]", "600 - 699 godz.")
-    table_legend.add_row("[#CCFF33]👁️ Zabójca[/#CCFF33]", "700 - 849 godz.")
-    table_legend.add_row("[#FFFF00]🏴‍☠️ Supernova[/#FFFF00]", "850 - 999 godz.")
-    table_legend.add_row("[#FFCC00]⚓ Kapitan[/#FFCC00]", "1000 - 1199 godz.")
-    table_legend.add_row("[#FF9900]🔮 Mistrz[/#FF9900]", "1200 - 1399 godz.")
-    table_legend.add_row("[#FF6600]🦸 Bohater[/#FF6600]", "1400 - 1599 godz.")
-    table_legend.add_row("[#FF3300]🧙‍♂️ Arcymag[/#FF3300]", "1600 - 1799 godz.")
-    table_legend.add_row("[#FF0000]👑 Król[/#FF0000]", "1800 - 1999 godz.")
-    table_legend.add_row("[#CC0000]🐉 Cesarz[/#CC0000]", "2000 - 2249 godz.")
-    table_legend.add_row("[#FF0066]🌌 Bóstwo[/#FF0066]", "2250 - 2499 godz.")
-    table_legend.add_row("[#FF00CC]👹 Tytan[/#FF00CC]", "2500 - 2999 godz.")
-    table_legend.add_row("[#9900CC]👑 Hikikomori[/#9900CC]", "3000+ godz.")
+    table_legend.add_row(f"[#FFFFFF]🌱 {t('rank_freshman')}[/#FFFFFF]", f"0 - 9 {req_h}")
+    table_legend.add_row(f"[#E6F2FF]🌸 {t('rank_viewer')}[/#E6F2FF]", f"10 - 24 {req_h}")
+    table_legend.add_row(f"[#CCE6FF]🍙 {t('rank_novice')}[/#CCE6FF]", f"25 - 49 {req_h}")
+    table_legend.add_row(f"[#99CCFF]🗡️ {t('rank_disciple')}[/#99CCFF]", f"50 - 74 {req_h}")
+    table_legend.add_row(f"[#66B3FF]🛡️ {t('rank_squire')}[/#66B3FF]", f"75 - 99 {req_h}")
+    table_legend.add_row(f"[#3399FF]🥷 {t('rank_genin')}[/#3399FF]", f"100 - 124 {req_h}")
+    table_legend.add_row(f"[#0080FF]📜 {t('rank_chuunin')}[/#0080FF]", f"125 - 149 {req_h}")
+    table_legend.add_row(f"[#0066CC]🌪️ {t('rank_jonin')}[/#0066CC]", f"150 - 199 {req_h}")
+    table_legend.add_row(f"[#004C99]⚔️ {t('rank_samurai')}[/#004C99]", f"200 - 249 {req_h}")
+    table_legend.add_row(f"[#009999]🍂 {t('rank_ronin')}[/#009999]", f"250 - 299 {req_h}")
+    table_legend.add_row(f"[#00CC99]🦊 {t('rank_shinobi')}[/#00CC99]", f"300 - 399 {req_h}")
+    table_legend.add_row(f"[#00FF99]⭐ {t('rank_otaku')}[/#00FF99]", f"400 - 499 {req_h}")
+    table_legend.add_row(f"[#33FF33]🦅 {t('rank_scout')}[/#33FF33]", f"500 - 599 {req_h}")
+    table_legend.add_row(f"[#99FF33]🩸 {t('rank_hunter')}[/#99FF33]", f"600 - 699 {req_h}")
+    table_legend.add_row(f"[#CCFF33]👁️ {t('rank_assassin')}[/#CCFF33]", f"700 - 849 {req_h}")
+    table_legend.add_row(f"[#FFFF00]🏴‍☠️ {t('rank_supernova')}[/#FFFF00]", f"850 - 999 {req_h}")
+    table_legend.add_row(f"[#FFCC00]⚓ {t('rank_captain')}[/#FFCC00]", f"1000 - 1199 {req_h}")
+    table_legend.add_row(f"[#FF9900]🔮 {t('rank_master')}[/#FF9900]", f"1200 - 1399 {req_h}")
+    table_legend.add_row(f"[#FF6600]🦸 {t('rank_hero')}[/#FF6600]", f"1400 - 1599 {req_h}")
+    table_legend.add_row(f"[#FF3300]🧙‍♂️ {t('rank_archmage')}[/#FF3300]", f"1600 - 1799 {req_h}")
+    table_legend.add_row(f"[#FF0000]👑 {t('rank_king')}[/#FF0000]", f"1800 - 1999 {req_h}")
+    table_legend.add_row(f"[#CC0000]🐉 {t('rank_emperor')}[/#CC0000]", f"2000 - 2249 {req_h}")
+    table_legend.add_row(f"[#FF0066]🌌 {t('rank_deity')}[/#FF0066]", f"2250 - 2499 {req_h}")
+    table_legend.add_row(f"[#FF00CC]👹 {t('rank_titan')}[/#FF00CC]", f"2500 - 2999 {req_h}")
+    table_legend.add_row(f"[#9900CC]👑 {t('rank_hikikomori')}[/#9900CC]", f"3000+ {req_h}")
 
     # PANELE O DYNAMICZNEJ SZEROKOŚCI
-    panel_activity = Panel(table_activity, title="[yellow]🎬 Twój Profil[/yellow]", border_style="cyan", width=left_w)
-    panel_habits = Panel(table_habits, title="[yellow]🧠 Twoje Nawyki (Doccli)[/yellow]", border_style="cyan", width=left_w)
-    panel_al = Panel(table_al, title="[yellow]☁️ Statystyki Konta (AniList)[/yellow]", border_style="cyan", width=left_w)
-    panel_app = Panel(table_app, title="[yellow]📁 Biblioteka i Dane[/yellow]", border_style="cyan", width=left_w)
+    panel_activity = Panel(table_activity, title=f"[yellow]{t('stat_panel_profile')}[/yellow]", border_style="cyan", width=left_w)
+    panel_habits = Panel(table_habits, title=f"[yellow]{t('stat_panel_habits')}[/yellow]", border_style="cyan", width=left_w)
+    panel_al = Panel(table_al, title=f"[yellow]{t('stat_panel_anilist')}[/yellow]", border_style="cyan", width=left_w)
+    panel_app = Panel(table_app, title=f"[yellow]{t('stat_panel_library')}[/yellow]", border_style="cyan", width=left_w)
     
-    panel_legend = Panel(table_legend, title="[yellow]🏆 Legenda Rang[/yellow]", border_style="cyan", width=right_w)
+    panel_legend = Panel(table_legend, title=f"[yellow]{t('stat_panel_legend')}[/yellow]", border_style="cyan", width=right_w)
 
     left_column = Group(
         panel_activity,
@@ -265,5 +271,5 @@ def m_stats():
     console.print(Align.center(dashboard_grid))
     
     print('\n')
-    input(colored("Naciśnij enter aby wrócić do menu głównego...", "yellow"))
+    input(colored(t("stat_return_prompt"), "yellow"))
     return

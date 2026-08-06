@@ -11,6 +11,7 @@ from ui_utils import clear, open_menu
 from cache import get_cached_series_list
 from anilist_connector import get_duration_by_malid
 from menus_decor import MOJA_BIBLIOTEKA
+from i18n import t
 
 
 def m_local_library():
@@ -27,32 +28,32 @@ def m_local_library():
         downloads_dir = os.path.join(current_dir, "doccli_downloads")
     
     if not os.path.exists(downloads_dir):
-        print(colored(f"[BŁĄD] Twój folder pobierania jeszcze nie istnieje ({downloads_dir}).", "red"))
-        print(colored("Najpierw musisz pobrać jakieś anime!", "yellow"))
+        print(colored(t("lib_err_no_dir").format(downloads_dir), "red"))
+        print(colored(t("lib_err_no_anime"), "yellow"))
         print('')
-        input(colored("Naciśnij Enter, aby wrócić do menu...", "yellow"))
+        input(colored(t("lib_enter_to_return"), "yellow"))
         m_welcome()
         return
         
     series_list = [d for d in os.listdir(downloads_dir) if os.path.isdir(os.path.join(downloads_dir, d))]
     
     if not series_list:
-        print(colored("[INFO] Twój folder doccli_downloads jest pusty.", "yellow"))
+        print(colored(t("lib_info_empty"), "yellow"))
         print('')
-        input(colored("Naciśnij Enter, aby wrócić do menu...", "yellow"))
+        input(colored(t("lib_enter_to_return"), "yellow"))
         m_welcome()
         return
         
-    series_list.append("Wróć do menu głównego")
+    series_list.append(t("menu_main"))
     
     selected_series = open_menu(
         choices=series_list, 
-        prompt='Wybierz serię z dysku: ', 
+        prompt=t("lib_prompt_series"), 
         height=10, 
         message=MOJA_BIBLIOTEKA
     )
     
-    if selected_series == "Wróć do menu głównego":
+    if selected_series == t("menu_main"):
         m_welcome()
         return
 
@@ -64,30 +65,30 @@ def m_local_library():
         episodes_list.sort()
         
         if not episodes_list:
-            print(colored(f"Brak plików wideo w folderze {selected_series}.", "red"))
-            input(colored("Naciśnij Enter, aby wrócić do menu...", "yellow"))
+            print(colored(t("lib_err_no_vids").format(selected_series), "red"))
+            input(colored(t("lib_enter_to_return"), "yellow"))
             m_welcome()
             return
             
-        choices = ["Oglądaj automatycznie"] + episodes_list + ["Wróć do wyboru serii"]
+        choices = [t("lib_watch_auto")] + episodes_list + [t("lib_back_to_series")]
         
         selected_ep = open_menu(
             choices=choices, 
-            prompt=f'Wybierz odcinek ({selected_series}): ', 
+            prompt=t("lib_prompt_ep").format(selected_series), 
             height=10, 
             message=MOJA_BIBLIOTEKA
         )
         
-        if selected_ep == "Wróć do wyboru serii":
+        if selected_ep == t("lib_back_to_series"):
             m_local_library()
             return
             
-        elif selected_ep == "Oglądaj automatycznie":
+        elif selected_ep == t("lib_watch_auto"):
             for ep in episodes_list:
                 file_path = os.path.join(series_path, ep)
                 clear()
-                print(colored(f"Oglądanie automatyczne: {ep}", "cyan"))
-                print(colored("Wciśnij 'Q' w obrębie okna MPV, lub zamknij je aby przerwać seans i wrócić do menu.", "white"))
+                print(colored(t("lib_auto_playing").format(ep), "cyan"))
+                print(colored(t("lib_mpv_info"), "white"))
                 
                 all_series = get_cached_series_list()
                 mal_id = None
@@ -116,19 +117,19 @@ def m_local_library():
                     process = subprocess.run(["mpv", file_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                     
                     if process.returncode != 0:
-                        print(colored("\n[INFO] Przerwano oglądanie automatyczne.", "yellow"))
-                        input("Naciśnij Enter...")
+                        print(colored(t("lib_auto_interrupted"), "yellow"))
+                        input(t("lib_press_enter"))
                         break
                 except FileNotFoundError:
-                    print(colored("[BŁĄD] Nie znaleziono odtwarzacza mpv!", "red"))
-                    input("Naciśnij Enter...")
+                    print(colored(t("lib_err_no_mpv"), "red"))
+                    input(t("lib_press_enter"))
                     m_welcome()
                     return
         else:
             file_path = os.path.join(series_path, selected_ep)
             clear()
-            print(colored(f"Odtwarzam z dysku: {selected_ep}", "cyan"))
-            print(colored("Wciśnij 'Q' w obrębie okna MPV, lub zamknij je aby przerwać seans i wrócić do menu.", "white"))
+            print(colored(t("lib_playing_disk").format(selected_ep), "cyan"))
+            print(colored(t("lib_mpv_info"), "white"))
             
             all_series = get_cached_series_list()
             mal_id = None
@@ -156,7 +157,7 @@ def m_local_library():
             try:
                 subprocess.run(["mpv", file_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             except FileNotFoundError:
-                print(colored("[BŁĄD] Nie znaleziono odtwarzacza mpv!", "red"))
-                input("Naciśnij Enter...")
+                print(colored(t("lib_err_no_mpv"), "red"))
+                input(t("lib_press_enter"))
                 m_welcome()
                 return

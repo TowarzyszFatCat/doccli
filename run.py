@@ -14,6 +14,7 @@ from termcolor import colored
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "src")) # Drurne obejście
 from discord_integration import set_running, start_rpc
 from main_module import m_welcome
+from i18n import t
 
 VERSION = "v2.33.1"
 
@@ -40,7 +41,7 @@ def check_dependencies() -> bool:
     requires_action = False
     
     print(colored(f"--- Doccli {VERSION} ---", "yellow"))
-    print(colored("[INFO] Sprawdzanie środowiska i zależności...", "cyan"))
+    print(colored(t("run_env_check"), "cyan"))
     
     # 1. Wymagane: yt-dlp
     if shutil.which("yt-dlp"):
@@ -52,7 +53,7 @@ def check_dependencies() -> bool:
             norm_latest = ".".join([str(int(x)) if x.isdigit() else x for x in latest_yt.split('.')])
             
             if norm_local != norm_latest:
-                print(colored("[+] yt-dlp:    ", "green") + f"Zainstalowano (Twoja: {local_yt} | Najnowsza: {latest_yt})")
+                print(colored("[+] yt-dlp:    ", "green") + t("run_yt_installed_old").format(local_yt, latest_yt))
                 
                 # --- WERSJA KOMENDY ZALEŻNA OD SYSTEMU ---
                 if os.name == "nt":
@@ -60,37 +61,37 @@ def check_dependencies() -> bool:
                 else:
                     update_cmd = "sudo yt-dlp -U"
                 
-                print(colored(f"    [!] Zalecam aktualizację komendą: ({update_cmd}), bo niektóre źródła mogą nie działać!", "red"))
+                print(colored(t("run_yt_update_rec").format(update_cmd), "red"))
             else:
-                print(colored("[+] yt-dlp:    ", "green") + f"Zainstalowano (Wersja: {local_yt} - Aktualna!)")
+                print(colored("[+] yt-dlp:    ", "green") + t("run_yt_installed_ok").format(local_yt))
         else:
-            print(colored("[+] yt-dlp:    ", "green") + f"Zainstalowano (Wersja: {local_yt})")
+            print(colored("[+] yt-dlp:    ", "green") + t("run_yt_installed").format(local_yt))
     else:
-        print(colored("[-] yt-dlp:    ", "red") + "BRAK! Odtwarzanie i pobieranie nie będzie działać.")
+        print(colored("[-] yt-dlp:    ", "red") + t("run_yt_missing"))
         requires_action = True
 
     # 2. Wymagane: mpv
     if shutil.which("mpv"):
         mpv_v = get_cmd_version("mpv")
-        print(colored("[+] mpv:       ", "green") + f"Zainstalowano (Wersja: {mpv_v})")
+        print(colored("[+] mpv:       ", "green") + t("run_mpv_installed").format(mpv_v))
     else:
-        print(colored("[-] mpv:       ", "red") + "BRAK! Odtwarzanie wideo nie będzie działać.")
+        print(colored("[-] mpv:       ", "red") + t("run_mpv_missing"))
         requires_action = True
 
     # 3. Opcjonalne: chafa
     if shutil.which("chafa"):
         timg_v = get_cmd_version("chafa")
-        print(colored("[+] chafa:     ", "green") + f"Zainstalowano (Wersja: {timg_v} | Wyświetlanie okładek)")
+        print(colored("[+] chafa:     ", "green") + t("run_chafa_installed").format(timg_v))
     else:
-        print(colored("[!] chafa:     ", "yellow") + "Brak [Wyświetlanie okładek]")
+        print(colored("[!] chafa:     ", "yellow") + t("run_chafa_missing"))
         requires_action = True
 
     # 4. Opcjonalne: megatools
     if shutil.which("megatools"):
         mega_v = get_cmd_version("megatools")
-        print(colored("[+] megatools: ", "green") + f"Zainstalowano (Wersja: {mega_v})")
+        print(colored("[+] megatools: ", "green") + t("run_mega_installed").format(mega_v))
     else:
-        print(colored("[!] megatools: ", "yellow") + "Brak (Odtwarzanie ze źródeł Mega.nz)")
+        print(colored("[!] megatools: ", "yellow") + t("run_mega_missing"))
 
     print("")
     return requires_action
@@ -107,10 +108,10 @@ def check_update() -> bool:
         latest_version = data.get("name")
 
         if latest_version and latest_version != VERSION:
-            print(colored("Wersja programu: ", "white"), colored(VERSION, "red"))
-            print(colored("Najnowsza wersja:", "white"), colored(latest_version, "green"))
+            print(colored(t("run_upd_current"), "white"), colored(VERSION, "red"))
+            print(colored(t("run_upd_latest"), "white"), colored(latest_version, "green"))
             print("")
-            print(colored("Dostępna jest nowa wersja doccli!", "white"))
+            print(colored(t("run_upd_avail"), "white"))
             
             # DLA WINDOWSA
             if os.name == "nt":
@@ -124,7 +125,7 @@ def check_update() -> bool:
                     from InquirerPy import prompt
                     questions = [{
                         "type": "confirm",
-                        "message": "Czy chcesz pobrać i zainstalować aktualizację automatycznie teraz?",
+                        "message": t("run_upd_prompt"),
                         "name": "update",
                         "default": True
                     }]
@@ -134,14 +135,14 @@ def check_update() -> bool:
                         perform_update_windows(download_url)
                         return True
                 else:
-                    print(colored("Szczegóły aktualizacji oraz instrukcję znajdziesz tutaj:", "white"))
+                    print(colored(t("run_upd_manual"), "white"))
                     print(colored("https://github.com/TowarzyszFatCat/doccli", "cyan"))
                     print("")
                     return True
                     
             # DLA LINUX / MACOS ---
             else:
-                print(colored("Szczegóły aktualizacji oraz instrukcję znajdziesz tutaj:", "white"))
+                print(colored(t("run_upd_manual"), "white"))
                 print(colored("https://github.com/TowarzyszFatCat/doccli", "cyan"))
                 print("")
                 return True
@@ -154,7 +155,7 @@ def check_update() -> bool:
 
 def perform_update_windows(download_url):
     import tempfile
-    print(colored("\n[*] Pobieranie aktualizacji z GitHuba... To potrwa tylko chwilę.", "cyan"))
+    print(colored(t("run_upd_dl"), "cyan"))
     
     try:
         req = get(download_url, stream=True)
@@ -164,13 +165,13 @@ def perform_update_windows(download_url):
             for chunk in req.iter_content(chunk_size=8192):
                 f.write(chunk)
                 
-        print(colored("[+] Pobrano pomyślnie. Rozpoczynam instalację...", "green"))
+        print(colored(t("run_upd_dl_ok"), "green"))
         
         subprocess.Popen([exe_path, "/VERYSILENT", "/SUPPRESSMSGBOXES", "/FORCECLOSEAPPLICATIONS"])
         sys.exit()
         
     except Exception as e:
-        print(colored(f"[-] Błąd podczas pobierania/instalacji aktualizacji: {e}", "red"))
+        print(colored(t("run_upd_err").format(e), "red"))
         time.sleep(3)
 
 
@@ -181,7 +182,7 @@ if __name__ == "__main__":
     has_app_update = check_update()
     
     if has_dep_warnings or has_app_update:
-        input(colored("Naciśnij Enter, aby kontynuować...", "yellow"))
+        input(colored(t("run_enter_cont"), "yellow"))
     else:
         time.sleep(2)
     

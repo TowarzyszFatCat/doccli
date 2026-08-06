@@ -3,6 +3,7 @@ import shutil
 import subprocess
 import tempfile
 import time
+import sys
 from datetime import datetime
 from subprocess import Popen, DEVNULL
 from termcolor import colored
@@ -11,6 +12,7 @@ from termcolor import colored
 from storage import ds
 from docchi_api_connector import extract_lycoris_direct_link
 from anilist_connector import get_duration_by_malid, update_anilist_progress, generate_aniskip_chapters
+from i18n import t  # <--- NASZ NOWY SYSTEM TŁUMACZEŃ
 
 
 def kill_process(process):
@@ -32,10 +34,10 @@ def mpv_play(URL, quality="best", mal_id=None, ep_number=None):
     mpv_exec = "mpv.exe" if os.name == "nt" else "mpv"
 
     if shutil.which('mpv') is None:
-        print(colored("[BŁĄD]", "red"), colored("Aby program działał wymagana jest instalacja", "white"), colored("mpv", "green"), '\n')
+        print(colored(t("player_err"), "red"), colored(t("player_req_install"), "white"), colored("mpv", "green"), '\n')
         sys.exit()
     if shutil.which('yt-dlp') is None:
-        print(colored("[BŁĄD]", "red"), colored("Aby program działał wymagana jest instalacja", "white"), colored("yt-dlp", "green"), '\n')
+        print(colored(t("player_err"), "red"), colored(t("player_req_install"), "white"), colored("yt-dlp", "green"), '\n')
         sys.exit()
         
     temp_dir = tempfile.gettempdir()
@@ -47,9 +49,9 @@ def mpv_play(URL, quality="best", mal_id=None, ep_number=None):
         direct_url = extract_lycoris_direct_link(URL)
         if direct_url:
             URL = direct_url
-            print(colored("[+] Sukces! Znaleziono bezpośredni link wideo.", "green"))
+            print(colored(t("player_lycoris_ok"), "green"))
         else:
-            print(colored("[-] Nie udało się zdekodować linku. Próbuję odtworzyć domyślnie...", "yellow"))
+            print(colored(t("player_lycoris_fail"), "yellow"))
 
     ytdl_format_arg = "bestvideo+bestaudio/best"
     if quality != "best":
@@ -57,12 +59,18 @@ def mpv_play(URL, quality="best", mal_id=None, ep_number=None):
         ytdl_format_arg = f"bestvideo[height<=?{height}]+bestaudio/best"
 
     details = ds.continue_data[0]
-    anime_title = details.get('title', 'Nieznane Anime') if details else 'Nieznane Anime'
-    media_title = f"{anime_title} - Odcinek {ep_number}"
+    
+    # Wyświetlanie poprawnego tytułu w oknie MPV w zależności od języka programu
+    if ds.settings.get("language") == "en" and details and details.get('title_en'):
+        anime_title = details.get('title_en')
+    else:
+        anime_title = details.get('title', t("player_unknown_anime")) if details else t("player_unknown_anime")
+        
+    media_title = f"{anime_title} - {t('player_ep')} {ep_number}"
 
     if "mega" in URL:
         if shutil.which('megatools') is None:
-            print(colored("[UWAGA]", "yellow"), colored("Aby oglądać z tego źródła wymagana jest instalacja", "white"), colored("megatools", "green"), '\n')
+            print(colored(t("player_warn"), "yellow"), colored(t("player_req_mega"), "white"), colored("megatools", "green"), '\n')
             sys.exit()
 
         video_extensions = ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.webm']

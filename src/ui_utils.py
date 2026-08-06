@@ -12,6 +12,8 @@ from PIL import Image
 from termcolor import colored
 import requests
 
+from i18n import t
+
 def clear():
     os.system("cls" if os.name == "nt" else "clear")
 
@@ -92,7 +94,7 @@ def open_menu(choices, prompt='Prompt', border=True, qmark='', message='', point
                     
                     wrapped_desc = textwrap.wrap(clean_desc, width=text_width)
                     
-                    header_text = "Opis z AniList:"
+                    header_text = t("ui_desc_header")
                     colored_header = colored(header_text, "cyan") 
                     
                     wrapped_desc.insert(0, colored_header)
@@ -109,7 +111,7 @@ def open_menu(choices, prompt='Prompt', border=True, qmark='', message='', point
                 sys.stdout.flush()
                     
             else:
-                print(center_text("Brak narzędzia 'chafa' do wyświetlania okładek."))
+                print(center_text(t("ui_no_chafa")))
                 
         except Exception as e:
             pass
@@ -121,14 +123,14 @@ def open_menu(choices, prompt='Prompt', border=True, qmark='', message='', point
             border=border,
             qmark=qmark,
             prompt=prompt,
-            long_instruction="Ctrl+C = Cofnij / Menu główne",
+            long_instruction=t("ui_ctrl_c"),
             pointer=pointer,
             cycle=cycle,
             height=height,
         ).execute()
     except KeyboardInterrupt:
         clear()
-        back_keywords = ["cofnij", "wróć", "menu główne", "zamknij", "anuluj"]
+        back_keywords = ["cofnij", "wróć", "menu główne", "zamknij", "anuluj", "back", "exit", "cancel", "main menu"]
         for choice in choices:
             if any(kw in str(choice).lower() for kw in back_keywords):
                 return choice
@@ -139,4 +141,4 @@ def open_menu(choices, prompt='Prompt', border=True, qmark='', message='', point
     try:
         return choices[choices.index(action)]
     except ValueError:
-        return open_menu(choices=choices, prompt=prompt, border=border, qmark="Nie znaleziono na liście, wyszukaj ponownie", message=message, pointer=pointer, cycle=cycle, height=height)
+        return open_menu(choices=choices, prompt=prompt, border=border, qmark=t("ui_not_found"), message=message, pointer=pointer, cycle=cycle, height=height)

@@ -26,7 +26,8 @@ class DataStorage:
             "auto_sync": True,
             "anilist_token": "",
             "download_path": "",
-            "player_quality": "best"
+            "player_quality": "best",
+            "language": "pl"
         }
 
         self.load()

@@ -4,11 +4,13 @@ import subprocess
 import json
 import difflib
 
-
 # From pip
 from requests import get
 from termcolor import colored
 from curl_cffi import requests as cffi_requests
+
+# Doccli modules
+from i18n import t
 
 # Get list of players for episode
 def get_players_list(SLUG, NUMBER):
@@ -19,7 +21,6 @@ def get_players_list(SLUG, NUMBER):
         return request.status_code
 
 
-# japidi ale to jest wolne gowno nie uzywac pod zadnym pozorem chyba ze program by chodzil za szybko :P
 # Get list of how much episodes series contains
 def get_episodes_count_for_serie(SLUG):
     request = get(f"https://api.docchi.pl/v1/episodes/count/{SLUG}")
@@ -66,9 +67,7 @@ def extract_lycoris_direct_link(embed_url):
         request = get(embed_url, headers=headers, timeout=5)
         
         if request.status_code == 200:
-            # szuka w całym kodzie jakiegokolwiek linku z końcówką .mp4
             match = re.search(r'(https?://[^"\']+\.mp4)', request.text, re.IGNORECASE)
-            
             if match:
                 return match.group(1)
     except:
@@ -100,11 +99,11 @@ def get_english_players(details, ep_number):
     
     anidb_id = None
     
-    for t in titles_to_try:
-        if not t or t == "Nieznany" or t == "Brak":
+    for t_title in titles_to_try:
+        if not t_title or str(t_title) in ["Nieznany", "Brak", "Unknown", "None", t("al_none")]:
             continue
             
-        query = str(t).replace(' ', '+')
+        query = str(t_title).replace(' ', '+')
         search_page, final_url = anidb_curl(f"https://anidb.app/browse?q={query}")
         
         if not search_page or "Just a moment" in search_page:
@@ -119,7 +118,7 @@ def get_english_players(details, ep_number):
         matches = re.findall(r'/anime/([^"\'\>]+)-([0-9]+)["\']', search_page)
             
         if matches:
-            target_slug = str(t).lower().replace(' ', '-').replace(':', '')
+            target_slug = str(t_title).lower().replace(' ', '-').replace(':', '')
             
             best_id = None
             best_ratio = 0.45 
@@ -208,11 +207,11 @@ def get_english_players(details, ep_number):
         
         lang_str = str(lang).lower()
         if 'eng' in lang_str or 'dub' in lang_str:
-            label = "dubbing"
+            label = t("anidb_dub")
         elif 'jpn' in lang_str or 'sub' in lang_str or 'ja' in lang_str:
-            label = "napisy"
+            label = t("anidb_sub")
         else:
-            label = "źródło"
+            label = t("anidb_src")
             
         embed_page, _ = anidb_curl(embed_url)
         

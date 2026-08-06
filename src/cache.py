@@ -7,6 +7,7 @@ from termcolor import colored
 from anilist_connector import get_trending_anime_malids
 from docchi_api_connector import get_series_list
 from ui_utils import clear
+from i18n import t
 
 SERIES_CACHE = None
 TRENDING_CACHE = None
@@ -15,8 +16,8 @@ def preload_series_cache():
     global SERIES_CACHE, TRENDING_CACHE
     if SERIES_CACHE is None or TRENDING_CACHE is None:
         clear()
-        print(colored("[INFO] Łączenie z serwerami Docchi oraz AniList...", "cyan"))
-        print(colored("[INFO] Pobieranie bazy tytułów i trendów...", "cyan"))
+        print(colored(t("cache_conn"), "cyan"))
+        print(colored(t("cache_fetch"), "cyan"))
         SERIES_CACHE = get_series_list()
         TRENDING_CACHE = get_trending_anime_malids()
         time.sleep(1)
