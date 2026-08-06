@@ -166,7 +166,7 @@ def perform_update_windows(download_url):
                 
         print(colored("[+] Pobrano pomyślnie. Rozpoczynam instalację...", "green"))
         
-        subprocess.Popen([exe_path, "/VERYSILENT", "/SUPPRESSMSGBOXES", "/FORCECLOSEAPPLICATIONS"])
+        subprocess.Popen([exe_path, "/SILENT", "/FORCECLOSEAPPLICATIONS"])
         sys.exit()
         
     except Exception as e:

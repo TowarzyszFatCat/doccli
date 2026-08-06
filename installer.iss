@@ -42,6 +42,9 @@ Name: "startmenuicon"; Description: "Utwórz skrót w Menu Start"; GroupDescript
 Name: "autostart"; Description: "Uruchom Doccli automatycznie po zakończeniu instalacji"; GroupDescription: "Inne opcje:"
 
 [Code]
+function SetEnvironmentVariable(lpName: string; lpValue: string): BOOL;
+  external 'SetEnvironmentVariableW@kernel32.dll stdcall';
+
 function CheckWinget: boolean;
 var
   ResultCode: Integer;
@@ -59,6 +62,23 @@ begin
     exit;
   end;
   Result := Pos(';' + Param + ';', ';' + OrigPath + ';') = 0;
+end;
+
+procedure RefreshEnvironment;
+var
+  SysPath: string;
+  UserPath: string;
+  NewPath: string;
+begin
+  RegQueryStringValue(HKEY_LOCAL_MACHINE, 'SYSTEM\CurrentControlSet\Control\Session Manager\Environment', 'Path', SysPath);
+  RegQueryStringValue(HKEY_CURRENT_USER, 'Environment', 'Path', UserPath);
+
+  NewPath := SysPath;
+  if (NewPath <> '') and (UserPath <> '') and (NewPath[Length(NewPath)] <> ';') then
+    NewPath := NewPath + ';';
+  NewPath := NewPath + UserPath;
+
+  SetEnvironmentVariable('PATH', NewPath);
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
@@ -91,6 +111,8 @@ begin
     begin
       WizardForm.ProgressGauge.Position := 4;
     end;
+
+    RefreshEnvironment;
 
     WizardForm.StatusLabel.Caption := 'Konfigurowanie środowiska Python i pobieranie bibliotek...';
     WizardForm.ProgressGauge.Position := 5;
