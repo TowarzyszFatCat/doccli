@@ -152,7 +152,7 @@ procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 begin
   if CurUninstallStep = usPostUninstall then
   begin
-    if SuppressibleMsgBox('Czy chcesz usunąć również pliki konfiguracji i historię programu (folder AppData)?', mbConfirmation, MB_YESNO, IDNO) = IDYES then
+    if SuppressibleMsgBox('Czy chcesz usunąć również pliki konfiguracji i historię programu (folder AppData)?', mbConfirmation, MB_YESNO or MB_DEFBUTTON2, IDNO) = IDYES then
     begin
       DelTree(ExpandConstant('{userappdata}\doccli'), True, True, True);
     end;
