@@ -45,6 +45,9 @@ Name: "autostart"; Description: "Uruchom Doccli automatycznie po zakończeniu in
 function SetEnvironmentVariable(lpName: string; lpValue: string): BOOL;
   external 'SetEnvironmentVariableW@kernel32.dll stdcall';
 
+function ExpandEnvironmentStrings(lpSrc: string; lpDst: string; nSize: DWORD): DWORD;
+  external 'ExpandEnvironmentStringsW@kernel32.dll stdcall';
+
 function CheckWinget: boolean;
 var
   ResultCode: Integer;
@@ -64,14 +67,39 @@ begin
   Result := Pos(';' + Param + ';', ';' + OrigPath + ';') = 0;
 end;
 
+function ExpandEnvVars(const Input: string): string;
+var
+  Buf: string;
+  ReqSize: DWORD;
+begin
+  if Input = '' then
+  begin
+    Result := '';
+    Exit;
+  end;
+  
+  ReqSize := ExpandEnvironmentStrings(Input, '', 0);
+  if ReqSize > 0 then
+  begin
+    SetLength(Buf, ReqSize);
+    ExpandEnvironmentStrings(Input, Buf, ReqSize);
+    Result := Copy(Buf, 1, ReqSize - 1);
+  end
+  else
+    Result := Input;
+end;
+
 procedure RefreshEnvironment;
 var
   SysPath: string;
   UserPath: string;
   NewPath: string;
 begin
-  RegQueryStringValue(HKEY_LOCAL_MACHINE, 'SYSTEM\CurrentControlSet\Control\Session Manager\Environment', 'Path', SysPath);
-  RegQueryStringValue(HKEY_CURRENT_USER, 'Environment', 'Path', UserPath);
+  if not RegQueryStringValue(HKEY_LOCAL_MACHINE, 'SYSTEM\CurrentControlSet\Control\Session Manager\Environment', 'Path', SysPath) then SysPath := '';
+  if not RegQueryStringValue(HKEY_CURRENT_USER, 'Environment', 'Path', UserPath) then UserPath := '';
+
+  SysPath := ExpandEnvVars(SysPath);
+  UserPath := ExpandEnvVars(UserPath);
 
   NewPath := SysPath;
   if (NewPath <> '') and (UserPath <> '') and (NewPath[Length(NewPath)] <> ';') then
@@ -93,7 +121,7 @@ begin
     begin
       WizardForm.StatusLabel.Caption := 'Instalowanie Pythona 3.12 (w tle)...';
       WizardForm.ProgressGauge.Position := 1;
-      Exec('winget', 'install --id Python.Python.3.12 --exact --silent --accept-source-agreements --accept-package-agreements', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+      Exec('winget', 'install --id Python.Python.3.12 --exact --silent --accept-source-agreements --accept-package-agreements --override "/quiet PrependPath=1 Include_test=0"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
 
       WizardForm.StatusLabel.Caption := 'Instalowanie narzędzia yt-dlp...';
       WizardForm.ProgressGauge.Position := 2;
@@ -126,7 +154,6 @@ begin
   begin
     if SuppressibleMsgBox('Czy chcesz usunąć również pliki konfiguracji i historię programu (folder AppData)?', mbConfirmation, MB_YESNO, IDNO) = IDYES then
     begin
-      // Usuwanie folderu AppData\doccli
       DelTree(ExpandConstant('{userappdata}\doccli'), True, True, True);
     end;
   end;
