@@ -120,6 +120,8 @@ def update_anilist_progress(mal_id, episode_number, token, is_completed=False):
     query ($malId: Int) {
       Media(idMal: $malId, type: ANIME) {
         id
+        episodes
+        status
         mediaListEntry {
           progress
         }
@@ -133,14 +135,22 @@ def update_anilist_progress(mal_id, episode_number, token, is_completed=False):
             
         media_data = req.json()['data']['Media']
         anilist_id = media_data['id']
+        total_episodes = media_data.get('episodes')
+        media_status = media_data.get('status')
         
         current_progress = 0
         if media_data.get('mediaListEntry'):
             current_progress = media_data['mediaListEntry'].get('progress', 0)
             
-        # Zabezpieczenie przed cofaniem postępu
         if episode_number <= current_progress:
             return True
+            
+        if media_status == 'RELEASING':
+            is_completed = False
+        elif total_episodes and episode_number >= total_episodes:
+            is_completed = True
+        else:
+            is_completed = False
             
     except:
         return False
@@ -160,7 +170,6 @@ def update_anilist_progress(mal_id, episode_number, token, is_completed=False):
         'progress': episode_number
     }
     
-    # Jeśli to ostatni odcinek status na COMPLETED jak nie to na CURRENT
     if is_completed:
         variables['status'] = 'COMPLETED'
     else:
