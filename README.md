@@ -1,3 +1,7 @@
+<div align="right">
+  <a href="README.md">English</a> | <a href="README.pl-PL.md">Polski</a>
+</div>
+
 <h1 align="center">
 <img src="icon_1.png" alt="Icon" width="100" height="100"> <br>
 CLI for watching anime!
