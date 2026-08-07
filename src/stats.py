@@ -150,7 +150,7 @@ def m_stats():
     last_watched = t("stat_no_data")
     if ds.history:
         first_entry = ds.history[0]
-        if isinstance(first_entry, dict): clean_title = first_entry.get("title", "Nieznany")
+        if isinstance(first_entry, dict): clean_title = first_entry.get("title", t("player_unknown_anime"))
         else:
             raw_history = str(first_entry) 
             clean_title = raw_history.split("]", 1)[1].strip() if "]" in raw_history else raw_history

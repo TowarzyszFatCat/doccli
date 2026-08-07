@@ -13,6 +13,7 @@ from docchi_api_connector import extract_lycoris_direct_link, get_players_list, 
 from ui_utils import clear, open_menu
 from anilist_connector import get_quick_episode_count
 from i18n import t
+from storage import ds
 
 def w_download_season(details, episodes_list=None, base_download_dir=""):
     SLUG = details['slug']
@@ -30,12 +31,18 @@ def w_download_season(details, episodes_list=None, base_download_dir=""):
     if episodes_list is None:
         episodes_list = list(range(1, how_many_episodes + 1))
 
-    lang_choices = [
-        t("dl_lang_pl_sub"),
+    current_lang = ds.settings.get("language", "pl")
+    lang_choices = []
+    
+    if current_lang == "pl":
+        lang_choices.append(t("dl_lang_pl_sub"))
+        
+    # Zawsze pokazuj angielskie
+    lang_choices.extend([
         t("dl_lang_en_sub"),
         t("dl_lang_en_dub"),
         t("cancel")
-    ]
+    ])
     
     chosen_lang = open_menu(
         choices=lang_choices,

@@ -1,0 +1,4016 @@
+
+# =======================================
+# PLIK: anilist_connector.py
+# =======================================
+
+import time
+from datetime import datetime
+import os
+import requests
+
+# From pip
+from deep_translator import GoogleTranslator
+from requests import post
+from termcolor import colored
+
+# Doccli modules
+from storage import ds
+from i18n import t
+
+SYNC_DONE = False
+url = "https://graphql.anilist.co"
+
+def get_trending_anime_malids():
+    query = '''
+    query {
+      Page(page: 1, perPage: 100) {
+        media(sort: TRENDING_DESC, type: ANIME) {
+          idMal
+        }
+      }
+    }
+    '''
+
+    request = post(url, json={'query': query})
+
+    if request.status_code == 200:
+        ans = request.json()
+        ids = []
+
+        for elm in ans['data']['Page']['media']:
+            ids.append(elm['idMal'])
+
+        return ids
+    else:
+        return request.status_code
+
+
+def get_details_from_anilist(mal_id):
+    query = '''
+    query ($malId: Int) {
+      Media(idMal: $malId, type: ANIME) {
+        averageScore
+        description(asHtml: false)
+        episodes
+        nextAiringEpisode {
+          episode
+        }
+      }
+    }
+    '''
+    
+    variables = {"malId": mal_id}  
+    
+    score_bar = "\U0001F311\U0001F311\U0001F311\U0001F311\U0001F311" # 🌑🌑🌑🌑🌑 (5 pustych)
+    description = t("al_no_desc")
+    episode_count = "?" 
+
+    try:
+        response = post(url, json={'query': query, 'variables': variables}, timeout=5)
+        
+        if response.status_code == 200:
+            data = response.json()
+            media = data.get('data', {}).get('Media')
+
+            if media:
+                if media.get('averageScore'):
+                    avg = media['averageScore']
+                    
+                    val = round(avg / 5)
+                    
+                    full_count = val // 4
+                    remainder = val % 4
+                    
+                    m_full = "\U0001F315"  # 🌕
+                    m_empty = "\U0001F311" # 🌑
+                    
+                    # 1/4 (🌘), 2/4 (🌗), 3/4 (🌖)
+                    m_partials = ["", "\U0001F318", "\U0001F317", "\U0001F316"]
+                    
+                    temp_bar = m_full * full_count
+                    
+                    if full_count < 5 and remainder > 0:
+                        temp_bar += m_partials[remainder]
+                        
+                    current_len = full_count + (1 if remainder > 0 else 0)
+                    temp_bar += m_empty * (5 - current_len)
+                    
+                    score_bar = temp_bar
+                
+                if media.get('description'):
+                    raw_desc = media['description']
+                    clean_desc = raw_desc.replace('<br>', '\n').replace('<i>', '').replace('</i>', '')
+                    
+                    try:
+                        current_lang = ds.settings.get("language", "pl")
+                        translated = GoogleTranslator(source='auto', target=current_lang).translate(clean_desc)
+                        description = translated
+                    except Exception:
+                        description = clean_desc
+
+                episodes_total = media.get('episodes')
+                if not episodes_total:
+                    next_airing = media.get('nextAiringEpisode')
+                    if next_airing and next_airing.get('episode'):
+                        aired = next_airing['episode'] - 1
+                        episode_count = t("al_airing_rel").format(aired)
+                    else:
+                        episode_count = t("al_airing")
+                else:
+                    episode_count = episodes_total
+
+    except Exception:
+        pass
+
+    return score_bar, description, episode_count
+
+
+def update_anilist_progress(mal_id, episode_number, token, is_completed=False):
+    if not token or token == "":
+        return False
+        
+    headers = {
+        'Authorization': f'Bearer {token}',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+    }
+        
+    query_id = '''
+    query ($malId: Int) {
+      Media(idMal: $malId, type: ANIME) {
+        id
+        episodes
+        status
+        mediaListEntry {
+          progress
+        }
+      }
+    }
+    '''
+    try:
+        req = post("https://graphql.anilist.co", json={'query': query_id, 'variables': {'malId': mal_id}}, headers=headers, timeout=5)
+        if req.status_code != 200:
+            return False
+            
+        media_data = req.json()['data']['Media']
+        anilist_id = media_data['id']
+        total_episodes = media_data.get('episodes')
+        media_status = media_data.get('status')
+        
+        current_progress = 0
+        if media_data.get('mediaListEntry'):
+            current_progress = media_data['mediaListEntry'].get('progress', 0)
+            
+        if episode_number <= current_progress:
+            return True
+
+        if media_status == 'RELEASING':
+            is_completed = False
+        elif total_episodes and episode_number >= total_episodes:
+            is_completed = True
+        else:
+            is_completed = False      
+    except:
+        return False
+
+    mutation = '''
+    mutation ($mediaId: Int, $progress: Int, $status: MediaListStatus) {
+      SaveMediaListEntry(mediaId: $mediaId, progress: $progress, status: $status) {
+        id
+        progress
+        status
+      }
+    }
+    '''
+
+    variables = {
+        'mediaId': anilist_id,
+        'progress': episode_number
+    }
+    
+    if is_completed:
+        variables['status'] = 'COMPLETED'
+    else:
+        variables['status'] = 'CURRENT'
+    
+    try:
+        req_mut = post("https://graphql.anilist.co", json={'query': mutation, 'variables': variables}, headers=headers, timeout=5)
+        return req_mut.status_code == 200
+    except:
+        return False
+
+
+def get_anilist_plan_to_watch(token):
+    if not token or token == "":
+        return None
+    
+    headers = {
+        'Authorization': f'Bearer {token}',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+    }
+    
+    query_user = '''
+    query {
+      Viewer {
+        id
+      }
+    }
+    '''
+    try:
+        req1 = post("https://graphql.anilist.co", json={'query': query_user}, headers=headers, timeout=5)
+        if req1.status_code != 200:
+            return None
+        user_id = req1.json()['data']['Viewer']['id']
+    except:
+        return None
+
+    query_list = '''
+    query ($userId: Int) {
+      MediaListCollection(userId: $userId, type: ANIME, status_in: [PLANNING, CURRENT]) {
+        lists {
+          entries {
+            media {
+              idMal
+            }
+          }
+        }
+      }
+    }
+    '''
+    try:
+        req2 = post("https://graphql.anilist.co", json={'query': query_list, 'variables': {'userId': user_id}}, headers=headers, timeout=5)
+        if req2.status_code != 200:
+            return None
+            
+        mal_ids = []
+        lists = req2.json()['data'].get('MediaListCollection', {}).get('lists', [])
+        
+        if lists:
+            for lst in lists:
+                for entry in lst['entries']:
+                    if entry['media']['idMal']:
+                        mal_ids.append(entry['media']['idMal'])
+                    
+        return mal_ids
+    except:
+        return None
+
+
+def sync_anilist_list_status(mal_id, token, status_add=True):
+    if not token or token == "":
+        return False
+
+    headers = {
+        'Authorization': f'Bearer {token}',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+    }
+
+    query_id = '''
+    query ($malId: Int) {
+      Media(idMal: $malId, type: ANIME) {
+        id
+      }
+    }
+    '''
+    try:
+        req = post("https://graphql.anilist.co", json={'query': query_id, 'variables': {'malId': mal_id}}, timeout=5)
+        if req.status_code != 200: return False
+        anilist_id = req.json()['data']['Media']['id']
+    except:
+        return False
+
+    if status_add:
+        mutation = '''
+        mutation ($mediaId: Int, $status: MediaListStatus) {
+          SaveMediaListEntry(mediaId: $mediaId, status: $status) {
+            id
+          }
+        }
+        '''
+        try:
+            post("https://graphql.anilist.co", json={'query': mutation, 'variables': {'mediaId': anilist_id, 'status': 'PLANNING'}}, headers=headers, timeout=5)
+            return True
+        except:
+            return False
+    else:
+        try:
+            query_user = '''
+            query {
+              Viewer {
+                id
+              }
+            }
+            '''
+            req_user = post("https://graphql.anilist.co", json={'query': query_user}, headers=headers, timeout=5)
+            if req_user.status_code != 200: return False
+            user_id = req_user.json()['data']['Viewer']['id']
+
+            query_entry = '''
+            query ($mediaId: Int, $userId: Int) {
+              MediaList(mediaId: $mediaId, userId: $userId) {
+                id
+              }
+            }
+            '''
+            req_entry = post("https://graphql.anilist.co", json={'query': query_entry, 'variables': {'mediaId': anilist_id, 'userId': user_id}}, headers=headers, timeout=5)
+            if req_entry.status_code != 200: return False
+            
+            entry_data = req_entry.json().get('data', {}).get('MediaList')
+            if not entry_data: 
+                return False # Nie ma tego na liście, więc nie ma co usuwać
+                
+            entry_id = entry_data['id']
+            
+            mutation_del = '''
+            mutation ($id: Int) {
+              DeleteMediaListEntry(id: $id) {
+                deleted
+              }
+            }
+            '''
+            post("https://graphql.anilist.co", json={'query': mutation_del, 'variables': {'id': entry_id}}, headers=headers, timeout=5)
+            return True
+        except:
+            return False
+
+def get_anilist_history(token):
+    if not token or token == "":
+        return []
+
+    headers = {
+        'Authorization': f'Bearer {token}',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+    }
+
+    query_user = '''
+    query {
+      Viewer {
+        id
+      }
+    }
+    '''
+    try:
+        req1 = post("https://graphql.anilist.co", json={'query': query_user}, headers=headers, timeout=5)
+        if req1.status_code != 200:
+            return []
+        user_id = req1.json()['data']['Viewer']['id']
+    except:
+        return []
+
+    query_activity = '''
+    query ($userId: Int) {
+      Page(page: 1, perPage: 100) {
+        activities(userId: $userId, type: ANIME_LIST, sort: ID_DESC) {
+          ... on ListActivity {
+            progress
+            createdAt
+            status
+            media {
+              title {
+                romaji
+                english
+              }
+            }
+          }
+        }
+      }
+    }
+    '''
+    try:
+        req2 = post("https://graphql.anilist.co", json={'query': query_activity, 'variables': {'userId': user_id}}, headers=headers, timeout=5)
+        if req2.status_code != 200:
+            return []
+            
+        activities = req2.json()['data'].get('Page', {}).get('activities', [])
+        history_list = []
+        
+        for act in activities:
+            status = act.get('status')
+            progress = act.get('progress')
+            
+            if status not in ['watched episode', 'completed']:
+                continue
+                
+            created_at = act.get('createdAt')
+            title_romaji = act.get('media', {}).get('title', {}).get('romaji', 'Nieznany')
+            title_eng = act.get('media', {}).get('title', {}).get('english', 'Nieznany')
+            
+            if not title_eng:
+                title_eng = title_romaji
+                
+            history_list.append({
+                'timestamp': created_at,
+                'title': title_romaji,
+                'title_en': title_eng,
+                'progress': progress,
+                'status': status
+            })
+            
+        return history_list
+    except:
+        return []
+
+def get_anilist_global_stats(token):
+    if not token or token == "":
+        return 0, 0
+        
+    headers = {
+        'Authorization': f'Bearer {token}',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+    }
+    
+    query_stats = '''
+    query {
+      Viewer {
+        statistics {
+          anime {
+            episodesWatched
+            minutesWatched
+          }
+        }
+      }
+    }
+    '''
+    try:
+        req = post("https://graphql.anilist.co", json={'query': query_stats}, headers=headers, timeout=5)
+        if req.status_code == 200:
+            data = req.json()['data']['Viewer']['statistics']['anime']
+            return data['episodesWatched'], data['minutesWatched']
+    except:
+        pass
+    return 0, 0
+
+
+def get_duration_by_malid(mal_id):
+    if not mal_id: return 21
+    query = '''query ($malId: Int) { Media(idMal: $malId, type: ANIME) { duration } }'''
+    try:
+        req = post("https://graphql.anilist.co", json={'query': query, 'variables': {'malId': int(mal_id)}}, timeout=5)
+        if req.status_code == 200:
+            dur = req.json()['data']['Media']['duration']
+            return dur if dur else 21
+    except:
+        pass
+    return 21
+
+def get_anilist_advanced_stats(token):
+    if not token or token == "":
+        return None
+        
+    headers = {
+        'Authorization': f'Bearer {token}',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+    }
+    
+    query_stats = '''
+    query {
+      Viewer {
+        id
+        statistics {
+          anime {
+            meanScore
+            statuses { count status }
+            genres(limit: 3) { genre }
+          }
+        }
+      }
+    }
+    '''
+    
+    try:
+        req = post("https://graphql.anilist.co", json={'query': query_stats}, headers=headers, timeout=5)
+        if req.status_code != 200:
+            return None
+            
+        data = req.json()['data']['Viewer']
+        user_id = data['id']
+        anime_stats = data['statistics']['anime']
+        
+        mean_score = anime_stats.get('meanScore', 0)
+        genres = [g['genre'] for g in anime_stats.get('genres', [])]
+        
+        completed = 0
+        not_completed = 0
+        planning_count = 0
+        
+        for s in anime_stats.get('statuses', []):
+            if s['status'] == 'COMPLETED':
+                completed += s['count']
+            elif s['status'] in ['CURRENT', 'PAUSED', 'DROPPED']:
+                not_completed += s['count']
+            elif s['status'] == 'PLANNING':
+                planning_count += s['count']
+                
+        query_plan = '''
+        query($userId: Int) {
+          MediaListCollection(userId: $userId, type: ANIME, status: PLANNING, sort: ADDED_TIME) {
+            lists {
+              entries {
+                media { title { romaji english } }
+              }
+            }
+          }
+        }
+        '''
+        req_plan = post("https://graphql.anilist.co", json={'query': query_plan, 'variables': {'userId': user_id}}, headers=headers, timeout=5)
+        
+        oldest_title = t("al_none")
+        
+        if req_plan.status_code == 200:
+            lists = req_plan.json()['data'].get('MediaListCollection', {}).get('lists', [])
+            if lists and len(lists) > 0:
+                entries = lists[0].get('entries', [])
+                if len(entries) > 0:
+                    t_title = entries[0]['media']['title']
+                    oldest_title = t_title.get('romaji') or t_title.get('english') or "Nieznany"
+                    
+        return {
+            'completed': completed,
+            'not_completed': not_completed,
+            'mean_score': mean_score,
+            'genres': ", ".join(genres) if genres else t("al_none"),
+            'planning_count': planning_count,
+            'oldest_planning': oldest_title
+        }
+    except:
+        return None
+
+
+def sync_history_with_anilist():
+    global SYNC_DONE
+    if SYNC_DONE:
+        return
+    SYNC_DONE = True
+    
+    from cache import get_cached_series_list # Import wewnątrz, aby uniknąć pętli
+    all_series = get_cached_series_list()
+    
+    migrated_history = []
+    for item in ds.history:
+        if isinstance(item, str):
+            try:
+                date_str = item[1:17]
+                dt_object = datetime.strptime(date_str, "%d/%m/%Y %H:%M")
+                source = "Doccli - Offline" if "| Offline" in item else "Doccli - Online"
+                ep_str, title, slug = "?", item, None
+                
+                if "[Odc: " in item:
+                    ep_str = item.split("[Odc: ")[1].split("]")[0].strip()
+                    title = item.split("] ", 1)[1].split(" [Odc:")[0].split(" / ")[0].strip()
+                elif " | Offline [" in item:
+                    ep_str = item.split(" | Offline [")[1].split("]")[0].strip()
+                    title = item.split("] ", 1)[1].split(" | Offline")[0].strip()
+                    
+                for s in all_series:
+                    if s['title'] == title or s['title_en'] == title:
+                        slug = s['slug']
+                        break
+                        
+                migrated_history.append({
+                    "timestamp": dt_object.timestamp(), 
+                    "dt_string": date_str, 
+                    "title": title, 
+                    "title_en": title, 
+                    "episode": ep_str, 
+                    "source": source, 
+                    "slug": slug,
+                    "duration": 21
+                })
+            except: pass
+        elif isinstance(item, dict):
+            if "duration" not in item:
+                item["duration"] = 21
+            migrated_history.append(item)
+            
+    ds.history = migrated_history
+    ds.save()
+
+    has_token = ds.settings.get("anilist_token") != ""
+    if not has_token:
+        return
+        
+    print(colored(t("al_sync"), "cyan"))
+    token = ds.settings["anilist_token"]
+    
+    try:
+        al_history = get_anilist_history(token)
+        for al_item in al_history:
+            is_duplicate = False
+            al_progress = str(al_item['progress']) if al_item['progress'] else ("Ukończono" if al_item['status'] == 'completed' else "?")
+            
+            for local_item in ds.history:
+                if local_item.get('episode') == al_progress:
+                    lt_lower = local_item.get('title', '').lower()
+                    le_lower = local_item.get('title_en', '').lower()
+                    at_lower = al_item['title'].lower() if al_item['title'] else ""
+                    ae_lower = al_item['title_en'].lower() if al_item['title_en'] else ""
+                    
+                    if (at_lower and at_lower in lt_lower) or (ae_lower and ae_lower in le_lower) or (lt_lower and lt_lower in at_lower):
+                        is_duplicate = True
+                        break
+                        
+            if not is_duplicate:
+                slug = None
+                for s in all_series:
+                    if s['title'].lower() == (al_item['title'] or "").lower() or (al_item['title_en'] and s['title_en'].lower() == al_item['title_en'].lower()):
+                        slug = s['slug']
+                        break
+                dt_object = datetime.fromtimestamp(al_item['timestamp'])
+                ds.history.append({
+                    "timestamp": al_item['timestamp'], 
+                    "dt_string": dt_object.strftime("%d/%m/%Y %H:%M"), 
+                    "title": al_item['title'], 
+                    "title_en": al_item['title_en'], 
+                    "episode": al_progress, 
+                    "source": "AniList", 
+                    "slug": slug,
+                    "duration": 21
+                })
+    except: pass
+
+    ds.history.sort(key=lambda x: x.get('timestamp', 0), reverse=True)
+    ds.save()
+
+
+def generate_aniskip_chapters(mal_id, ep_number, filepath):
+    """
+    Pobiera czasy pomijania z AniSkip i generuje plik FFMETADATA, który MPV natywnie rozumie.
+    """
+    if os.path.exists(filepath):
+        try:
+            os.remove(filepath)
+        except Exception:
+            pass
+            
+    if not mal_id or not ep_number:
+        print(colored(t("al_skip_no_id"), "dark_grey"))
+        return
+        
+    try:
+        url_api = f"https://api.aniskip.com/v2/skip-times/{mal_id}/{ep_number}?types=op&types=ed&types=mixed-op&types=mixed-ed&types=recap&episodeLength=0"
+        req = requests.get(url_api, timeout=3)
+        
+        if req.status_code == 200:
+            data = req.json()
+            if data.get("found"):
+                results = data.get("results", [])
+                results.sort(key=lambda x: x['interval']['startTime'])
+                
+                content = ";FFMETADATA1\n"
+                current_time = 0.0
+                
+                for res in results:
+                    start_time = float(res['interval']['startTime'])
+                    end_time = float(res['interval']['endTime'])
+                    skip_type = res['skipType']
+                    
+                    if start_time > current_time:
+                        content += "\n[CHAPTER]\nTIMEBASE=1/1000\n"
+                        content += f"START={int(current_time * 1000)}\n"
+                        content += f"END={int(start_time * 1000)}\n"
+                        content += f"title={t('al_skip_ep')}\n"
+                        
+                    title = "Opening" if "op" in skip_type else "Ending" if "ed" in skip_type else skip_type.capitalize()
+                    content += "\n[CHAPTER]\nTIMEBASE=1/1000\n"
+                    content += f"START={int(start_time * 1000)}\n"
+                    content += f"END={int(end_time * 1000)}\n"
+                    content += f"title={title}\n"
+                    
+                    current_time = end_time
+                    
+                content += "\n[CHAPTER]\nTIMEBASE=1/1000\n"
+                content += f"START={int(current_time * 1000)}\n"
+                content += "END=99999999\n"
+                content += f"title={t('al_skip_ep')}\n"
+                
+                with open(filepath, "w", encoding="utf-8") as f:
+                    f.write(content)
+                
+                print(colored(t("al_skip_found").format(len(results)), "green"))
+            else:
+                print(colored(t("al_skip_not_found"), "yellow"))
+        else:
+            print(colored(t("al_skip_rej").format(req.status_code), "red"))
+            
+    except Exception as e:
+        print(colored(t("al_skip_err").format(e), "red"))
+
+
+def get_anilist_score_format(token):
+    """Pobiera preferowaną skalę ocen z profilu użytkownika (np. POINT_10, POINT_100, POINT_5)."""
+    if not token or token == "":
+        return "POINT_10"
+        
+    headers = {
+        'Authorization': f'Bearer {token}',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+    }
+    
+    query = '''
+    query {
+      Viewer {
+        mediaListOptions {
+          scoreFormat
+        }
+      }
+    }
+    '''
+    try:
+        from requests import post
+        req = post("https://graphql.anilist.co", json={'query': query}, headers=headers, timeout=5)
+        if req.status_code == 200:
+            return req.json()['data']['Viewer']['mediaListOptions']['scoreFormat']
+    except Exception:
+        pass
+        
+    return "POINT_10"
+
+
+def rate_anilist_anime(mal_id, score_raw, token):
+    """Wysyła ocenę (jako wartość 0-100) na profil AniList."""
+    if not token or token == "":
+        return False
+        
+    headers = {
+        'Authorization': f'Bearer {token}',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+    }
+    
+    query_id = '''query ($malId: Int) { Media(idMal: $malId, type: ANIME) { id } }'''
+    try:
+        from requests import post
+        req = post("https://graphql.anilist.co", json={'query': query_id, 'variables': {'malId': mal_id}}, headers=headers, timeout=5)
+        if req.status_code != 200: return False
+        anilist_id = req.json()['data']['Media']['id']
+    except Exception: return False
+
+    mutation = '''
+    mutation ($mediaId: Int, $scoreRaw: Int) {
+      SaveMediaListEntry(mediaId: $mediaId, scoreRaw: $scoreRaw) { id }
+    }
+    '''
+    try:
+        from requests import post
+        req_mut = post("https://graphql.anilist.co", json={'query': mutation, 'variables': {'mediaId': anilist_id, 'scoreRaw': int(score_raw)}}, headers=headers, timeout=5)
+        return req_mut.status_code == 200
+    except Exception: return False
+
+def get_anilist_schedule(days=3):
+    """Pobiera harmonogram premier anime na najbliższe dni z AniList."""
+    import time
+    from requests import post
+    
+    now = int(time.time())
+    end_time = now + (days * 24 * 60 * 60)
+    
+    query = '''
+    query ($start: Int, $end: Int) {
+      Page(page: 1, perPage: 50) {
+        airingSchedules(airingAt_greater: $start, airingAt_lesser: $end, sort: TIME) {
+          airingAt
+          episode
+          media {
+            idMal
+          }
+        }
+      }
+    }
+    '''
+    try:
+        req = post("https://graphql.anilist.co", json={'query': query, 'variables': {'start': now, 'end': end_time}}, timeout=5)
+        if req.status_code == 200:
+            return req.json()['data']['Page']['airingSchedules']
+    except Exception:
+        pass
+    return []
+    
+    
+def get_quick_episode_count(mal_id):
+    if not mal_id: 
+        return 0
+        
+    query = '''
+    query ($malId: Int) { 
+      Media(idMal: $malId, type: ANIME) { 
+        episodes 
+        nextAiringEpisode { episode } 
+      } 
+    }
+    '''
+    try:
+        from requests import post
+        req = post("https://graphql.anilist.co", json={'query': query, 'variables': {'malId': int(mal_id)}}, timeout=3)
+        if req.status_code == 200:
+            media = req.json().get('data', {}).get('Media')
+            if not media: return 0
+            
+            # Jeśli anime jest w pełni wyemitowane (zakończone)
+            if media.get('episodes'): 
+                return media['episodes']
+                
+            # Jeśli anime wciąż wychodzi, pobieramy odcinek - 1 (czyli ostatni wydany)
+            if media.get('nextAiringEpisode') and media.get('nextAiringEpisode').get('episode'):
+                return media['nextAiringEpisode']['episode'] - 1
+    except Exception:
+        pass
+        
+    return 0
+# =======================================
+# PLIK: cache.py
+# =======================================
+
+import time
+
+# From pip
+from termcolor import colored
+
+# Doccli modules
+from anilist_connector import get_trending_anime_malids
+from docchi_api_connector import get_series_list
+from ui_utils import clear
+from i18n import t
+
+SERIES_CACHE = None
+TRENDING_CACHE = None
+
+def preload_series_cache():
+    global SERIES_CACHE, TRENDING_CACHE
+    if SERIES_CACHE is None or TRENDING_CACHE is None:
+        clear()
+        print(colored(t("cache_conn"), "cyan"))
+        print(colored(t("cache_fetch"), "cyan"))
+        SERIES_CACHE = get_series_list()
+        TRENDING_CACHE = get_trending_anime_malids()
+        time.sleep(1)
+
+def get_cached_series_list():
+    global SERIES_CACHE
+    if SERIES_CACHE is None:
+         preload_series_cache()
+    return SERIES_CACHE
+
+def get_cached_trending_list():
+    global TRENDING_CACHE
+    if TRENDING_CACHE is None:
+         preload_series_cache()
+    return TRENDING_CACHE
+# =======================================
+# PLIK: discord_integration.py
+# =======================================
+
+import time
+
+# From pip
+import pypresence.exceptions
+from pypresence import Presence, ActivityType
+
+# Doccli modules
+from i18n import t
+
+discord_data = [t("menu_main"), t("rpc_loading")]
+start_time = None
+running = False
+RPC = None
+
+try:
+    client_ID = '1206583480771936318'
+    RPC = Presence(client_ID)
+    RPC.connect()
+    start_time = time.time()
+except Exception: 
+    # Discord jest wyłączony
+    RPC = None
+
+
+def update_rpc(first_line, second_line):
+    global discord_data
+    discord_data = [first_line, second_line]
+
+
+def set_running(val):
+    global running
+    running = val
+
+
+def start_rpc():
+    while running:
+        # Aktualizuj tylko, jeśli udało się połączyć przy starcie
+        if RPC is not None:
+            try:
+                RPC.update(
+                    activity_type=ActivityType.WATCHING, 
+                    state=discord_data[1], 
+                    details=discord_data[0], 
+                    large_image='icon_1', 
+                    large_text=t("rpc_large_text"), 
+                    buttons=[
+                        {"label": "GitHub", "url": "https://github.com/TowarzyszFatCat/doccli"}, 
+                        {"label": t("rpc_discord_btn"), "url": "https://discord.gg/FgfSM7bSEK"}
+                    ], 
+                    start=start_time
+                )
+            except Exception:
+                # Jeśli ktoś zamknie Discorda w trakcie oglądania
+                pass
+                
+        time.sleep(5)
+# =======================================
+# PLIK: docchi_api_connector.py
+# =======================================
+
+import re
+import time
+import subprocess
+import json
+import difflib
+
+# From pip
+from requests import get
+from termcolor import colored
+from curl_cffi import requests as cffi_requests
+
+# Doccli modules
+from i18n import t
+
+# Get list of players for episode
+def get_players_list(SLUG, NUMBER):
+    request = get(f"https://api.docchi.pl/v1/episodes/find/{SLUG}/{NUMBER}")
+    if request.status_code == 200:
+        return request.json()
+    else:
+        return request.status_code
+
+
+# Get list of how much episodes series contains
+def get_episodes_count_for_serie(SLUG):
+    request = get(f"https://api.docchi.pl/v1/episodes/count/{SLUG}")
+    if request.status_code == 200:
+        return len(request.json())
+    else:
+        return request.status_code
+
+
+# Get all hentais list
+def get_hentai_list():  # XD
+    request = get(f"https://api.docchi.pl/v1/series/hentai")
+    if request.status_code == 200:
+        return request.json()
+    else:
+        return request.status_code
+
+
+# Get all series list
+def get_series_list():
+    request = get(f"https://api.docchi.pl/v1/series/list")
+    if request.status_code == 200:
+        return request.json()
+    else:
+        return request.status_code
+
+
+# Get detail info about the Series
+def get_details_for_serie(SLUG):
+    request = get(f"https://api.docchi.pl/v1/series/find/{SLUG}")
+    if request.status_code == 200:
+        return request.json()
+    else:
+        return request.status_code
+
+
+def extract_lycoris_direct_link(embed_url):
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Referer": "https://docchi.pl/"
+    }
+    
+    try:
+        request = get(embed_url, headers=headers, timeout=5)
+        
+        if request.status_code == 200:
+            match = re.search(r'(https?://[^"\']+\.mp4)', request.text, re.IGNORECASE)
+            if match:
+                return match.group(1)
+    except:
+        pass
+    
+    return None
+
+def anidb_curl(url):
+    """
+    Używa curl_cffi, aby ominąć Cloudflare.
+    """
+    try:
+        response = cffi_requests.get(url, impersonate="chrome110", timeout=10)
+        if response.status_code == 200:
+            return response.text, response.url
+    except Exception:
+        pass
+    return "", ""
+
+def get_english_players(details, ep_number):
+    """
+    Pobiera absolutnie wszystkie angielskie źródła z anidb.app omijając CF
+    i flagując SUB/DUB na podstawie zawartości JSON-a.
+    Zawiera system punktacji sezonów oraz offset Absolute Numbering.
+    """
+    
+    players = []
+    titles_to_try = [details.get('title_en'), details.get('title')]
+    
+    anidb_id = None
+    
+    for t_title in titles_to_try:
+        if not t_title or str(t_title) in ["Nieznany", "Brak", "Unknown", "None", t("al_none")]:
+            continue
+            
+        query = str(t_title).replace(' ', '+')
+        search_page, final_url = anidb_curl(f"https://anidb.app/browse?q={query}")
+        
+        if not search_page or "Just a moment" in search_page:
+            continue
+            
+        if "/anime/" in final_url:
+            match = re.search(r'/anime/.*?-([0-9]+)', final_url)
+            if match:
+                anidb_id = match.group(1)
+                break
+
+        matches = re.findall(r'/anime/([^"\'\>]+)-([0-9]+)["\']', search_page)
+            
+        if matches:
+            target_slug = str(t_title).lower().replace(' ', '-').replace(':', '')
+            
+            best_id = None
+            best_ratio = 0.45 
+            
+            for slug, anime_id in matches:
+                ratio = difflib.SequenceMatcher(None, target_slug, slug.lower()).ratio()
+                
+                target_numbers = re.findall(r'\d+', target_slug)
+                slug_numbers = re.findall(r'\d+', slug.lower())
+                
+                if target_numbers:
+                    for num in target_numbers:
+                        if num in slug_numbers:
+                            ratio += 0.5 
+                        else:
+                            ratio -= 0.5 
+                            
+                if ratio > best_ratio:
+                    best_ratio = ratio
+                    best_id = anime_id
+                    
+            if best_id:
+                anidb_id = best_id
+                break
+
+    if not anidb_id:
+        return []
+
+    eps_json, _ = anidb_curl(f"https://anidb.app/api/frontend/anime/{anidb_id}/episodes")
+    
+    if not eps_json: 
+        return []
+    
+    try:
+        eps_data = json.loads(eps_json)
+        if isinstance(eps_data, dict):
+            eps_data = eps_data.get('data', eps_data.get('episodes', []))
+    except:
+        return []
+        
+    ep_id = None
+    
+    # 1. Klasyczne szukanie (gdy odcinek 1 = 1)
+    for ep in eps_data:
+        if isinstance(ep, dict) and str(ep.get('number')) == str(ep_number):
+            ep_id = ep.get('id')
+            break
+            
+    # 2. System Absolute Numbering (np. gdy odcinek 1 = 25)
+    if not ep_id and len(eps_data) > 0:
+        valid_eps = [ep for ep in eps_data if isinstance(ep, dict) and ep.get('number') is not None]
+        try:
+            valid_eps.sort(key=lambda x: float(x['number']))
+            target_index = int(ep_number) - 1
+            if 0 <= target_index < len(valid_eps):
+                ep_id = valid_eps[target_index]['id']
+        except Exception:
+            pass
+            
+    if not ep_id: 
+        return []
+        
+    langs_json, _ = anidb_curl(f"https://anidb.app/api/frontend/episode/{ep_id}/languages")
+    
+    if not langs_json: 
+        return []
+    
+    try:
+        langs_data = json.loads(langs_json)
+        if isinstance(langs_data, dict):
+            langs_data = langs_data.get('data', langs_data.get('languages', []))
+    except:
+        return []
+        
+    source_counter = 1
+    
+    for lang in langs_data:
+        if not isinstance(lang, dict):
+            continue
+            
+        embed_url = lang.get('embed_url')
+        if not embed_url: 
+            continue
+        
+        embed_url = embed_url.replace('\\/', '/')
+        
+        lang_str = str(lang).lower()
+        if 'eng' in lang_str or 'dub' in lang_str:
+            label = t("anidb_dub")
+        elif 'jpn' in lang_str or 'sub' in lang_str or 'ja' in lang_str:
+            label = t("anidb_sub")
+        else:
+            label = t("anidb_src")
+            
+        embed_page, _ = anidb_curl(embed_url)
+        
+        m3u8_match = re.search(r"file:\s*['\"]([^'\"]+)['\"]", embed_page)
+        if not m3u8_match:
+            m3u8_match = re.search(r"['\"](https?://[^'\"]+\.(?:m3u8|mp4)[^'\"]*)['\"]", embed_page)
+            
+        if m3u8_match:
+            master_url = m3u8_match.group(1)
+            hosting = f"anidb.app ({label} {source_counter})"
+            players.append({
+                "player_hosting": hosting,
+                "player": master_url
+            })
+            source_counter += 1
+            
+    return players
+# =======================================
+# PLIK: downloader.py
+# =======================================
+
+import os
+import re
+import subprocess
+import time
+from concurrent.futures import ThreadPoolExecutor
+
+# From pip
+from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn, TimeRemainingColumn
+from termcolor import colored
+
+# Doccli modules
+from docchi_api_connector import extract_lycoris_direct_link, get_players_list, get_english_players
+from ui_utils import clear, open_menu
+from anilist_connector import get_quick_episode_count
+from i18n import t
+
+def w_download_season(details, episodes_list=None, base_download_dir=""):
+    SLUG = details['slug']
+    TITLE = details.get('title_en') if ds.settings.get('language') == 'en' and details.get('title_en') else details['title']
+    MAL_ID = details.get('mal_id')
+    
+    how_many_episodes = get_quick_episode_count(MAL_ID)
+
+    if how_many_episodes <= 0:
+        clear()
+        print(colored(t("dl_err_ep_count"), "red"))
+        time.sleep(3)
+        return
+
+    if episodes_list is None:
+        episodes_list = list(range(1, how_many_episodes + 1))
+
+    lang_choices = [
+        t("dl_lang_pl_sub"),
+        t("dl_lang_en_sub"),
+        t("dl_lang_en_dub"),
+        t("cancel")
+    ]
+    
+    chosen_lang = open_menu(
+        choices=lang_choices,
+        prompt=t("dl_prompt_lang"),
+        height=6
+    )
+
+    if chosen_lang == t("cancel"):
+        return
+
+    quality_choices = [
+        t("dl_qual_best"),
+        "1080p",
+        "720p",
+        "480p",
+        "360p",
+        t("cancel")
+    ]
+    
+    chosen_quality = open_menu(
+        choices=quality_choices,
+        prompt=t("dl_prompt_qual"),
+        height=6
+    )
+
+    if chosen_quality == t("cancel"):
+        return
+
+    quality_args = []
+    if chosen_quality != t("dl_qual_best"):
+        res = chosen_quality.replace('p', '')
+        quality_args = ["-S", f"res:{res}"]
+
+    if not base_download_dir:
+        base_download_dir = os.path.join(os.getcwd(), "doccli_downloads")
+        
+    safe_title = re.sub(r'[\\/*?:"<>|]', "", TITLE).strip()
+    
+    if chosen_lang == t("dl_lang_pl_sub"):
+        folder_name = f"{t('dl_folder_pl')} {safe_title}"
+    elif chosen_lang == t("dl_lang_en_sub"):
+        folder_name = f"{t('dl_folder_en_sub')} {safe_title}"
+    elif chosen_lang == t("dl_lang_en_dub"):
+        folder_name = f"{t('dl_folder_en_dub')} {safe_title}"
+        
+    series_dir = os.path.join(base_download_dir, folder_name)
+    os.makedirs(series_dir, exist_ok=True)
+
+    clear()
+    print(colored(t("dl_info_prep").format(TITLE, len(episodes_list)), "cyan"))
+    print(colored(t("dl_info_ver").format(chosen_lang), "cyan"))
+    print(colored(t("dl_info_qual").format(chosen_quality), "cyan"))
+    print(colored(t("dl_info_loc").format(series_dir), "yellow"))
+    
+    for ep_number in episodes_list:
+        players = []
+        
+        if chosen_lang == t("dl_lang_pl_sub"):
+            pl_sources = get_players_list(SLUG, ep_number)
+            if isinstance(pl_sources, list):
+                players = pl_sources
+        else:
+            en_sources = get_english_players(details, ep_number)
+            if isinstance(en_sources, list):
+                for p in en_sources:
+                    hosting_label = p['player_hosting'].lower()
+                    # Sprawdzamy używając słów ze słownika (napisy/sub, dubbing/dub)
+                    if chosen_lang == t("dl_lang_en_sub") and t("anidb_sub").lower() in hosting_label:
+                        players.append(p)
+                    elif chosen_lang == t("dl_lang_en_dub") and t("anidb_dub").lower() in hosting_label:
+                        players.append(p)
+        
+        if not players:
+            print(colored(t("dl_err_no_src").format(ep_number), "red"))
+            continue
+        
+        file_name_template = os.path.join(series_dir, f"{safe_title}{t('dl_ep_file_prefix')} {ep_number:02d}.%(ext)s")
+        downloaded = False
+        
+        print(f"\r\033[K" + colored(t("dl_scan").format(ep_number), "cyan"), end="", flush=True)
+
+        def check_dl_link(player):
+            hosting_name, url = player['player_hosting'], player['player']
+            url_lower = url.lower()
+            
+            if "lycoris" in url_lower:
+                direct = extract_lycoris_direct_link(url)
+                return (player, "ok", "Auto", direct if direct else url)
+            elif "mega" in url_lower:
+                return (player, "mega", "MEGA", url)
+            else:
+                try:
+                    res = subprocess.run(
+                        ["yt-dlp", "--print", "%(resolution)s", "--no-warnings", url],
+                        stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, timeout=15 
+                    )
+                    if res.returncode == 0:
+                        lines = [l for l in res.stdout.strip().split('\n') if l]
+                        if lines and lines[-1] != "NA":
+                            raw_res = lines[-1].strip().lower()
+                            if "x" in raw_res:
+                                resolved_res = f"{raw_res.split('x')[-1]}p"
+                            elif raw_res.isdigit():
+                                resolved_res = f"{raw_res}p"
+                            else:
+                                resolved_res = raw_res
+                            return (player, "ok", resolved_res, url)
+                            
+                    res_fallback = subprocess.run(
+                        ["yt-dlp", "-q", "--simulate", "--no-warnings", url],
+                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=15 
+                    )
+                    if res_fallback.returncode == 0:
+                        return (player, "ok", t("pl_unknown"), url)
+                    return (player, "error", "", url)
+                except:
+                    return (player, "error", "", url)
+
+        with ThreadPoolExecutor(max_workers=15) as executor:
+            scanned_sources = list(executor.map(check_dl_link, players))
+
+        valid_sources = [s for s in scanned_sources if s[1] in ("ok", "mega")]
+
+        if not valid_sources:
+            print(colored(t("dl_err_all_dead").format(ep_number), "red"))
+            continue
+
+        def sort_key(source_tuple):
+            _, _, res_text, _ = source_tuple
+            if chosen_quality != t("dl_qual_best"):
+                if res_text == chosen_quality: return 0  
+                if res_text == "Auto": return 1          
+                return 2                                 
+            else:
+                if res_text == "Auto": return 0
+                return 1
+
+        valid_sources.sort(key=sort_key)
+        print() 
+
+        for index, source_data in enumerate(valid_sources, 1):
+            player, status, res_text, target_url = source_data
+            
+            print(colored(t("dl_try_dl").format(player['player_hosting'], res_text, index, len(valid_sources)), "yellow"))
+            
+            command = ["yt-dlp", "--newline", "--no-warnings", "--merge-output-format", "mp4"]
+            
+            if quality_args:
+                command.extend(quality_args)
+                
+            command.extend([target_url, "-o", file_name_template])
+            
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[bold cyan]{task.description}"),
+                BarColumn(bar_width=40, complete_style="green", finished_style="bold green"),
+                TaskProgressColumn(),
+                TimeRemainingColumn(),
+            ) as progress:                
+                task_id = progress.add_task(description=t("dl_prog_vid").format(ep_number), total=100)
+                
+                process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+                current_percent = 0.0
+                
+                error_msgs = []
+
+                for line in process.stdout:
+                    if "ERROR:" in line or "Error" in line:
+                        error_msgs.append(line.strip())
+                        
+                    match = re.search(r'\[download\]\s+([\d\.]+)%', line)
+                    if match:
+                        try:
+                            percent = float(match.group(1))
+                            if percent < current_percent - 50:
+                                progress.update(task_id, description=t("dl_prog_aud").format(ep_number))
+                            current_percent = percent
+                            progress.update(task_id, completed=percent)
+                        except ValueError:
+                            pass
+                            
+                process.wait()
+                
+                if process.returncode == 0:
+                    downloaded = True
+                    progress.update(task_id, completed=100, description=t("dl_prog_done").format(ep_number))
+                    break 
+                else:
+                    progress.update(task_id, description=t("dl_prog_err").format(ep_number))
+                    if error_msgs:
+                        print(colored(t("dl_ytdlp_err").format(error_msgs[-1]), "red"))
+
+        if not downloaded:
+            print(colored(t("dl_err_failed_all").format(ep_number), "red"))
+        
+    print(colored(t("dl_finished_all").format(TITLE), "green"))
+    input(colored(t("dl_enter_to_return"), "yellow"))
+# =======================================
+# PLIK: i18n.py
+# =======================================
+
+from storage import ds
+
+TEXTS = {
+    "pl": {
+        "yes": "Tak",
+        "no": "Nie",
+        "back": "Cofnij",
+        "cancel": "Anuluj",
+        "currently": "Obecnie",
+        "menu_main": "Menu główne",
+
+        # m_welcome
+        "menu_search": "Wyszukaj",
+        "menu_resume": "Kontynuuj oglądanie",
+        "menu_trending": "Anime na czasie",
+        "menu_calendar": "Kalendarz Premier",
+        "menu_mylist": "Moja lista",
+        "menu_library": "Moja Biblioteka (Offline)",
+        "menu_history": "Historia oglądania",
+        "menu_stats": "Statystyki doccli",
+        "menu_discord": "Dołącz do discorda",
+        "menu_settings": "Ustawienia",
+        "menu_exit": "Zamknij",
+        "welcome_prompt": "Wybierz co chcesz zrobić: ",
+        "status_connected": "🟢 STATUS: Połączono z kontem AniList!",
+        "status_disconnected": "🔴 STATUS: Brak połączenia z AniList (Skonfiguruj w Ustawieniach)",
+        "rpc_searching": "Szuka anime do obejrzenia...",
+        
+        # m_settings
+        "set_rpc": "Ustawienia Discord RPC",
+        "set_anilist": "Połącz / Zaktualizuj konto AniList",
+        "set_dl_path": "Zmień folder pobierania",
+        "set_quality": "Zmień domyślną jakość wideo",
+        "set_lang": "Zmień język / Change language",
+        "set_prompt": "Wybierz co chcesz skonfigurować: ",
+        
+        "rpc_q": "Czy chcesz aby znajomi na discordzie widzieli co oglądasz?",
+        "rpc_input": "Wpisz co tylko zechcesz! Będzie to wyświetlane w II linijce statusu. Zostaw puste jeśli chcesz domyślny status. [Min. 2 znaki] (Domyślnie: 'Używa doccli!') \n",
+        "rpc_def_status": "Używa doccli!",
+        
+        "al_info1": "Zaraz otworzy się przeglądarka z prośbą o autoryzację aplikacji doccli na Twoim koncie AniList.",
+        "al_info2": "Po zatwierdzeniu, skopiuj Token (długi ciąg znaków) i wklej go poniżej.\n",
+        "al_err": "Nie udało się otworzyć przeglądarki! Wejdź ręcznie w ten link:\n{}\n",
+        "al_input": "Wklej swój AniList Access Token (lub zostaw puste by anulować):",
+        "al_success": "\n[+] Pomyślnie zapisano token! Od teraz doccli będzie automatycznie zapisywać postęp.",
+        
+        "dl_info": "[INFO] Obecny folder pobierania: {}",
+        "dl_help1": "Wpisz pełną ścieżkę do nowego folderu (np. D:\\Anime lub /home/user/Wideo).",
+        "dl_help2": "Zostaw to pole puste i wciśnij ENTER, aby przywrócić domyślny folder wewnątrz programu.\n",
+        "dl_input": "Podaj nową ścieżkę:",
+        "dl_reset": "\n[+] Przywrócono domyślny folder pobierania!",
+        "dl_success": "\n[+] Pomyślnie zmieniono folder zapisu na: {}",
+        "dl_err": "\n[-] Błąd podczas tworzenia folderu (Nieprawidłowa ścieżka?): {}",
+        
+        "qual_source": "Źródłowa",
+        "qual_prompt": "Wybierz preferowaną jakość dla odtwarzacza:",
+        "qual_success": "\n[+] Pomyślnie zmieniono jakość na: {}",
+        
+        "lang_prompt": "Wybierz język / Choose language:",
+        "lang_success": "\n[+] Zmieniono język na: Polski",
+        
+        # m_mylist
+        "mylist_sync": "[INFO] Trwa automatyczna synchronizacja z AniList...",
+        "mylist_prompt": "Wybierz anime: ",
+        
+        # m_history
+        "hist_prompt": "Wybierz wpis aby przejść do szczegółów: ",
+        "hist_err_server": "Błąd: Nie udało się pobrać szczegółów z serwera.",
+        "hist_err_profile": "To anime nie ma przypisanego profilu w Docchi.",
+        
+        # m_find
+        "find_title": "Po tytule",
+        "find_title_en": "Po tytule EN",
+        "find_mal": "Mal ID",
+        "find_genre": "Po gatunku",
+        "find_prompt": "Wybierz jak chcesz wyszukać: ",
+        "find_search": "Szukaj: ",
+        
+        # genres
+        "genre_err": "Błąd: Nie znaleziono żadnych gatunków w bazie.",
+        "genre_prompt": "Wybierz gatunek, który Cię interesuje:",
+        "sort_trending": "Po popularności (Trendy AniList)",
+        "sort_alpha": "Alfabetycznie",
+        "sort_surprise": "Zaskocz mnie!",
+        "sort_prompt": "Co robimy dalej?",
+        "genre_res_prompt": "Wyniki dla gatunku [{}] (Znaleziono: {}):",
+        
+        # trending
+        "trend_prompt": "Wybierz: ",
+        
+        # m_details
+        "det_cont": "Kontynuuj od odcinka",
+        "det_first": "Oglądaj od 1 odcinka",
+        "det_list": "Lista odcinków",
+        "det_dl_season": "Pobierz cały sezon",
+        "det_dl_eps": "Pobierz wybrane odcinki",
+        "det_rm_list": "Usuń z mojej listy",
+        "det_add_list": "Dodaj do mojej listy",
+        "det_search": "Wyszukiwarka",
+        "det_prompt": "Wybierz co chcesz zrobić: ",
+        "det_ep_count": "Ilość odcinków",
+        "det_score": "Ocena",
+        "det_dl_input": "Wpisz numery do pobrania (np. 3 lub 4-6 lub 1,3,5) [Wszystkich odc: {}]:",
+        "det_dl_err": "Błąd: Nie podano poprawnych numerów odcinków!",
+        
+        # w_list
+        "list_err": "Nie znaleziono ilości odcinków [Błąd AniList lub brak MAL ID]",
+        "list_prompt": "Wybierz odcinek: ",
+        
+        # w_players
+        "pl_load": "[INFO] Odcinek {} - Ładowanie źródeł...",
+        "pl_pl_src": "Pobieranie polskich źródeł (docchi.pl)...",
+        "pl_en_src": "Pobieranie angielskich źródeł (anidb.app z weryfikacją MAL ID)...",
+        "pl_404": "Nie znaleziono odcinka w żadnej z baz (PL/EN) [Błąd 404]",
+        "pl_analyzing": "\nTrwa analizowanie, sprawdzanie źródeł na żywo i pobieranie jakości...",
+        "pl_unknown": "Nieznana",
+        "pl_none": "Brak",
+        "pl_link": "Link źródła",
+        "pl_chg_qual": "Zmień maksymalną jakość",
+        "pl_prompt": "Wybierz źródło: ",
+        "pl_start": "Rozpoczynanie odtwarzania...",
+        "pl_err_src": "Wybrane źródło nie jest dostępne, lub nie jest wspierane!",
+        "pl_qual_chg": "Zmieniono jakość odtwarzacza na {}",
+        
+        # w_default
+        "def_rpc_watch": "Ogląda: {} [{}/{}]",
+        "def_rpc_def": "Ogląda anime",
+        "def_chg_src": "Zmień źródło",
+        "def_next": "Następny odcinek",
+        "def_rate": "Oceń serię (AniList)",
+        "def_prev": "Poprzedni odcinek",
+        "def_list": "Lista odcinków",
+        "def_prompt": "Co chcesz zrobić? ",
+        "def_qmark": "Odcinek: {}/{}",
+        "def_finish": "Ukończono serię (Wróć do menu głównego)",
+        "rate_info": "[INFO] Pobieranie Twojej skali ocen z AniList...",
+        "rate_good": "(Dobrze)",
+        "rate_avg": "(Średnio)",
+        "rate_bad": "(Źle)",
+        "rate_no": "Nie chcę oceniać",
+        "rate_prompt": "Jak oceniasz tę serię w swojej skali?",
+        "rate_send": "[INFO] Wysyłanie oceny do AniList...",
+        "rate_ok": "[+] Ocena została pomyślnie zapisana na profilu!",
+        "rate_err": "[-] Wystąpił błąd podczas wysyłania oceny.",
+        "finish_msg": "🎉 Gratulacje! Ukończono anime: {}",
+        
+        # resume
+        "res_empty": "Brak historii oglądania do wznowienia.",
+        "res_resume": "Wznów: {} (Odcinek {})",
+        "res_prompt": "Co chcesz kontynuować?",
+        "res_load": "[INFO] Wczytywanie danych...",
+        
+        # calendar
+        "cal_info": "[INFO] Pobieranie kalendarza premier z AniList...",
+        "cal_err1": "[-] Nie udało się pobrać kalendarza lub brak nadchodzących premier.",
+        "cal_days": ["Pon", "Wto", "Śro", "Czw", "Pią", "Sob", "Nie"],
+        "cal_none": "Brak",
+        "cal_err2": "[-] Wśród 50 najbliższych premier na świecie, nie znaleziono żadnej w polskiej bazie.",
+        "cal_prompt": "Najbliższe premiery (Posortowane chronologicznie):",
+
+        # anilist_connector
+        "al_no_desc": "Brak opisu.",
+        "al_airing_rel": "Trwa emisja (Wydano: {})",
+        "al_airing": "Trwa emisja",
+        "al_none": "Brak",
+        "al_sync": "[INFO] Trwa synchronizacja historii z AniList (To zajmie tylko chwilę)...",
+        "al_skip_no_id": "[-] AniSkip: Brak MAL ID lub numeru odcinka. Markery wyłączone.",
+        "al_skip_ep": "Odcinek",
+        "al_skip_found": "[+] Znaleziono markery AniSkip! Wygenerowano {} przedziałów.",
+        "al_skip_not_found": "[-] Baza AniSkip nie posiada jeszcze markerów dla tego odcinka.",
+        "al_skip_rej": "[-] Odrzucenie z serwera AniSkip (Błąd {})",
+        "al_skip_err": "[BŁĄD] AniSkip awaria pobierania: {}",
+
+        # cache
+        "cache_conn": "[INFO] Łączenie z serwerami Docchi oraz AniList...",
+        "cache_fetch": "[INFO] Pobieranie bazy tytułów i trendów...",
+
+        # discord_integration
+        "rpc_loading": "Ładowanie...",
+        "rpc_large_text": "Doccli - oglądaj anime bezpośrednio ze swojego terminalu!",
+        "rpc_discord_btn": "Discord Projektu",
+
+        # docchi_api_connector
+        "anidb_dub": "dubbing",
+        "anidb_sub": "napisy",
+        "anidb_src": "źródło",
+
+        # downloader
+        "dl_err_ep_count": "Nie udało się ustalić liczby odcinków z AniList",
+        "dl_lang_pl_sub": "Polski (Napisy PL)",
+        "dl_lang_en_sub": "Angielski (Napisy EN)",
+        "dl_lang_en_dub": "Angielski (Dubbing EN)",
+        "dl_prompt_lang": "Wybierz preferowaną wersję językową dla pobieranych plików: ",
+        "dl_qual_best": "Najlepsza dostępna (Domyślna)",
+        "dl_prompt_qual": "Wybierz preferowaną jakość obrazu do pobrania: ",
+        "dl_folder_pl": "[PL]",
+        "dl_folder_en_sub": "[EN Napisy]",
+        "dl_folder_en_dub": "[EN Dubbing]",
+        "dl_info_prep": "[INFO] Przygotowywanie do pobrania {} (Wybrano {} odc.)...",
+        "dl_info_ver": "[INFO] Ustawiona wersja: {}",
+        "dl_info_qual": "[INFO] Ustawiona jakość: {}",
+        "dl_info_loc": "[INFO] Lokalizacja zapisu: {}",
+        "dl_err_no_src": "\n[BŁĄD] Nie znaleziono źródeł w wybranym języku dla odcinka {}. Pomijam...",
+        "dl_ep_file_prefix": " - Odcinek",
+        "dl_scan": "[*] Skanowanie jakości źródeł dla odcinka {}...",
+        "dl_err_all_dead": "\n[BŁĄD] Żadne ze źródeł dla odcinka {} nie działa.",
+        "dl_try_dl": "[*] Próbuję pobrać z: {} [{}] (Źródło {}/{})...",
+        "dl_prog_vid": "Pobieranie odc. {} [bold yellow](Ścieżka VIDEO)",
+        "dl_prog_aud": "Pobieranie odc. {} [bold yellow](Ścieżka AUDIO)",
+        "dl_prog_done": "[bold green]Ukończono odc. {}!",
+        "dl_prog_err": "[bold red]Błąd pobierania odc. {}!",
+        "dl_ytdlp_err": "\n   [Szczegóły błędu yt-dlp]: {}",
+        "dl_err_failed_all": "[BŁĄD] Żadne ze źródeł dla odcinka {} nie zadziałało.",
+        "dl_finished_all": "\n[ZAKOŃCZONO] Proces pobierania serii {} dobiegł końca!",
+        "dl_enter_to_return": "Naciśnij Enter, aby wrócić...",
+
+        # local_lib
+        "lib_err_no_dir": "[BŁĄD] Twój folder pobierania jeszcze nie istnieje ({}).",
+        "lib_err_no_anime": "Najpierw musisz pobrać jakieś anime!",
+        "lib_enter_to_return": "Naciśnij Enter, aby wrócić do menu...",
+        "lib_info_empty": "[INFO] Twój folder pobierania jest pusty.",
+        "lib_prompt_series": "Wybierz serię z dysku: ",
+        "lib_err_no_vids": "Brak plików wideo w folderze {}.",
+        "lib_watch_auto": "Oglądaj automatycznie",
+        "lib_back_to_series": "Wróć do wyboru serii",
+        "lib_prompt_ep": "Wybierz odcinek ({}): ",
+        "lib_auto_playing": "Oglądanie automatyczne: {}",
+        "lib_mpv_info": "Wciśnij 'Q' w obrębie okna MPV, lub zamknij je aby przerwać seans i wrócić do menu.",
+        "lib_auto_interrupted": "\n[INFO] Przerwano oglądanie automatyczne.",
+        "lib_press_enter": "Naciśnij Enter...",
+        "lib_err_no_mpv": "[BŁĄD] Nie znaleziono odtwarzacza mpv!",
+        "lib_playing_disk": "Odtwarzam z dysku: {}",
+
+        # player
+        "player_err": "[BŁĄD]",
+        "player_req_install": "Aby program działał wymagana jest instalacja",
+        "player_lycoris_ok": "[+] Sukces! Znaleziono bezpośredni link wideo.",
+        "player_lycoris_fail": "[-] Nie udało się zdekodować linku. Próbuję odtworzyć domyślnie...",
+        "player_unknown_anime": "Nieznane Anime",
+        "player_ep": "Odcinek",
+        "player_warn": "[UWAGA]",
+        "player_req_mega": "Aby oglądać z tego źródła wymagana jest instalacja",
+
+        # ui_utils
+        "ui_desc_header": "Opis z AniList:",
+        "ui_no_chafa": "Brak narzędzia 'chafa' do wyświetlania okładek.",
+        "ui_ctrl_c": "Ctrl+C = Cofnij / Menu główne",
+        "ui_not_found": "Nie znaleziono na liście, wyszukaj ponownie",
+
+        # run
+        "run_env_check": "[INFO] Sprawdzanie środowiska i zależności...",
+        "run_yt_installed_old": "Zainstalowano (Twoja: {} | Najnowsza: {})",
+        "run_yt_update_rec": "    [!] Zalecam aktualizację komendą: ({}), bo niektóre źródła mogą nie działać!",
+        "run_yt_installed_ok": "Zainstalowano (Wersja: {} - Aktualna!)",
+        "run_yt_installed": "Zainstalowano (Wersja: {})",
+        "run_yt_missing": "BRAK! Odtwarzanie i pobieranie nie będzie działać.",
+        "run_mpv_installed": "Zainstalowano (Wersja: {})",
+        "run_mpv_missing": "BRAK! Odtwarzanie wideo nie będzie działać.",
+        "run_chafa_installed": "Zainstalowano (Wersja: {} | Wyświetlanie okładek)",
+        "run_chafa_missing": "Brak [Wyświetlanie okładek]",
+        "run_mega_installed": "Zainstalowano (Wersja: {})",
+        "run_mega_missing": "Brak (Odtwarzanie ze źródeł Mega.nz)",
+        "run_upd_current": "Wersja programu: ",
+        "run_upd_latest": "Najnowsza wersja:",
+        "run_upd_avail": "Dostępna jest nowa wersja doccli!",
+        "run_upd_prompt": "Czy chcesz pobrać i zainstalować aktualizację automatycznie teraz?",
+        "run_upd_manual": "Szczegóły aktualizacji oraz instrukcję znajdziesz tutaj:",
+        "run_upd_dl": "\n[*] Pobieranie aktualizacji z GitHuba... To potrwa tylko chwilę.",
+        "run_upd_dl_ok": "[+] Pobrano pomyślnie. Rozpoczynam instalację...",
+        "run_upd_err": "[-] Błąd podczas pobierania/instalacji aktualizacji: {}",
+        "run_enter_cont": "Naciśnij Enter, aby kontynuować...",
+
+        # stats - pory dnia i nawyki
+        "stat_night": "Nocny Marek (22-04)",
+        "stat_early": "Ranny Ptaszek (04-12)",
+        "stat_chill": "Popołudniowy Chill (12-17)",
+        "stat_evening": "Wieczorny Seans (17-22)",
+        "stat_none": "Brak",
+        "stat_no_data": "Brak danych",
+        
+        # stats - tabele i etykiety
+        "stat_lbl_rank": "Obecna Ranga:",
+        "stat_lbl_doccli_eps": "Obejrzane w doccli:",
+        "stat_lbl_doccli_time": "Czas oglądania w doccli:",
+        "stat_lbl_total_eps": "Odcinki obejrzane ogółem:",
+        "stat_lbl_total_time": "Czas oglądania ogółem:",
+        "stat_lbl_last": "Ostatnio oglądane:",
+        
+        "stat_lbl_marathon": "Życiowy maraton (1 dzień):",
+        "stat_lbl_weekly": "Średnia tygodniowa:",
+        "stat_lbl_prime_time": "Główna pora seansów:",
+        "stat_lbl_net_disk": "Sieć vs Dysk:",
+        "stat_net_str": "sieć",
+        "stat_disk_str": "dysk",
+        
+        "stat_lbl_completed_rest": "Ukończone vs Reszta:",
+        "stat_lbl_planning": "Kupka wstydu (Planowane):",
+        "stat_lbl_oldest_queue": "Najdłużej w kolejce:",
+        "stat_lbl_top_genres": "Ulubione gatunki (Top 3):",
+        "stat_lbl_mean_score": "Średnia przyznanych ocen:",
+        "stat_lbl_al_status": "Status połączenia:",
+        "stat_al_no_data": "Brak danych z AniList",
+        
+        "stat_lbl_share": "Udział doccli w historii:",
+        "stat_lbl_size": "Zajęte miejsce na dysku:",
+        "stat_lbl_install": "Instalacja doccli:",
+        "stat_lbl_age": "Wiek profilu:",
+        "stat_days": "dni",
+        
+        # stats - panele
+        "stat_panel_profile": "🎬 Twój Profil",
+        "stat_panel_habits": "🧠 Twoje Nawyki (Doccli)",
+        "stat_panel_anilist": "☁️ Statystyki Konta (AniList)",
+        "stat_panel_library": "📁 Biblioteka i Dane",
+        "stat_panel_legend": "🏆 Legenda Rang",
+        
+        # stats - legenda rang (wymagania czasowe)
+        "stat_req_hours": "godz.",
+        "stat_return_prompt": "Naciśnij enter aby wrócić do menu głównego...",
+
+        # ranks
+        "rank_freshman": "Świeżak",
+        "rank_viewer": "Widz",
+        "rank_novice": "Nowicjusz",
+        "rank_disciple": "Uczeń",
+        "rank_squire": "Giermek",
+        "rank_genin": "Genin",
+        "rank_chuunin": "Chuunin",
+        "rank_jonin": "Jonin",
+        "rank_samurai": "Samuraj",
+        "rank_ronin": "Ronin",
+        "rank_shinobi": "Shinobi",
+        "rank_otaku": "Otaku",
+        "rank_scout": "Zwiadowca",
+        "rank_hunter": "Łowca",
+        "rank_assassin": "Zabójca",
+        "rank_supernova": "Supernova",
+        "rank_captain": "Kapitan",
+        "rank_master": "Mistrz",
+        "rank_hero": "Bohater",
+        "rank_archmage": "Arcymag",
+        "rank_king": "Król",
+        "rank_emperor": "Cesarz",
+        "rank_deity": "Bóstwo",
+        "rank_titan": "Tytan",
+        "rank_hikikomori": "Hikikomori",
+    },
+    "en": {
+        "yes": "Yes",
+        "no": "No",
+        "back": "Back",
+        "cancel": "Cancel",
+        "currently": "Currently",
+        "menu_main": "Main Menu",
+
+        # m_welcome
+        "menu_search": "Search",
+        "menu_resume": "Continue watching",
+        "menu_trending": "Trending Anime",
+        "menu_calendar": "Release Calendar",
+        "menu_mylist": "My List",
+        "menu_library": "My Library (Offline)",
+        "menu_history": "Watch History",
+        "menu_stats": "Doccli Statistics",
+        "menu_discord": "Join our Discord",
+        "menu_settings": "Settings",
+        "menu_exit": "Exit",
+        "welcome_prompt": "Choose what you want to do: ",
+        "status_connected": "🟢 STATUS: Connected to AniList!",
+        "status_disconnected": "🔴 STATUS: Not connected to AniList (Configure in Settings)",
+        "rpc_searching": "Looking for anime to watch...",
+        
+        # m_settings
+        "set_rpc": "Discord RPC Settings",
+        "set_anilist": "Connect / Update AniList account",
+        "set_dl_path": "Change download path",
+        "set_quality": "Change default video quality",
+        "set_lang": "Change language / Zmień język",
+        "set_prompt": "Choose what to configure: ",
+        
+        "rpc_q": "Do you want your Discord friends to see what you are watching?",
+        "rpc_input": "Type whatever you want! This will be displayed on the 2nd line of your status. Leave empty for default. [Min. 2 chars] (Default: 'Using doccli!') \n",
+        "rpc_def_status": "Using doccli!",
+        
+        "al_info1": "A browser window will open asking you to authorize doccli on your AniList account.",
+        "al_info2": "After approving, copy the Token (long string of characters) and paste it below.\n",
+        "al_err": "Could not open the browser! Please visit this link manually:\n{}\n",
+        "al_input": "Paste your AniList Access Token (or leave empty to cancel):",
+        "al_success": "\n[+] Token saved successfully! Doccli will now automatically sync your progress.",
+        
+        "dl_info": "[INFO] Current download folder: {}",
+        "dl_help1": "Enter the full path to the new folder (e.g. D:\\Anime or /home/user/Videos).",
+        "dl_help2": "Leave this field empty and press ENTER to restore the default internal folder.\n",
+        "dl_input": "Enter new path:",
+        "dl_reset": "\n[+] Restored default download folder!",
+        "dl_success": "\n[+] Successfully changed save folder to: {}",
+        "dl_err": "\n[-] Error creating folder (Invalid path?): {}",
+        
+        "qual_source": "Source",
+        "qual_prompt": "Choose preferred player quality:",
+        "qual_success": "\n[+] Quality successfully changed to: {}",
+        
+        "lang_prompt": "Choose language / Wybierz język:",
+        "lang_success": "\n[+] Language changed to: English",
+        
+        # m_mylist
+        "mylist_sync": "[INFO] Auto-syncing with AniList...",
+        "mylist_prompt": "Choose anime: ",
+        
+        # m_history
+        "hist_prompt": "Select an entry to view details: ",
+        "hist_err_server": "Error: Failed to fetch details from the server.",
+        "hist_err_profile": "This anime has no assigned profile in Docchi.",
+        
+        # m_find
+        "find_title": "By title",
+        "find_title_en": "By title EN",
+        "find_mal": "Mal ID",
+        "find_genre": "By genre",
+        "find_prompt": "Choose how you want to search: ",
+        "find_search": "Search: ",
+        
+        # genres
+        "genre_err": "Error: No genres found in the database.",
+        "genre_prompt": "Choose a genre you are interested in:",
+        "sort_trending": "By popularity (AniList Trending)",
+        "sort_alpha": "Alphabetical",
+        "sort_surprise": "Surprise me!",
+        "sort_prompt": "What do we do next?",
+        "genre_res_prompt": "Results for genre [{}] (Found: {}):",
+        
+        # trending
+        "trend_prompt": "Choose: ",
+        
+        # m_details
+        "det_cont": "Continue from episode",
+        "det_first": "Watch from episode 1",
+        "det_list": "Episode list",
+        "det_dl_season": "Download entire season",
+        "det_dl_eps": "Download specific episodes",
+        "det_rm_list": "Remove from my list",
+        "det_add_list": "Add to my list",
+        "det_search": "Search engine",
+        "det_prompt": "Choose what you want to do: ",
+        "det_ep_count": "Episodes count",
+        "det_score": "Score",
+        "det_dl_input": "Enter episodes to download (e.g. 3 or 4-6 or 1,3,5) [Total eps: {}]:",
+        "det_dl_err": "Error: Invalid episode numbers provided!",
+        
+        # w_list
+        "list_err": "Episodes count not found [AniList error or missing MAL ID]",
+        "list_prompt": "Choose episode: ",
+        
+        # w_players
+        "pl_load": "[INFO] Episode {} - Loading sources...",
+        "pl_pl_src": "Fetching Polish sources (docchi.pl)...",
+        "pl_en_src": "Fetching English sources (anidb.app with MAL ID verification)...",
+        "pl_404": "Episode not found in any database (PL/EN) [Error 404]",
+        "pl_analyzing": "\nAnalyzing, live checking sources, and fetching qualities...",
+        "pl_unknown": "Unknown",
+        "pl_none": "None",
+        "pl_link": "Source link",
+        "pl_chg_qual": "Change maximum quality",
+        "pl_prompt": "Choose source: ",
+        "pl_start": "Starting playback...",
+        "pl_err_src": "Selected source is unavailable or not supported!",
+        "pl_qual_chg": "Player quality changed to {}",
+        
+        # w_default
+        "def_rpc_watch": "Watching: {} [{}/{}]",
+        "def_rpc_def": "Watching anime",
+        "def_chg_src": "Change source",
+        "def_next": "Next episode",
+        "def_rate": "Rate series (AniList)",
+        "def_prev": "Previous episode",
+        "def_list": "Episode list",
+        "def_prompt": "What do you want to do? ",
+        "def_qmark": "Episode: {}/{}",
+        "def_finish": "Series completed (Return to main menu)",
+        "rate_info": "[INFO] Fetching your AniList scoring format...",
+        "rate_good": "(Good)",
+        "rate_avg": "(Average)",
+        "rate_bad": "(Bad)",
+        "rate_no": "I don't want to rate",
+        "rate_prompt": "How do you rate this series on your scale?",
+        "rate_send": "[INFO] Sending rating to AniList...",
+        "rate_ok": "[+] Rating successfully saved to your profile!",
+        "rate_err": "[-] An error occurred while sending the rating.",
+        "finish_msg": "🎉 Congratulations! Anime completed: {}",
+        
+        # resume
+        "res_empty": "No watch history to resume.",
+        "res_resume": "Resume: {} (Episode {})",
+        "res_prompt": "What do you want to continue?",
+        "res_load": "[INFO] Loading data...",
+        
+        # calendar
+        "cal_info": "[INFO] Fetching release calendar from AniList...",
+        "cal_err1": "[-] Failed to fetch calendar or no upcoming releases.",
+        "cal_days": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+        "cal_none": "Unknown",
+        "cal_err2": "[-] Among the next 50 worldwide releases, none were found in the database.",
+        "cal_prompt": "Upcoming releases (Sorted chronologically):",
+
+        # anilist_connector
+        "al_no_desc": "No description available.",
+        "al_airing_rel": "Airing (Released: {})",
+        "al_airing": "Currently airing",
+        "al_none": "None",
+        "al_sync": "[INFO] Syncing history with AniList (This will take a moment)...",
+        "al_skip_no_id": "[-] AniSkip: Missing MAL ID or episode number. Markers disabled.",
+        "al_skip_ep": "Episode",
+        "al_skip_found": "[+] AniSkip markers found! Generated {} intervals.",
+        "al_skip_not_found": "[-] AniSkip database does not have markers for this episode yet.",
+        "al_skip_rej": "[-] Rejected by AniSkip server (Error {})",
+        "al_skip_err": "[ERROR] AniSkip download failure: {}",
+
+        # cache
+        "cache_conn": "[INFO] Connecting to Docchi and AniList servers...",
+        "cache_fetch": "[INFO] Fetching database of titles and trending...",
+
+        # discord_integration
+        "rpc_loading": "Loading...",
+        "rpc_large_text": "Doccli - watch anime directly from your terminal!",
+        "rpc_discord_btn": "Project Discord",
+
+        # docchi_api_connector
+        "anidb_dub": "dub",
+        "anidb_sub": "sub",
+        "anidb_src": "source",
+
+        # downloader
+        "dl_err_ep_count": "Could not determine the number of episodes from AniList",
+        "dl_lang_pl_sub": "Polish (PL Subtitles)",
+        "dl_lang_en_sub": "English (EN Subtitles)",
+        "dl_lang_en_dub": "English (EN Dubbing)",
+        "dl_prompt_lang": "Select preferred language version for downloaded files: ",
+        "dl_qual_best": "Best available (Default)",
+        "dl_prompt_qual": "Select preferred video quality for download: ",
+        "dl_folder_pl": "[PL]",
+        "dl_folder_en_sub": "[EN Sub]",
+        "dl_folder_en_dub": "[EN Dub]",
+        "dl_info_prep": "[INFO] Preparing to download {} (Selected {} eps)...",
+        "dl_info_ver": "[INFO] Selected version: {}",
+        "dl_info_qual": "[INFO] Selected quality: {}",
+        "dl_info_loc": "[INFO] Save location: {}",
+        "dl_err_no_src": "\n[ERROR] No sources found in the selected language for episode {}. Skipping...",
+        "dl_ep_file_prefix": " - Episode",
+        "dl_scan": "[*] Scanning source qualities for episode {}...",
+        "dl_err_all_dead": "\n[ERROR] None of the sources for episode {} are working.",
+        "dl_try_dl": "[*] Trying to download from: {} [{}] (Source {}/{})...",
+        "dl_prog_vid": "Downloading ep. {} [bold yellow](VIDEO track)",
+        "dl_prog_aud": "Downloading ep. {} [bold yellow](AUDIO track)",
+        "dl_prog_done": "[bold green]Completed ep. {}!",
+        "dl_prog_err": "[bold red]Error downloading ep. {}!",
+        "dl_ytdlp_err": "\n   [yt-dlp error details]: {}",
+        "dl_err_failed_all": "[ERROR] All sources for episode {} failed.",
+        "dl_finished_all": "\n[FINISHED] Download process for series {} has ended!",
+        "dl_enter_to_return": "Press Enter to return...",
+
+        # local_lib
+        "lib_err_no_dir": "[ERROR] Your download folder does not exist yet ({}).",
+        "lib_err_no_anime": "You need to download some anime first!",
+        "lib_enter_to_return": "Press Enter to return to the menu...",
+        "lib_info_empty": "[INFO] Your download folder is empty.",
+        "lib_prompt_series": "Select a series from the disk: ",
+        "lib_err_no_vids": "No video files found in folder {}.",
+        "lib_watch_auto": "Watch automatically",
+        "lib_back_to_series": "Back to series selection",
+        "lib_prompt_ep": "Select episode ({}): ",
+        "lib_auto_playing": "Auto-playing: {}",
+        "lib_mpv_info": "Press 'Q' inside the MPV window or close it to stop watching and return to the menu.",
+        "lib_auto_interrupted": "\n[INFO] Auto-play interrupted.",
+        "lib_press_enter": "Press Enter...",
+        "lib_err_no_mpv": "[ERROR] mpv player not found!",
+        "lib_playing_disk": "Playing from disk: {}",
+
+        # player
+        "player_err": "[ERROR]",
+        "player_req_install": "For the program to work, you must install",
+        "player_lycoris_ok": "[+] Success! Direct video link found.",
+        "player_lycoris_fail": "[-] Failed to decode the link. Attempting default playback...",
+        "player_unknown_anime": "Unknown Anime",
+        "player_ep": "Episode",
+        "player_warn": "[WARNING]",
+        "player_req_mega": "To watch from this source, you must install",
+
+        # ui_utils
+        "ui_desc_header": "AniList Description:",
+        "ui_no_chafa": "Tool 'chafa' is missing to display covers.",
+        "ui_ctrl_c": "Ctrl+C = Back / Main Menu",
+        "ui_not_found": "Not found in the list, please search again",
+
+        # run
+        "run_env_check": "[INFO] Checking environment and dependencies...",
+        "run_yt_installed_old": "Installed (Yours: {} | Latest: {})",
+        "run_yt_update_rec": "    [!] Update recommended using command: ({}), some sources may not work!",
+        "run_yt_installed_ok": "Installed (Version: {} - Up to date!)",
+        "run_yt_installed": "Installed (Version: {})",
+        "run_yt_missing": "MISSING! Video playback and downloading will not work.",
+        "run_mpv_installed": "Installed (Version: {})",
+        "run_mpv_missing": "MISSING! Video playback will not work.",
+        "run_chafa_installed": "Installed (Version: {} | Cover display)",
+        "run_chafa_missing": "Missing [Cover display]",
+        "run_mega_installed": "Installed (Version: {})",
+        "run_mega_missing": "Missing (Playback from Mega.nz sources)",
+        "run_upd_current": "Program version: ",
+        "run_upd_latest": "Latest version:",
+        "run_upd_avail": "A new version of doccli is available!",
+        "run_upd_prompt": "Do you want to download and install the update automatically now?",
+        "run_upd_manual": "Update details and instructions can be found here:",
+        "run_upd_dl": "\n[*] Downloading update from GitHub... This will just take a moment.",
+        "run_upd_dl_ok": "[+] Downloaded successfully. Starting installation...",
+        "run_upd_err": "[-] Error during update download/installation: {}",
+        "run_enter_cont": "Press Enter to continue...",
+
+        # stats - pory dnia i nawyki
+        "stat_night": "Night Owl (22-04)",
+        "stat_early": "Early Bird (04-12)",
+        "stat_chill": "Afternoon Chill (12-17)",
+        "stat_evening": "Evening Watch (17-22)",
+        "stat_none": "None",
+        "stat_no_data": "No data",
+        
+        # stats - tabele i etykiety
+        "stat_lbl_rank": "Current Rank:",
+        "stat_lbl_doccli_eps": "Watched in doccli:",
+        "stat_lbl_doccli_time": "Doccli watch time:",
+        "stat_lbl_total_eps": "Total episodes watched:",
+        "stat_lbl_total_time": "Total watch time:",
+        "stat_lbl_last": "Last watched:",
+        
+        "stat_lbl_marathon": "Lifetime marathon (1 day):",
+        "stat_lbl_weekly": "Weekly average:",
+        "stat_lbl_prime_time": "Prime watch time:",
+        "stat_lbl_net_disk": "Network vs Disk:",
+        "stat_net_str": "net",
+        "stat_disk_str": "disk",
+        
+        "stat_lbl_completed_rest": "Completed vs Rest:",
+        "stat_lbl_planning": "Backlog (Planning):",
+        "stat_lbl_oldest_queue": "Oldest in queue:",
+        "stat_lbl_top_genres": "Top Genres (Top 3):",
+        "stat_lbl_mean_score": "Mean score given:",
+        "stat_lbl_al_status": "Connection status:",
+        "stat_al_no_data": "No data from AniList",
+        
+        "stat_lbl_share": "Doccli share in history:",
+        "stat_lbl_size": "Disk space used:",
+        "stat_lbl_install": "Doccli installed:",
+        "stat_lbl_age": "Profile age:",
+        "stat_days": "days",
+        
+        # stats - panele
+        "stat_panel_profile": "🎬 Your Profile",
+        "stat_panel_habits": "🧠 Your Habits (Doccli)",
+        "stat_panel_anilist": "☁️ Account Stats (AniList)",
+        "stat_panel_library": "📁 Library & Data",
+        "stat_panel_legend": "🏆 Rank Legend",
+        
+        # stats - legenda rang (wymagania czasowe)
+        "stat_req_hours": "hrs.",
+        "stat_return_prompt": "Press enter to return to the main menu...",
+
+        # ranks
+        "rank_freshman": "Rookie",
+        "rank_viewer": "Viewer",
+        "rank_novice": "Novice",
+        "rank_disciple": "Disciple",
+        "rank_squire": "Squire",
+        "rank_genin": "Genin",
+        "rank_chuunin": "Chuunin",
+        "rank_jonin": "Jonin",
+        "rank_samurai": "Samurai",
+        "rank_ronin": "Ronin",
+        "rank_shinobi": "Shinobi",
+        "rank_otaku": "Otaku",
+        "rank_scout": "Scout",
+        "rank_hunter": "Hunter",
+        "rank_assassin": "Assassin",
+        "rank_supernova": "Supernova",
+        "rank_captain": "Captain",
+        "rank_master": "Master",
+        "rank_hero": "Hero",
+        "rank_archmage": "Archmage",
+        "rank_king": "King",
+        "rank_emperor": "Emperor",
+        "rank_deity": "Deity",
+        "rank_titan": "Titan",
+        "rank_hikikomori": "Hikikomori",
+    }
+}
+
+def t(key: str) -> str:
+    """Returns translated text based on lang key."""
+    lang = ds.settings.get("language", "pl")
+    return TEXTS.get(lang, TEXTS["pl"]).get(key, TEXTS["pl"].get(key, key))
+# =======================================
+# PLIK: local_lib.py
+# =======================================
+
+import os
+import subprocess
+from datetime import datetime
+
+# From pip
+from termcolor import colored
+
+# Doccli modules
+from storage import ds
+from ui_utils import clear, open_menu
+from cache import get_cached_series_list
+from anilist_connector import get_duration_by_malid
+from menus_decor import MOJA_BIBLIOTEKA
+from i18n import t
+
+
+def m_local_library():
+    """Zarządza pobranymi plikami i pozwala na ich odtwarzanie offline."""
+    from main_module import m_welcome  # Import lokalny
+    
+    clear()
+        
+    dl_path = ds.settings.get("download_path", "")
+    if dl_path != "":
+        downloads_dir = dl_path
+    else:
+        current_dir = os.getcwd()
+        downloads_dir = os.path.join(current_dir, "doccli_downloads")
+    
+    if not os.path.exists(downloads_dir):
+        print(colored(t("lib_err_no_dir").format(downloads_dir), "red"))
+        print(colored(t("lib_err_no_anime"), "yellow"))
+        print('')
+        input(colored(t("lib_enter_to_return"), "yellow"))
+        m_welcome()
+        return
+        
+    series_list = [d for d in os.listdir(downloads_dir) if os.path.isdir(os.path.join(downloads_dir, d))]
+    
+    if not series_list:
+        print(colored(t("lib_info_empty"), "yellow"))
+        print('')
+        input(colored(t("lib_enter_to_return"), "yellow"))
+        m_welcome()
+        return
+        
+    series_list.append(t("menu_main"))
+    
+    selected_series = open_menu(
+        choices=series_list, 
+        prompt=t("lib_prompt_series"), 
+        height=10, 
+        message=MOJA_BIBLIOTEKA
+    )
+    
+    if selected_series == t("menu_main"):
+        m_welcome()
+        return
+
+    while True:
+        clear()
+        series_path = os.path.join(downloads_dir, selected_series)
+        
+        episodes_list = [f for f in os.listdir(series_path) if os.path.isfile(os.path.join(series_path, f))]
+        episodes_list.sort()
+        
+        if not episodes_list:
+            print(colored(t("lib_err_no_vids").format(selected_series), "red"))
+            input(colored(t("lib_enter_to_return"), "yellow"))
+            m_welcome()
+            return
+            
+        choices = [t("lib_watch_auto")] + episodes_list + [t("lib_back_to_series")]
+        
+        selected_ep = open_menu(
+            choices=choices, 
+            prompt=t("lib_prompt_ep").format(selected_series), 
+            height=10, 
+            message=MOJA_BIBLIOTEKA
+        )
+        
+        if selected_ep == t("lib_back_to_series"):
+            m_local_library()
+            return
+            
+        elif selected_ep == t("lib_watch_auto"):
+            for ep in episodes_list:
+                file_path = os.path.join(series_path, ep)
+                clear()
+                print(colored(t("lib_auto_playing").format(ep), "cyan"))
+                print(colored(t("lib_mpv_info"), "white"))
+                
+                all_series = get_cached_series_list()
+                mal_id = None
+                for s in all_series:
+                    if s['title'] == selected_series or s['title_en'] == selected_series:
+                        mal_id = s['mal_id']
+                        break
+                        
+                duration = get_duration_by_malid(mal_id) if mal_id else 21
+
+                now = datetime.now()
+                entry = {
+                    "timestamp": now.timestamp(),
+                    "dt_string": now.strftime("%d/%m/%Y %H:%M"),
+                    "title": selected_series,
+                    "title_en": selected_series,
+                    "episode": ep,
+                    "source": "Doccli - Offline",
+                    "slug": None,
+                    "duration": duration
+                }
+                ds.history.insert(0, entry)
+                ds.save()
+                
+                try:
+                    process = subprocess.run(["mpv", file_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    
+                    if process.returncode != 0:
+                        print(colored(t("lib_auto_interrupted"), "yellow"))
+                        input(t("lib_press_enter"))
+                        break
+                except FileNotFoundError:
+                    print(colored(t("lib_err_no_mpv"), "red"))
+                    input(t("lib_press_enter"))
+                    m_welcome()
+                    return
+        else:
+            file_path = os.path.join(series_path, selected_ep)
+            clear()
+            print(colored(t("lib_playing_disk").format(selected_ep), "cyan"))
+            print(colored(t("lib_mpv_info"), "white"))
+            
+            all_series = get_cached_series_list()
+            mal_id = None
+            for s in all_series:
+                if s['title'] == selected_series or s['title_en'] == selected_series:
+                    mal_id = s['mal_id']
+                    break
+                    
+            duration = get_duration_by_malid(mal_id) if mal_id else 21
+
+            now = datetime.now()
+            entry = {
+                "timestamp": now.timestamp(),
+                "dt_string": now.strftime("%d/%m/%Y %H:%M"),
+                "title": selected_series,
+                "title_en": selected_series,
+                "episode": selected_ep,
+                "source": "Doccli - Offline",
+                "slug": None,
+                "duration": duration 
+            }
+            ds.history.insert(0, entry)
+            ds.save()
+            
+            try:
+                subprocess.run(["mpv", file_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except FileNotFoundError:
+                print(colored(t("lib_err_no_mpv"), "red"))
+                input(t("lib_press_enter"))
+                m_welcome()
+                return
+# =======================================
+# PLIK: main_module.py
+# =======================================
+
+import os
+import sys
+import re
+import time
+import shutil
+import tempfile
+import webbrowser
+import subprocess
+from subprocess import Popen, DEVNULL
+import threading
+from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor
+
+# From pip
+from termcolor import colored
+from InquirerPy import prompt
+
+# Doccli modules
+from storage import ds
+from cache import preload_series_cache, get_cached_series_list, get_cached_trending_list
+from ui_utils import clear, open_menu
+from downloader import w_download_season
+from stats import m_stats
+from menus_decor import MAIN_MENU, SZUKAJ, NA_CZASIE, MOJA_LISTA, HISTORIA, MOJA_BIBLIOTEKA, KALENDARZ
+from discord_integration import update_rpc, set_running
+from docchi_api_connector import get_episodes_count_for_serie, get_players_list, get_details_for_serie, extract_lycoris_direct_link, get_english_players
+from anilist_connector import get_details_from_anilist, update_anilist_progress, get_anilist_plan_to_watch, sync_anilist_list_status, get_anilist_history, get_duration_by_malid, sync_history_with_anilist, get_quick_episode_count
+from player import mpv_play, kill_process, delayed_tracker
+from local_lib import m_local_library
+from i18n import t  # <--- NASZ NOWY SYSTEM TŁUMACZEŃ
+
+def m_welcome():
+    preload_series_cache()
+    update_rpc(t("menu_main"), t("rpc_searching"))
+
+    choices = [
+        t("menu_search"),
+        t("menu_resume"),
+        t("menu_trending"),
+        t("menu_calendar"),
+        t("menu_mylist"),
+        t("menu_library"),
+        t("menu_history"),
+        t("menu_stats"),
+        t("menu_discord"),
+        t("menu_settings"),
+        t("menu_exit")
+    ]
+
+    prompt_txt = t("welcome_prompt")
+
+    has_token = ds.settings.get("anilist_token", "") != ""
+    
+    if has_token:
+        status_txt = t("status_connected")
+    else:
+        status_txt = t("status_disconnected")
+
+    dynamic_menu_art = MAIN_MENU + "\n" + status_txt + "\n"
+
+    ans = open_menu(choices=choices, prompt=prompt_txt, height=12, message=dynamic_menu_art)
+
+    if ans == choices[0]: m_find()
+    elif ans == choices[1]: m_resume()
+    elif ans == choices[2]: m_trending()
+    elif ans == choices[3]: m_calendar()
+    elif ans == choices[4]: m_mylist()
+    elif ans == choices[5]: m_local_library()
+    elif ans == choices[6]: m_history()
+    elif ans == choices[7]: m_stats(); m_welcome()
+    elif ans == choices[8]: m_discord()
+    elif ans == choices[9]: m_settings()
+    elif ans == choices[10]: set_running(False); sys.exit()
+
+
+def m_settings():
+    def_dl = ds.settings.get("download_path", "")
+    current_dl_path = def_dl if def_dl != "" else "Default" if ds.settings.get("language", "pl") == "en" else "Domyślny"
+    current_quality = ds.settings.get("player_quality", "best")
+    current_lang = ds.settings.get("language", "pl")
+
+    choices = [
+        t("set_rpc"),
+        t("set_anilist"),
+        f"{t('set_dl_path')} ({t('currently')}: {current_dl_path})",
+        f"{t('set_quality')} ({t('currently')}: {current_quality})",
+        f"{t('set_lang')} ({t('currently')}: {current_lang.upper()})",
+        t("menu_main")
+    ]
+    
+    prompt_text = t("set_prompt")
+    ans = open_menu(choices=choices, prompt=prompt_text, height=8)
+    
+    if ans == choices[0]:
+        rpc_choices = [{
+                "type": "list",
+                "message": t("rpc_q"),
+                "choices": [t("yes"), t("no")],
+            }]
+        res = prompt(questions=rpc_choices)
+
+        if res[0] == t("no"):
+            ds.settings["rpc_enabled"] = False
+            ds.save()
+            m_welcome()
+        if res[0] == t("yes"):
+            clear()
+            ds.settings["rpc_enabled"] = True
+            choices2 = [{"type": "input", "message": t("rpc_input"), "name": "status_dc"}]
+            res2 = prompt(questions=choices2)
+
+            if not res2['status_dc'] == "" and len(res2['status_dc']) > 1:
+                ds.settings["rpc_status"] = res2['status_dc']
+                ds.save()
+                m_welcome()
+            else:
+                ds.settings["rpc_status"] = t("rpc_def_status")
+                ds.save()
+                m_welcome()
+                
+    elif ans == choices[1]:
+        clear()
+        CLIENT_ID = "16904"
+        print(colored(t("al_info1"), "cyan"))
+        print(colored(t("al_info2"), "cyan"))
+        
+        auth_url = f"https://anilist.co/api/v2/oauth/authorize?client_id={CLIENT_ID}&response_type=token"
+        try:
+            webbrowser.open(auth_url)
+        except:
+            print(colored(t("al_err").format(auth_url), "yellow"))
+            
+        questions = [{"type": "input", "message": t("al_input"), "name": "token"}]
+        res = prompt(questions)
+        
+        if res['token']:
+            ds.settings["anilist_token"] = res['token'].strip()
+            ds.save()
+            print(colored(t("al_success"), "green"))
+            time.sleep(3)
+        m_settings()
+
+    elif ans == choices[2]:
+        clear()
+        print(colored(t("dl_info").format(current_dl_path), "cyan"))
+        print(colored(t("dl_help1"), "yellow"))
+        print(colored(t("dl_help2"), "yellow"))
+        
+        questions = [{"type": "input", "message": t("dl_input"), "name": "new_path"}]
+        res = prompt(questions)
+        new_input = res['new_path'].strip()
+        
+        if new_input == "":
+            ds.settings["download_path"] = ""
+            ds.save()
+            print(colored(t("dl_reset"), "green"))
+        else:
+            try:
+                os.makedirs(new_input, exist_ok=True)
+                ds.settings["download_path"] = new_input
+                ds.save()
+                print(colored(t("dl_success").format(new_input), "green"))
+            except Exception as e:
+                print(colored(t("dl_err").format(e), "red"))
+        
+        time.sleep(3)
+        m_settings()
+        
+    elif ans == choices[3]:
+        quality_choices = [t("qual_source"), "1080p", "720p", "480p", "360p", t("back")]
+        chosen = open_menu(choices=quality_choices, prompt=t("qual_prompt"), height=7)
+        
+        if chosen != t("back"):
+            if chosen == t("qual_source") or chosen.startswith("best"):
+                ds.settings["player_quality"] = "best"
+            else:
+                ds.settings["player_quality"] = chosen
+            ds.save()
+            print(colored(t("qual_success").format(ds.settings['player_quality']), "green"))
+            time.sleep(2)
+        m_settings()
+
+    elif ans == choices[4]:
+        lang_choices = ["Polski (pl)", "English (en)", t("back")]
+        chosen = open_menu(choices=lang_choices, prompt=t("lang_prompt"), height=5)
+        
+        if chosen == "Polski (pl)":
+            ds.settings["language"] = "pl"
+            ds.save()
+            print(colored(t("lang_success"), "green"))
+            time.sleep(2)
+        elif chosen == "English (en)":
+            ds.settings["language"] = "en"
+            ds.save()
+            print(colored(t("lang_success"), "green"))
+            time.sleep(2)
+            
+        m_settings()
+
+    elif ans == choices[5]:
+        m_welcome()
+
+
+def m_discord():
+    webbrowser.open('https://discord.gg/Y4RcwbE5CJ')
+    m_welcome()
+
+
+def m_mylist():
+    has_token = ds.settings.get("anilist_token") != ""
+    
+    if has_token:
+        clear()
+        print(colored(t("mylist_sync"), "cyan"))
+        
+        token = ds.settings["anilist_token"]
+        mal_ids = get_anilist_plan_to_watch(token)
+        
+        if mal_ids is not None:
+            all_series = get_cached_series_list()
+            
+            for series in all_series:
+                if series['mal_id'] in mal_ids:
+                    if series not in ds.mylist:
+                        ds.mylist.append(series)
+                        
+            for local_anime in ds.mylist:
+                if local_anime['mal_id'] not in mal_ids:
+                    threading.Thread(target=sync_anilist_list_status, args=(local_anime['mal_id'], token, True), daemon=True).start()
+                        
+            ds.save()
+
+    choices = [t("back")]
+    
+    display_list = list(reversed(ds.mylist))
+    
+    for element in display_list:
+        choices.append(f"{element['title']} | {element['title_en']}")
+
+    prompt_txt = t("mylist_prompt")
+    ans = open_menu(choices=choices, prompt=prompt_txt, message=MOJA_LISTA)
+    
+    if ans == choices[0]:
+        m_welcome()
+    else:
+        index = choices.index(ans)
+        m_details(display_list[index - 1])
+
+
+def m_history():
+    choices = [t("back")]
+    display_map = {}
+    
+    for item in ds.history[:50]:  
+        display_text = f"[{item['dt_string']}] [{item['source']}] {item['title']} [{t('def_qmark').format(item['episode'], '')[:-1]}]"
+        choices.append(display_text)
+        display_map[display_text] = item
+
+    prompt = t("hist_prompt")
+    ans = open_menu(choices=choices, prompt=prompt, message=HISTORIA)
+    
+    if ans == choices[0]:
+        m_welcome()
+    else:
+        selected_item = display_map[ans]
+        if selected_item.get('slug'):
+            details = get_details_for_serie(selected_item['slug'])
+            if details and details != 404:
+                m_details(details)
+            else:
+                print(colored(t("hist_err_server"), "red"))
+                time.sleep(2)
+                m_history()
+        else:
+            print(colored(t("hist_err_profile"), "yellow"))
+            time.sleep(3)
+            m_history()
+
+
+def m_find():
+    choices = [
+        t("find_title"),
+        t("find_title_en"),
+        t("find_mal"),
+        t("find_genre"),
+        t("back")
+    ]
+
+    prompt = t("find_prompt")
+    ans = open_menu(choices=choices, prompt=prompt, height=5, message=SZUKAJ)
+
+    if ans == choices[0]:
+        perform_search('title')
+    elif ans == choices[1]:
+        perform_search('title_en')
+    elif ans == choices[2]:
+        perform_search('mal_id')
+    elif ans == choices[3]:
+        perform_genre_search()
+    elif ans == choices[4]:
+        m_welcome()
+
+
+def perform_search(search_key):
+    all_series_json = get_cached_series_list()
+    
+    choices = [serie[search_key] for serie in all_series_json]
+    choices.append(t("back"))
+    
+    prompt = t("find_search")
+    ans = open_menu(choices=choices, prompt=prompt, message=SZUKAJ)
+    
+    if ans == t("back"):
+        m_find()
+        return
+        
+    ans_index = choices.index(ans)
+    ans_details = all_series_json[ans_index]
+
+    m_details(details=ans_details)
+
+
+def perform_genre_search():
+    import random
+    
+    all_series_json = get_cached_series_list()
+    
+    unique_genres = set()
+    for serie in all_series_json:
+        if 'genres' in serie and isinstance(serie['genres'], list):
+            for genre in serie['genres']:
+                unique_genres.add(genre.strip())
+                
+    if not unique_genres:
+        print(colored(t("genre_err"), "red"))
+        time.sleep(2)
+        m_find()
+        return
+
+    genres_list = sorted(list(unique_genres))
+    genres_list.append(t("back"))
+
+    ans_genre = open_menu(
+        choices=genres_list, 
+        prompt=t("genre_prompt"), 
+        message=SZUKAJ, 
+        height=10
+    )
+    
+    if ans_genre == t("back"):
+        m_find()
+        return
+
+    filtered_series = []
+    for serie in all_series_json:
+        if 'genres' in serie and ans_genre in serie['genres']:
+            filtered_series.append(serie)
+
+    sort_choices = [t("sort_trending"), t("sort_alpha"), t("sort_surprise"), t("back")]
+    ans_sort = open_menu(choices=sort_choices, prompt=t("sort_prompt"), message=SZUKAJ, height=6)
+    
+    if ans_sort == t("back"):
+        perform_genre_search()
+        return
+        
+    if ans_sort == t("sort_surprise"):
+        ans_details = random.choice(filtered_series)
+        m_details(details=ans_details)
+        return
+        
+    trending_list = get_cached_trending_list()
+    
+    if ans_sort == t("sort_trending"):
+        def sort_key(serie):
+            mal_id = serie.get('mal_id')
+            if mal_id in trending_list:
+                return (trending_list.index(mal_id), serie.get('title', '').lower())
+            return (999999, serie.get('title', '').lower())
+            
+        filtered_series.sort(key=sort_key)
+    else:
+        filtered_series.sort(key=lambda x: x.get('title', '').lower())
+
+    choices_titles = []
+    for serie in filtered_series:
+        prefix = "⭐ " if ans_sort == t("sort_trending") and serie.get('mal_id') in trending_list else ""
+        choices_titles.append(f"{prefix}{serie.get('title', 'Brak')} / {serie.get('title_en', 'Brak')}")
+        
+    choices_titles.append(t("back"))
+
+    ans_anime = open_menu(
+        choices=choices_titles, 
+        prompt=t("genre_res_prompt").format(ans_genre, len(filtered_series)), 
+        message=SZUKAJ, 
+        height=10
+    )
+
+    if ans_anime == t("back"):
+        perform_genre_search()
+        return
+
+    ans_index = choices_titles.index(ans_anime)
+    ans_details = filtered_series[ans_index]
+
+    m_details(details=ans_details)
+
+
+def m_trending():
+    trending_anime_malids = get_cached_trending_list()
+    all_anime_list = get_cached_series_list()
+
+    top_anime = []
+
+    for anime in all_anime_list:
+        if anime['mal_id'] in trending_anime_malids:
+            order = trending_anime_malids.index(anime['mal_id'])
+            slug = anime['slug']
+            title = anime['title']
+            title_en = anime['title_en']
+            
+            top_anime.append([order, slug, title, title_en])
+
+    top_anime.sort(key=lambda x: x[0])
+    
+    choices = [t("back")]
+    for anime in top_anime:
+        choices.append(f"{anime[0] + 1}. {anime[2]} / {anime[3]}")
+
+    prompt = t("trend_prompt")
+
+    ans = open_menu(choices=choices, prompt=prompt, message=NA_CZASIE)
+    
+    if ans == choices[0]:
+        m_welcome()
+    else:
+        ans_index = choices.index(ans)
+        ans_slug = top_anime[ans_index - 1][1]
+        m_details(get_details_for_serie(SLUG=ans_slug))
+
+
+def m_details(details):
+    last_watched_ep = 0
+    for item in ds.history:
+        if isinstance(item, dict) and item.get('slug') == details['slug']:
+            try:
+                last_watched_ep = int(item.get('episode', 0))
+                break
+            except ValueError:
+                pass
+                
+    next_ep = last_watched_ep + 1 if last_watched_ep > 0 else 1
+
+    choices = [
+        f"{t('det_cont')} {next_ep}" if last_watched_ep > 0 else t("det_first"),
+        t("det_list"),
+        t("det_dl_season"),
+        t("det_dl_eps")
+    ]
+
+    if details in ds.mylist:
+        choices.append(t("det_rm_list"))
+    else:
+        choices.append(t("det_add_list"))
+
+    choices.append(t("det_search"))
+    choices.append(t("menu_main"))
+
+    prompt_txt = t("det_prompt")
+
+    genres = "[ "
+    for genre in details['genres']:
+        genres += genre + ","
+    genres += " ]"
+
+    score_bar, description, episode_count = get_details_from_anilist(str(details["mal_id"]))
+
+    max_ep = episode_count if isinstance(episode_count, int) else 9999
+
+    ans = open_menu(
+        choices=choices,
+        prompt=prompt_txt,
+        qmark=f'{details["title"]} / {details["title_en"]} \n [{t("det_ep_count")}: {episode_count}] [{t("det_score")}: {score_bar}]',
+        message=genres,
+        height=7,
+        image=details['cover'],
+        description=description 
+    )
+
+    if ans == choices[0]:
+        ds.continue_data[0] = details
+        ds.continue_data[1] = next_ep
+        ds.save()
+        w_players(details['slug'], next_ep)
+        
+    elif ans == choices[1]:
+        ds.continue_data[0] = details
+        w_list(details['slug'])
+        
+    elif ans == choices[2]: 
+        w_download_season(details, base_download_dir=ds.settings["download_path"])
+        m_details(details)
+        
+    elif ans == choices[3]: 
+        questions = [{
+            "type": "input", 
+            "message": t("det_dl_input").format(episode_count), 
+            "name": "episodes_input"
+        }]
+        res = prompt(questions)
+        
+        if res['episodes_input']:
+            episodes_to_download = set()
+            
+            for part in res['episodes_input'].split(','):
+                part = part.strip()
+                if not part: 
+                    continue
+                    
+                if '-' in part:
+                    try:
+                        start, end = map(int, part.split('-'))
+                        start, end = min(start, end), max(start, end)
+                        start_safe = max(1, start)
+                        end_safe = min(max_ep, end)
+                        episodes_to_download.update(range(start_safe, end_safe + 1))
+                    except ValueError: 
+                        pass 
+                else:
+                    try:
+                        ep = int(part)
+                        if 1 <= ep <= max_ep:
+                            episodes_to_download.add(ep)
+                    except ValueError: 
+                        pass 
+
+            ep_list = sorted(list(episodes_to_download))
+            
+            if not ep_list:
+                print(colored(t("det_dl_err"), "red"))
+                time.sleep(2)
+            else:
+                w_download_season(details, ep_list, base_download_dir=ds.settings["download_path"])
+
+        m_details(details)
+        
+    elif ans == choices[4]:
+        has_token = ds.settings.get("anilist_token") != ""
+        token = ds.settings["anilist_token"] if has_token else ""
+        
+        if details in ds.mylist:
+            ds.mylist.remove(details)
+            ds.save()
+            if has_token:
+                threading.Thread(target=sync_anilist_list_status, args=(details['mal_id'], token, False), daemon=True).start()
+            m_details(details)
+        else:
+            ds.mylist.append(details)
+            ds.save()
+            if has_token:
+                threading.Thread(target=sync_anilist_list_status, args=(details['mal_id'], token, True), daemon=True).start()
+            m_details(details)
+            
+    elif ans == choices[5]:
+        m_find()
+        
+    elif ans == choices[6]:
+        m_welcome()
+
+
+def w_list(SLUG):
+    details = ds.continue_data[0]
+    
+    if not details or details.get('slug') != SLUG:
+        details = get_details_for_serie(SLUG)
+        ds.continue_data[0] = details
+        
+    last_episode = get_quick_episode_count(details.get('mal_id'))
+
+    if last_episode <= 0:
+        clear()
+        print(colored(t("list_err"), "red"))
+        time.sleep(3)
+        m_details(details)
+        return
+
+    choices = list(range(1, last_episode + 1))
+    choices.append(t("back"))
+
+    prompt = t("list_prompt")
+    ans = open_menu(choices=choices, prompt=prompt)
+    
+    if ans == t("back"):
+        m_details(details)
+    else:
+        ds.continue_data[1] = ans
+        ds.save()
+        w_players(SLUG, ans)
+
+
+def w_players(SLUG, NUMBER, err=''):
+    from docchi_api_connector import get_players_list, extract_lycoris_direct_link, get_english_players
+    import shutil
+    import subprocess
+    from concurrent.futures import ThreadPoolExecutor
+
+    players = []
+    details = ds.continue_data[0]
+    current_lang = ds.settings.get("language", "pl")
+
+    clear()
+    print(colored(t("pl_load").format(NUMBER), "cyan"))
+    
+    if current_lang == "pl":
+        print(colored(t("pl_pl_src"), "yellow"))
+        pl_players_list = get_players_list(SLUG, NUMBER)
+        if pl_players_list != 404 and isinstance(pl_players_list, list):
+            for player in pl_players_list:
+                players.append(["[PL]", player['player_hosting'], player['player']])
+
+    print(colored(t("pl_en_src"), "yellow"))
+    if details:
+        en_players_list = get_english_players(details, NUMBER)
+        if en_players_list:
+            for player in en_players_list:
+                players.append(["[EN]", player['player_hosting'], player['player']])
+
+    if not players:
+        clear()
+        print(colored(t("pl_404"), "red"))
+        time.sleep(3)
+        if details:
+            m_details(details)
+        else:
+            m_details(get_details_for_serie(SLUG))
+        return
+
+    print(colored(t("pl_analyzing"), "cyan"))
+    
+    def check_link(player):
+        hosting_name, url = player[1], player[2]
+        url_lower = url.lower()
+        
+        if "lycoris" in url_lower:
+            direct = extract_lycoris_direct_link(url)
+            return ("ok", "Auto") if direct else ("error", "")
+            
+        elif "mega" in url_lower:
+            return ("mega", "MEGA") if shutil.which('megatools') is not None else ("error", "")
+            
+        else:
+            try:
+                res = subprocess.run(
+                    ["yt-dlp", "--print", "%(resolution)s", "--no-warnings", url],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.DEVNULL,
+                    text=True,
+                    timeout=15 
+                )
+                
+                if res.returncode == 0:
+                    lines = [l for l in res.stdout.strip().split('\n') if l]
+                    if lines and lines[-1] != "NA":
+                        raw_res = lines[-1].strip().lower()
+                        if "x" in raw_res:
+                            resolved_res = f"{raw_res.split('x')[-1]}p"
+                        elif raw_res.isdigit():
+                            resolved_res = f"{raw_res}p"
+                        else:
+                            resolved_res = raw_res
+                    else:
+                        resolved_res = t("pl_unknown")
+                        
+                    return ("ok", resolved_res)
+                    
+                res_fallback = subprocess.run(
+                    ["yt-dlp", "-q", "--simulate", "--no-warnings", url],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=15 
+                )
+                
+                if res_fallback.returncode == 0:
+                    return ("ok", t("pl_unknown"))
+                    
+                return ("error", "")
+            except:
+                return ("error", "")
+
+    with ThreadPoolExecutor(max_workers=15) as executor:
+        results = list(executor.map(check_link, players))
+
+    choices = []
+    
+    for player, result in zip(players, results):
+        status, res_text = result
+        lang_tag = player[0]
+        hosting_name = player[1]
+        source_link = player[2]
+
+        if status == "ok":
+            prefix = f"✅ {lang_tag} [{res_text}] "
+        elif status == "mega":
+            prefix = f"🟡 {lang_tag} [MEGA] "
+        else:
+            prefix = f"❌ {lang_tag} [{t('pl_none')}] "
+            
+        display_line = (prefix + hosting_name).ljust(45) + f" | {t('pl_link')}: " + source_link
+        choices.append(display_line)
+
+    current_quality = ds.settings.get("player_quality", "best")
+    choices.append(f"{t('pl_chg_qual')} ({t('currently')}: {current_quality})")
+    choices.append(t("menu_main"))
+
+    prompt = t("pl_prompt")
+    ans = open_menu(choices=choices, prompt=prompt, qmark=err)
+
+    if ans == choices[-1]:
+        m_welcome()
+        return
+        
+    if ans == choices[-2]: 
+        quality_choices = [t("qual_source"), "1080p", "720p", "480p", "360p"]
+        chosen = open_menu(choices=quality_choices, prompt=t("qual_prompt"), height=6)
+        
+        if chosen == t("qual_source") or chosen.startswith("best"):
+            ds.settings["player_quality"] = "best"
+        else:
+            ds.settings["player_quality"] = chosen
+            
+        ds.save()
+        w_players(SLUG, NUMBER, err=t("pl_qual_chg").format(ds.settings["player_quality"]))
+        return
+
+    ans_index_in_choices = choices.index(ans)
+    selected_player_url = players[ans_index_in_choices][2]
+
+    mal_id = ds.continue_data[0].get('mal_id') if ds.continue_data[0] else None
+
+    process = mpv_play(
+        URL=selected_player_url, 
+        quality=ds.settings.get("player_quality", "best"),
+        mal_id=mal_id,
+        ep_number=NUMBER
+    )
+
+    print(t("pl_start"))
+    time.sleep(3)                                      
+    if process == None or process.poll() is not None:
+        w_players(SLUG, NUMBER, err=t("pl_err_src"))
+
+    w_default(SLUG, NUMBER, process)
+
+
+def w_default(SLUG, NUMBER, process):
+    details = ds.continue_data[0]
+    if not details or details.get('slug') != SLUG:
+        details = get_details_for_serie(SLUG)
+        
+    how_many_episodes = get_quick_episode_count(details.get('mal_id'))
+
+    if how_many_episodes <= 0:
+        how_many_episodes = NUMBER
+
+    if ds.settings.get("rpc_enabled", True):
+        update_rpc(t("def_rpc_watch").format(details.get('title', 'Anime'), NUMBER, how_many_episodes), ds.settings.get("rpc_status", t("rpc_def_status")))
+    else:
+        update_rpc(t("def_rpc_def"), ds.settings.get("rpc_status", t("rpc_def_status")))
+
+    threading.Thread(target=delayed_tracker, args=(details, NUMBER, process, how_many_episodes), daemon=True).start()
+
+    choices = [t("def_chg_src")]
+    token = ds.settings.get("anilist_token", "")
+
+    if NUMBER < how_many_episodes:
+        choices.append(t("def_next"))
+    else:
+        if token != "":
+            choices.append(t("def_rate"))
+
+    choices.extend([
+        t("def_prev"),
+        t("def_list"),
+        t("menu_main")
+    ])
+
+    prompt = t("def_prompt")
+    ans = open_menu(choices=choices, prompt=prompt, qmark=t("def_qmark").format(NUMBER, how_many_episodes), height=7)
+
+    if ans == choices[0]:
+        kill_process(process)
+        update_rpc(t("menu_main"), t("rpc_searching"))
+        w_players(SLUG, NUMBER)
+
+    elif ans == t("def_next"):
+        kill_process(process)
+        update_rpc(t("menu_main"), t("rpc_searching"))
+        next_ep = NUMBER + 1
+        ds.continue_data[1] = next_ep
+        ds.save()
+        w_players(SLUG, next_ep)
+        
+    elif ans == t("def_rate"):
+        kill_process(process) 
+        if token != "":
+            clear()
+            
+            from anilist_connector import rate_anilist_anime, get_anilist_score_format
+            
+            print(colored(t("rate_info"), "cyan"))
+            score_format = get_anilist_score_format(token)
+            
+            rate_choices = []
+            
+            if score_format == "POINT_100":
+                rate_choices = [str(i) for i in range(100, 0, -1)]
+            elif score_format == "POINT_10_DECIMAL":
+                rate_choices = [f"{i/10:.1f}" for i in range(100, 0, -1)]
+            elif score_format == "POINT_5":
+                rate_choices = ["5 ⭐", "4 ⭐", "3 ⭐", "2 ⭐", "1 ⭐"]
+            elif score_format == "POINT_3":
+                rate_choices = [f"🙂 {t('rate_good')}", f"😐 {t('rate_avg')}", f"🙁 {t('rate_bad')}"]
+            else: 
+                rate_choices = [str(i) for i in range(10, 0, -1)]
+                
+            rate_choices.append(t("rate_no"))
+            
+            ans_rate = open_menu(
+                choices=rate_choices,
+                prompt=t("rate_prompt"),
+                height=12
+            )
+            
+            if ans_rate != t("rate_no"):
+                score_raw = 0
+                
+                if score_format == "POINT_100":
+                    score_raw = int(ans_rate)
+                elif score_format == "POINT_10_DECIMAL":
+                    score_raw = int(float(ans_rate) * 10)
+                elif score_format == "POINT_5":
+                    score_raw = int(ans_rate.split()[0]) * 20  
+                elif score_format == "POINT_3":
+                    if ":)" in ans_rate: score_raw = 100
+                    elif ":|" in ans_rate: score_raw = 67
+                    else: score_raw = 33
+                else:
+                    score_raw = int(ans_rate) * 10
+                
+                print(colored(t("rate_send"), "cyan"))
+                if rate_anilist_anime(details.get('mal_id'), score_raw, token):
+                    print(colored(t("rate_ok"), "green"))
+                else:
+                    print(colored(t("rate_err"), "red"))
+                time.sleep(2)
+                
+        update_rpc(t("menu_main"), t("rpc_searching"))
+        m_welcome()
+
+    elif ans == t("def_finish"):
+        kill_process(process)
+        clear()
+        print(colored(t("finish_msg").format(details.get('title', 'Brak tytułu')), "green"))
+        time.sleep(2)
+        update_rpc(t("menu_main"), t("rpc_searching"))
+        m_welcome()
+
+    elif ans == t("def_prev"):
+        kill_process(process)
+        update_rpc(t("menu_main"), t("rpc_searching"))
+        prev_ep = NUMBER - 1 if NUMBER >= 2 else NUMBER
+        ds.continue_data[1] = prev_ep
+        ds.save()
+        w_players(SLUG, prev_ep)
+        
+    elif ans == t("def_list"):
+        kill_process(process)
+        update_rpc(t("menu_main"), t("rpc_searching"))
+        w_list(SLUG)
+        
+    elif ans == t("menu_main"):
+        kill_process(process)
+        update_rpc(t("menu_main"), t("rpc_searching"))
+        m_welcome()
+
+
+def m_resume():
+    resume_list = []
+    seen_slugs = set()
+
+    for item in ds.history:
+        if isinstance(item, dict) and item.get('source', '').startswith('Doccli - Online'):
+            slug = item.get('slug')
+            if slug and slug not in seen_slugs:
+                seen_slugs.add(slug)
+                
+                ep_str = str(item.get('episode', '1'))
+                try:
+                    next_ep = int(ep_str) + 1
+                except ValueError:
+                    next_ep = 1
+
+                resume_list.append({
+                    'slug': slug,
+                    'title': item.get('title'),
+                    'next_ep': next_ep
+                })
+
+    if not resume_list:
+        print(colored(t("res_empty"), "yellow"))
+        time.sleep(2)
+        m_welcome()
+        return
+
+    choices = [t("back")]
+    display_map = {}
+    
+    for item in resume_list[:15]:  
+        display_text = t("res_resume").format(item['title'], item['next_ep'])
+        choices.append(display_text)
+        display_map[display_text] = item
+
+    ans = open_menu(choices=choices, prompt=t("res_prompt"), height=10)
+    
+    if ans == t("back"):
+        m_welcome()
+    else:
+        selected = display_map[ans]
+        slug = selected['slug']
+        next_ep = selected['next_ep']
+        
+        clear()
+        print(colored(t("res_load"), "cyan"))
+        details = get_details_for_serie(slug)
+        
+        ds.continue_data[0] = details
+        ds.continue_data[1] = next_ep
+        ds.save()
+        
+        w_players(slug, next_ep)
+
+def m_calendar():
+    from anilist_connector import get_anilist_schedule
+    from datetime import datetime
+    
+    clear()
+    print(colored(t("cal_info"), "cyan"))
+    
+    schedule = get_anilist_schedule(days=7) 
+    
+    if not schedule:
+        print(colored(t("cal_err1"), "red"))
+        time.sleep(2)
+        m_welcome()
+        return
+
+    all_series = get_cached_series_list()
+    local_db = {str(s.get('mal_id')): s for s in all_series if s.get('mal_id')}
+
+    choices_map = {}
+    choices = []
+
+    days_names = t("cal_days")
+
+    for item in schedule:
+        if not item.get('media') or not item['media'].get('idMal'):
+            continue
+            
+        mal_id = str(item['media']['idMal'])
+        
+        if mal_id in local_db:
+            local_anime = local_db[mal_id]
+            air_time = int(item['airingAt'])
+            ep_num = item['episode']
+
+            dt = datetime.fromtimestamp(air_time)
+            day_name = days_names[dt.weekday()]
+            time_str = dt.strftime("%H:%M")
+            date_str = dt.strftime("%d.%m")
+
+            display_str = f"[{day_name} {date_str} | {time_str}] {local_anime.get('title', t('cal_none'))} (Odc. {ep_num})"
+            choices.append(display_str)
+            choices_map[display_str] = local_anime
+
+    if not choices:
+        print(colored(t("cal_err2"), "yellow"))
+        time.sleep(3)
+        m_welcome()
+        return
+
+    choices.append(t("back"))
+
+    ans = open_menu(
+        choices=choices, 
+        prompt=t("cal_prompt"), 
+        height=12,
+        message=KALENDARZ
+    )
+
+    if ans == t("back"):
+        m_welcome()
+    else:
+        selected_anime = choices_map[ans]
+        m_details(selected_anime)
+# =======================================
+# PLIK: menus_decor.py
+# =======================================
+
+MAIN_MENU = r'''
+  _____    ____    _____  _____  _       _____        ___      ____  ____    __ 
+ |  __ \  / __ \  / ____|/ ____|| |     |_   _|      |__ \    |___ \|___ \  /_ |
+ | |  | || |  | || |    | |     | |       | |   __   __ ) |     __) | __) |  | |
+ | |  | || |  | || |    | |     | |       | |   \ \ / // /     |__ < |__ <   | |
+ | |__| || |__| || |____| |____ | |____  _| |_   \ V // /_  _  ___) |___) |_ | |
+ |_____/  \____/  \_____|\_____||______||_____|   \_/|____|(_)|____/|____/(_)|_|
+'''
+
+NA_CZASIE = r'''
+  _   _              _____  ______            _____  _____  ______ 
+ | \ | |    /\      / ____||___  /    /\     / ____||_   _||  ____|
+ |  \| |   /  \    | |        / /    /  \   | (___    | |  | |__   
+ | . ` |  / /\ \   | |       / /    / /\ \   \___ \   | |  |  __|  
+ | |\  | / ____ \  | |____  / /__  / ____ \  ____) | _| |_ | |____ 
+ |_| \_|/_/    \_\  \_____|/_____|/_/    \_\|_____/ |_____||______|
+'''
+
+SZUKAJ = r'''
+   _____  ______ _    _  _  __               _ 
+  / ____||___  /| |  | || |/ /    /\        | |
+ | (___     / / | |  | || ' /    /  \       | |
+  \___ \   / /  | |  | ||  <    / /\ \  _   | |
+  ____) | / /__ | |__| || . \  / ____ \| |__| |
+ |_____/ /_____| \____/ |_|\_\/_/    \_\\____/ 
+'''
+
+MOJA_LISTA=r'''
+  __  __   ____        _                 _       _____   _____  _______        
+ |  \/  | / __ \      | |   /\          | |     |_   _| / ____||__   __| /\    
+ | \  / || |  | |     | |  /  \         | |       | |  | (___     | |   /  \   
+ | |\/| || |  | | _   | | / /\ \        | |       | |   \___ \    | |  / /\ \  
+ | |  | || |__| || |__| |/ ____ \       | |____  _| |_  ____) |   | | / ____ \ 
+ |_|  |_| \____/  \____//_/    \_\      |______||_____||_____/    |_|/_/    \_\ 
+'''
+
+HISTORIA = r'''
+  _    _  _____   _____  _______  ____   _____   _____           
+ | |  | ||_   _| / ____||__   __|/ __ \ |  __ \ |_   _|    /\    
+ | |__| |  | |  | (___     | |  | |  | || |__) |  | |     /  \   
+ |  __  |  | |   \___ \    | |  | |  | ||  _  /   | |    / /\ \  
+ | |  | | _| |_  ____) |   | |  | |__| || | \ \  _| |_  / ____ \ 
+ |_|  |_||_____||_____/    |_|   \____/ |_|  \_\|_____|/_/    \_\ 
+'''
+
+MOJA_BIBLIOTEKA = r'''
+  __  __   ____        _            ____  _____  ____   _       _____  ____  _______  ______  _  __          
+ |  \/  | / __ \      | |   /\     |  _ \|_   _||  _ \ | |     |_   _|/ __ \|__   __||  ____|| |/ /    /\     
+ | \  / || |  | |     | |  /  \    | |_) | | |  | |_) || |       | | | |  | |  | |   | |__   | ' /    /  \    
+ | |\/| || |  | | _   | | / /\ \   |  _ <  | |  |  _ < | |       | | | |  | |  | |   |  __|  |  <    / /\ \   
+ | |  | || |__| || |__| |/ ____ \  | |_) |_| |_ | |_) || |____  _| |_| |__| |  | |   | |____ | . \  / ____ \  
+ |_|  |_| \____/  \____//_/    \_\ |____/|_____||____/ |______||_____|\____/   |_|   |______||_|\_\/_/    \_\ 
+ '''
+
+KALENDARZ = r"""
+  _  __           _       ______  _   _  _____            _____   ______
+ | |/ /    /\    | |     |  ____|| \ | ||  __ \    /\    |  __ \ |___  /
+ | ' /    /  \   | |     | |__   |  \| || |  | |  /  \   | |__) |   / / 
+ |  <    / /\ \  | |     |  __|  | . ` || |  | | / /\ \  |  _  /   / /  
+ | . \  / ____ \ | |____ | |____ | |\  || |__| |/ ____ \ | | \ \  / /__ 
+ |_|\_\/_/    \_\|______||______||_| \_||_____//_/    \_\|_|  \_\/_____|
+"""
+# =======================================
+# PLIK: player.py
+# =======================================
+
+import os
+import shutil
+import subprocess
+import tempfile
+import time
+import sys
+from datetime import datetime
+from subprocess import Popen, DEVNULL
+from termcolor import colored
+
+# Doccli modules
+from storage import ds
+from docchi_api_connector import extract_lycoris_direct_link
+from anilist_connector import get_duration_by_malid, update_anilist_progress, generate_aniskip_chapters
+from i18n import t  # <--- NASZ NOWY SYSTEM TŁUMACZEŃ
+
+
+def kill_process(process):
+    """Bezpiecznie zamyka proces odtwarzacza wideo."""
+    if not process:
+        return
+    
+    if os.name == "nt":
+        subprocess.run(
+            ["taskkill", "/F", "/T", "/PID", str(process.pid)], 
+            capture_output=True
+        )
+    else:
+        process.terminate()
+
+
+def mpv_play(URL, quality="best", mal_id=None, ep_number=None):
+    """Uruchamia odtwarzacz mpv z odpowiednimi parametrami."""
+    mpv_exec = "mpv.exe" if os.name == "nt" else "mpv"
+
+    if shutil.which('mpv') is None:
+        print(colored(t("player_err"), "red"), colored(t("player_req_install"), "white"), colored("mpv", "green"), '\n')
+        sys.exit()
+    if shutil.which('yt-dlp') is None:
+        print(colored(t("player_err"), "red"), colored(t("player_req_install"), "white"), colored("yt-dlp", "green"), '\n')
+        sys.exit()
+        
+    temp_dir = tempfile.gettempdir()
+    chapters_file = os.path.join(temp_dir, "doccli_chapters")
+
+    generate_aniskip_chapters(mal_id, ep_number, chapters_file)
+
+    if "lycoris" in URL.lower():
+        direct_url = extract_lycoris_direct_link(URL)
+        if direct_url:
+            URL = direct_url
+            print(colored(t("player_lycoris_ok"), "green"))
+        else:
+            print(colored(t("player_lycoris_fail"), "yellow"))
+
+    ytdl_format_arg = "bestvideo+bestaudio/best"
+    if quality != "best":
+        height = quality.replace('p', '')
+        ytdl_format_arg = f"bestvideo[height<=?{height}]+bestaudio/best"
+
+    details = ds.continue_data[0]
+    
+    # Wyświetlanie poprawnego tytułu w oknie MPV w zależności od języka programu
+    if ds.settings.get("language") == "en" and details and details.get('title_en'):
+        anime_title = details.get('title_en')
+    else:
+        anime_title = details.get('title', t("player_unknown_anime")) if details else t("player_unknown_anime")
+        
+    media_title = f"{anime_title} - {t('player_ep')} {ep_number}"
+
+    if "mega" in URL:
+        if shutil.which('megatools') is None:
+            print(colored(t("player_warn"), "yellow"), colored(t("player_req_mega"), "white"), colored("megatools", "green"), '\n')
+            sys.exit()
+
+        video_extensions = ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.webm']
+        files_in_directory = os.listdir(temp_dir)
+
+        for file in files_in_directory:
+            if file.lower().endswith(tuple(video_extensions)):
+                file_path = os.path.join(temp_dir, file)
+                try:
+                    os.remove(file_path)
+                except OSError:
+                    pass 
+
+        mega_url = URL.replace('embed', 'file')
+        before_files = set(os.listdir(temp_dir))
+        
+        os.system(f'megadl {mega_url} --path {temp_dir}')
+        
+        after_files = set(os.listdir(temp_dir))
+        new_files = after_files - before_files
+        video_files = [file for file in new_files if file.lower().endswith(tuple(video_extensions))]
+
+        try:
+            process = Popen(args=[mpv_exec,
+                                  "--save-position-on-quit",
+                                  "--input-terminal=no",
+                                  f"--force-media-title={media_title}",
+                                  f"--chapters-file={chapters_file}",
+                                  os.path.join(temp_dir, video_files[0])],
+                            shell=False,
+                            stdout=DEVNULL,
+                            stderr=DEVNULL,)
+            return process
+        except IndexError:
+            return None
+
+    else:
+        process = Popen(args=[mpv_exec,
+                              "--save-position-on-quit",
+                              "--input-terminal=no",
+                              f"--force-media-title={media_title}",
+                              f"--ytdl-format={ytdl_format_arg}",
+                              f"--chapters-file={chapters_file}",
+                              URL],
+                        shell=False,
+                        stdout=DEVNULL,
+                        stderr=DEVNULL)
+        return process
+
+
+def delayed_tracker(details, number, process, total_episodes):
+    """Zapisuje postęp oglądania po upływie odpowiedniego czasu."""
+    for _ in range(100):
+        if process is None or process.poll() is not None:
+            return  
+        time.sleep(1)
+        
+    now = datetime.now()
+    dt_string = now.strftime("%d/%m/%Y %H:%M")
+    
+    duration = get_duration_by_malid(details['mal_id'])
+    
+    entry = {
+        "timestamp": now.timestamp(),
+        "dt_string": dt_string,
+        "title": details['title'],
+        "title_en": details['title_en'],
+        "episode": str(number),
+        "source": "Doccli - Online",
+        "slug": details['slug'],
+        "duration": duration
+    }
+    
+    ds.history.insert(0, entry)
+    ds.save()
+    
+    token = ds.settings.get("anilist_token", "")
+    
+    if token != "":
+        is_completed = (number == total_episodes)
+        update_anilist_progress(details['mal_id'], number, token, is_completed)
+# =======================================
+# PLIK: stats.py
+# =======================================
+
+import os
+import pathlib
+from datetime import date, datetime
+
+# From pip
+from rich.align import Align
+from rich.console import Console, Group
+from rich.panel import Panel
+from rich.table import Table
+from termcolor import colored
+
+# Doccli modules
+from storage import ds
+from ui_utils import clear
+from anilist_connector import get_anilist_global_stats, get_anilist_advanced_stats
+from i18n import t
+
+def get_folder_size():
+        
+    if ds.settings.get("download_path") != "":
+        folder_path = ds.settings["download_path"]
+    else:
+        folder_path = os.path.join(os.getcwd(), "doccli_downloads")
+
+    total_size = 0
+    if os.path.exists(folder_path):
+        for dirpath, dirnames, filenames in os.walk(folder_path):
+            for f in filenames:
+                fp = os.path.join(dirpath, f)
+                if not os.path.islink(fp):
+                    total_size += os.path.getsize(fp)
+    return total_size
+
+def get_user_rank(hours):
+    if hours < 10: return f"[#FFFFFF]🌱 {t('rank_freshman')}[/#FFFFFF]"
+    elif hours < 25: return f"[#E6F2FF]🌸 {t('rank_viewer')}[/#E6F2FF]"
+    elif hours < 50: return f"[#CCE6FF]🍙 {t('rank_novice')}[/#CCE6FF]"
+    elif hours < 75: return f"[#99CCFF]🗡️ {t('rank_disciple')}[/#99CCFF]"
+    elif hours < 100: return f"[#66B3FF]🛡️ {t('rank_squire')}[/#66B3FF]"
+    elif hours < 125: return f"[#3399FF]🥷 {t('rank_genin')}[/#3399FF]"
+    elif hours < 150: return f"[#0080FF]📜 {t('rank_chuunin')}[/#0080FF]"
+    elif hours < 200: return f"[#0066CC]🌪️ {t('rank_jonin')}[/#0066CC]"
+    elif hours < 250: return f"[#004C99]⚔️ {t('rank_samurai')}[/#004C99]"
+    elif hours < 300: return f"[#009999]🍂 {t('rank_ronin')}[/#009999]"
+    elif hours < 400: return f"[#00CC99]🦊 {t('rank_shinobi')}[/#00CC99]"
+    elif hours < 500: return f"[#00FF99]⭐ {t('rank_otaku')}[/#00FF99]"
+    elif hours < 600: return f"[#33FF33]🦅 {t('rank_scout')}[/#33FF33]"
+    elif hours < 700: return f"[#99FF33]🩸 {t('rank_hunter')}[/#99FF33]"
+    elif hours < 850: return f"[#CCFF33]👁️ {t('rank_assassin')}[/#CCFF33]"
+    elif hours < 1000: return f"[#FFFF00]🏴‍☠️ {t('rank_supernova')}[/#FFFF00]"
+    elif hours < 1200: return f"[#FFCC00]⚓ {t('rank_captain')}[/#FFCC00]"
+    elif hours < 1400: return f"[#FF9900]🔮 {t('rank_master')}[/#FF9900]"
+    elif hours < 1600: return f"[#FF6600]🦸 {t('rank_hero')}[/#FF6600]"
+    elif hours < 1800: return f"[#FF3300]🧙‍♂️ {t('rank_archmage')}[/#FF3300]"
+    elif hours < 2000: return f"[#FF0000]👑 {t('rank_king')}[/#FF0000]"
+    elif hours < 2250: return f"[#CC0000]🐉 {t('rank_emperor')}[/#CC0000]"
+    elif hours < 2500: return f"[#FF0066]🌌 {t('rank_deity')}[/#FF0066]"
+    elif hours < 3000: return f"[#FF00CC]👹 {t('rank_titan')}[/#FF00CC]"
+    else: return f"[#9900CC]👑 {t('rank_hikikomori')}[/#99CCFF]"
+
+def m_stats():
+    clear()
+
+    ep_doccli = 0
+    minutes_doccli = 0
+    
+    # --- OBLICZANIE NAWYKÓW ---
+    maraton_dict = {}
+    pora_dict = {
+        t("stat_night"): 0, 
+        t("stat_early"): 0, 
+        t("stat_chill"): 0, 
+        t("stat_evening"): 0
+    }
+    online_count = 0
+    offline_count = 0
+    
+    for item in ds.history:
+        date_str = None
+        is_offline = False
+        
+        if isinstance(item, dict):
+            if item.get("source", "").startswith("Doccli"):
+                ep_doccli += 1
+                minutes_doccli += item.get("duration", 21)
+                date_str = item.get("dt_string", "")
+                is_offline = "Offline" in item.get("source", "")
+        elif isinstance(item, str):
+            ep_doccli += 1
+            minutes_doccli += 21
+            date_str = item[1:17] if len(item) > 17 else ""
+            is_offline = "| Offline" in item
+            
+        # Zliczanie do maratonu i godzin
+        if date_str and len(date_str) >= 16:
+            date_only = date_str[:10]
+            maraton_dict[date_only] = maraton_dict.get(date_only, 0) + 1
+            
+            try:
+                hour = int(date_str[11:13])
+                if 4 <= hour < 12: pora_dict[t("stat_early")] += 1
+                elif 12 <= hour < 17: pora_dict[t("stat_chill")] += 1
+                elif 17 <= hour < 22: pora_dict[t("stat_evening")] += 1
+                else: pora_dict[t("stat_night")] += 1
+            except: pass
+            
+            if is_offline: offline_count += 1
+            else: online_count += 1
+
+    max_maraton = max(maraton_dict.values()) if maraton_dict else 0
+    max_maraton_date = max(maraton_dict, key=maraton_dict.get) if maraton_dict else t("stat_none")
+    ulubiona_pora = max(pora_dict, key=pora_dict.get) if sum(pora_dict.values()) > 0 else t("stat_no_data")
+
+    has_token = ds.settings.get("anilist_token") != ""
+    ep_anilist = 0
+    minutes_anilist = 0
+    adv_stats = None
+    
+    if has_token:
+        ep_anilist, minutes_anilist = get_anilist_global_stats(ds.settings["anilist_token"])
+        adv_stats = get_anilist_advanced_stats(ds.settings["anilist_token"])
+
+    ep_total = max(ep_doccli, ep_anilist) if has_token else ep_doccli
+    minutes_total = max(minutes_doccli, minutes_anilist) if has_token else minutes_doccli
+    
+    percent_doccli = 0
+    if ep_total > 0:
+        percent_doccli = round((ep_doccli / ep_total) * 100, 1)
+
+    ti_c = pathlib.Path(ds.config_dir).stat().st_mtime
+    dt_c = datetime.fromtimestamp(ti_c).strftime("%d/%m/%Y")
+
+    creation_dt = date.fromtimestamp(ti_c)
+    now_dt = date.today()
+    delta_dt = now_dt - creation_dt
+
+    # Średnia tygodniowa w doccli
+    weeks = max(1, delta_dt.days / 7.0)
+    weekly_avg = round(ep_doccli / weeks, 1)
+
+    hours = minutes_total // 60
+    minutes = minutes_total % 60
+    
+    doccli_hours = minutes_doccli // 60
+    doccli_minutes = minutes_doccli % 60
+    
+    size_bytes = get_folder_size()
+    size_gb = round(size_bytes / (1024 ** 3), 2)
+
+    last_watched = t("stat_no_data")
+    if ds.history:
+        first_entry = ds.history[0]
+        if isinstance(first_entry, dict): clean_title = first_entry.get("title", "Nieznany")
+        else:
+            raw_history = str(first_entry) 
+            clean_title = raw_history.split("]", 1)[1].strip() if "]" in raw_history else raw_history
+        last_watched = clean_title[:32] + "..." if len(clean_title) > 35 else clean_title
+
+    user_rank = get_user_rank(doccli_hours)
+    console = Console()
+
+    # --- OBLICZANIE SZEROKOŚCI RESPONSYWNEJ ---
+    try:
+        term_width = console.size.width
+        if term_width < 80: term_width = 80
+    except:
+        term_width = 110
+
+    max_ui_width = min(term_width - 2, 130)
+    left_w = int(max_ui_width * 0.60)
+    right_w = max_ui_width - left_w - 4
+
+    # 1. AKTYWNOŚĆ
+    table_activity = Table(show_header=False, box=None, padding=(0, 2), expand=True)
+    table_activity.add_column("Statystyka", style="cyan")
+    table_activity.add_column("Wartość", justify="right")
+    table_activity.add_row(t("stat_lbl_rank"), user_rank)
+    table_activity.add_row(t("stat_lbl_doccli_eps"), f"[cyan]{ep_doccli}[/cyan]")
+    table_activity.add_row(t("stat_lbl_doccli_time"), f"[cyan]{doccli_hours}h {doccli_minutes}m[/cyan]")
+    table_activity.add_row(t("stat_lbl_total_eps"), f"[red]{ep_total}[/red]")
+    table_activity.add_row(t("stat_lbl_total_time"), f"[cyan]{hours}h {minutes}m[/cyan]")
+    table_activity.add_row(t("stat_lbl_last"), f"[white]{last_watched}[/white]")
+
+    # 2. NAWYKI (Lokalne)
+    table_habits = Table(show_header=False, box=None, padding=(0, 2), expand=True)
+    table_habits.add_column("Statystyka", style="cyan")
+    table_habits.add_column("Wartość", justify="right")
+    table_habits.add_row(t("stat_lbl_marathon"), f"[red]{max_maraton}[/red] odc. ({max_maraton_date})")
+    table_habits.add_row(t("stat_lbl_weekly"), f"[yellow]{weekly_avg}[/yellow] odc.")
+    table_habits.add_row(t("stat_lbl_prime_time"), f"[cyan]{ulubiona_pora}[/cyan]")
+    table_habits.add_row(t("stat_lbl_net_disk"), f"[cyan]{online_count}[/cyan] {t('stat_net_str')} / [green]{offline_count}[/green] {t('stat_disk_str')}")
+
+    # 3. ANILIST (Zewnętrzne)
+    table_al = Table(show_header=False, box=None, padding=(0, 2), expand=True)
+    table_al.add_column("Statystyka", style="cyan")
+    table_al.add_column("Wartość", justify="right")
+    
+    if adv_stats:
+        oldest_plan = adv_stats['oldest_planning'][:22] + "..." if len(adv_stats['oldest_planning']) > 25 else adv_stats['oldest_planning']
+        table_al.add_row(t("stat_lbl_completed_rest"), f"[green]{adv_stats['completed']}[/green] / [red]{adv_stats['not_completed']}[/red]")
+        table_al.add_row(t("stat_lbl_planning"), f"[yellow]{adv_stats['planning_count']}[/yellow]")
+        table_al.add_row(t("stat_lbl_oldest_queue"), f"[white]{oldest_plan}[/white]")
+        table_al.add_row(t("stat_lbl_top_genres"), f"[cyan]{adv_stats['genres']}[/cyan]")
+        mean_s = f"{adv_stats['mean_score']}/100" if adv_stats['mean_score'] > 0 else t("stat_none")
+        table_al.add_row(t("stat_lbl_mean_score"), f"[bright_green]{mean_s}[/bright_green]")
+    else:
+        table_al.add_row(t("stat_lbl_al_status"), f"[red]{t('stat_al_no_data')}[/red]")
+
+    # 4. BIBLIOTEKA
+    table_app = Table(show_header=False, box=None, padding=(0, 2), expand=True)
+    table_app.add_column("Statystyka", style="cyan")
+    table_app.add_column("Wartość", justify="right")
+    table_app.add_row(t("stat_lbl_share"), f"[yellow]{percent_doccli}%[/yellow]")
+    table_app.add_row(t("stat_lbl_size"), f"[green]{size_gb} GB[/green]")
+    table_app.add_row(t("stat_lbl_install"), f"[white]{dt_c}[/white]")
+    table_app.add_row(t("stat_lbl_age"), f"[white]{delta_dt.days} {t('stat_days')}[/white]")
+
+    # RANGI - DUŻA LISTA
+    req_h = t("stat_req_hours")
+    table_legend = Table(show_header=False, box=None, padding=(0, 2), expand=True)
+    table_legend.add_column("Ranga", style="white") 
+    table_legend.add_column("Wymaganie", justify="right", style="white")
+    table_legend.add_row(f"[#FFFFFF]🌱 {t('rank_freshman')}[/#FFFFFF]", f"0 - 9 {req_h}")
+    table_legend.add_row(f"[#E6F2FF]🌸 {t('rank_viewer')}[/#E6F2FF]", f"10 - 24 {req_h}")
+    table_legend.add_row(f"[#CCE6FF]🍙 {t('rank_novice')}[/#CCE6FF]", f"25 - 49 {req_h}")
+    table_legend.add_row(f"[#99CCFF]🗡️ {t('rank_disciple')}[/#99CCFF]", f"50 - 74 {req_h}")
+    table_legend.add_row(f"[#66B3FF]🛡️ {t('rank_squire')}[/#66B3FF]", f"75 - 99 {req_h}")
+    table_legend.add_row(f"[#3399FF]🥷 {t('rank_genin')}[/#3399FF]", f"100 - 124 {req_h}")
+    table_legend.add_row(f"[#0080FF]📜 {t('rank_chuunin')}[/#0080FF]", f"125 - 149 {req_h}")
+    table_legend.add_row(f"[#0066CC]🌪️ {t('rank_jonin')}[/#0066CC]", f"150 - 199 {req_h}")
+    table_legend.add_row(f"[#004C99]⚔️ {t('rank_samurai')}[/#004C99]", f"200 - 249 {req_h}")
+    table_legend.add_row(f"[#009999]🍂 {t('rank_ronin')}[/#009999]", f"250 - 299 {req_h}")
+    table_legend.add_row(f"[#00CC99]🦊 {t('rank_shinobi')}[/#00CC99]", f"300 - 399 {req_h}")
+    table_legend.add_row(f"[#00FF99]⭐ {t('rank_otaku')}[/#00FF99]", f"400 - 499 {req_h}")
+    table_legend.add_row(f"[#33FF33]🦅 {t('rank_scout')}[/#33FF33]", f"500 - 599 {req_h}")
+    table_legend.add_row(f"[#99FF33]🩸 {t('rank_hunter')}[/#99FF33]", f"600 - 699 {req_h}")
+    table_legend.add_row(f"[#CCFF33]👁️ {t('rank_assassin')}[/#CCFF33]", f"700 - 849 {req_h}")
+    table_legend.add_row(f"[#FFFF00]🏴‍☠️ {t('rank_supernova')}[/#FFFF00]", f"850 - 999 {req_h}")
+    table_legend.add_row(f"[#FFCC00]⚓ {t('rank_captain')}[/#FFCC00]", f"1000 - 1199 {req_h}")
+    table_legend.add_row(f"[#FF9900]🔮 {t('rank_master')}[/#FF9900]", f"1200 - 1399 {req_h}")
+    table_legend.add_row(f"[#FF6600]🦸 {t('rank_hero')}[/#FF6600]", f"1400 - 1599 {req_h}")
+    table_legend.add_row(f"[#FF3300]🧙‍♂️ {t('rank_archmage')}[/#FF3300]", f"1600 - 1799 {req_h}")
+    table_legend.add_row(f"[#FF0000]👑 {t('rank_king')}[/#FF0000]", f"1800 - 1999 {req_h}")
+    table_legend.add_row(f"[#CC0000]🐉 {t('rank_emperor')}[/#CC0000]", f"2000 - 2249 {req_h}")
+    table_legend.add_row(f"[#FF0066]🌌 {t('rank_deity')}[/#FF0066]", f"2250 - 2499 {req_h}")
+    table_legend.add_row(f"[#FF00CC]👹 {t('rank_titan')}[/#FF00CC]", f"2500 - 2999 {req_h}")
+    table_legend.add_row(f"[#9900CC]👑 {t('rank_hikikomori')}[/#9900CC]", f"3000+ {req_h}")
+
+    # PANELE O DYNAMICZNEJ SZEROKOŚCI
+    panel_activity = Panel(table_activity, title=f"[yellow]{t('stat_panel_profile')}[/yellow]", border_style="cyan", width=left_w)
+    panel_habits = Panel(table_habits, title=f"[yellow]{t('stat_panel_habits')}[/yellow]", border_style="cyan", width=left_w)
+    panel_al = Panel(table_al, title=f"[yellow]{t('stat_panel_anilist')}[/yellow]", border_style="cyan", width=left_w)
+    panel_app = Panel(table_app, title=f"[yellow]{t('stat_panel_library')}[/yellow]", border_style="cyan", width=left_w)
+    
+    panel_legend = Panel(table_legend, title=f"[yellow]{t('stat_panel_legend')}[/yellow]", border_style="cyan", width=right_w)
+
+    left_column = Group(
+        panel_activity,
+        panel_habits,
+        panel_al,
+        panel_app
+    )
+
+    dashboard_grid = Table.grid(padding=(0, 4))
+    dashboard_grid.add_column(justify="left")
+    dashboard_grid.add_column(justify="left")
+    
+    dashboard_grid.add_row(left_column, panel_legend)
+
+    # WYŚWIETLANIE
+    console.print(Align.center(dashboard_grid))
+    
+    print('\n')
+    input(colored(t("stat_return_prompt"), "yellow"))
+    return
+# =======================================
+# PLIK: storage.py
+# =======================================
+
+import os
+import json
+
+class DataStorage:
+    def __init__(self):
+        if os.name == "nt": # WIN
+            self.config_dir = os.path.join(os.getenv("APPDATA"), "doccli")
+        else:               # LINUX/MACOS
+            self.config_dir = os.path.join(os.path.expanduser("~"), ".config", "doccli")
+
+        # Ścieżki do plików
+        self.path_mylist = os.path.join(self.config_dir, "mylist.json")
+        self.path_continue = os.path.join(self.config_dir, "continue.json")
+        self.path_settings = os.path.join(self.config_dir, "settings.json")
+        self.path_history = os.path.join(self.config_dir, "history.json")
+
+        # Dane
+        self.mylist = []
+        self.continue_data = [None, None]
+        self.history = []
+        
+        # Domyślne ustawienia
+        self.settings = {
+            "rpc_enabled": True,
+            "rpc_status": "Używa doccli!",
+            "auto_sync": True,
+            "anilist_token": "",
+            "download_path": "",
+            "player_quality": "best",
+            "language": "pl"
+        }
+
+        self.load()
+
+    def load(self):
+        """Wczytuje dane z dysku do zmiennych i w razie potrzeby aktualizuje strukturę plików."""
+        if not os.path.exists(self.config_dir):
+            os.makedirs(self.config_dir)
+
+        # Moja lista
+        if not os.path.exists(self.path_mylist):
+            with open(self.path_mylist, 'w') as file: file.write('[]')
+        with open(self.path_mylist, 'r') as file:
+            self.mylist = json.load(file)
+
+        # Kontynuuj oglądanie
+        if not os.path.exists(self.path_continue):
+            with open(self.path_continue, 'w') as file: json.dump([None, None], file, indent=4)
+        with open(self.path_continue, 'r') as file:
+            self.continue_data = json.load(file)
+
+        # Historia
+        if not os.path.exists(self.path_history):
+            with open(self.path_history, 'w') as file: file.write('[]')
+        with open(self.path_history, 'r') as file:
+            self.history = json.load(file)
+
+        # Ustawienia (Z logiką migracji ze starej wersji)
+        if not os.path.exists(self.path_settings):
+            with open(self.path_settings, 'w') as file: json.dump(self.settings, file, indent=4)
+            
+        with open(self.path_settings, 'r') as file:
+            loaded_settings = json.load(file)
+            
+            # MIGRACJA: Jeśli u kogoś na dysku ustawienia to stara lista, przerób ją na słownik
+            if isinstance(loaded_settings, list):
+                self.settings["rpc_enabled"] = loaded_settings[0] if len(loaded_settings) > 0 else True
+                self.settings["rpc_status"] = loaded_settings[1] if len(loaded_settings) > 1 else "Używa doccli!"
+                self.settings["auto_sync"] = loaded_settings[2] if len(loaded_settings) > 2 else True
+                self.settings["anilist_token"] = loaded_settings[3] if len(loaded_settings) > 3 else ""
+                self.settings["download_path"] = loaded_settings[4] if len(loaded_settings) > 4 else ""
+                self.save() # Zapisujemy już jako słownik
+                
+            # Jeśli to już słownik, po prostu go ładujemy i sprawdzamy czy nie brakuje nowych kluczy
+            elif isinstance(loaded_settings, dict):
+                for key, default_value in self.settings.items():
+                    if key not in loaded_settings:
+                        loaded_settings[key] = default_value
+                self.settings = loaded_settings
+                self.save()
+
+    def save(self):
+        """Zapisuje obecne zmienne na dysk."""
+        with open(self.path_mylist, 'w') as file: json.dump(self.mylist, file, indent=4)
+        with open(self.path_continue, 'w') as file: json.dump(self.continue_data, file, indent=4)
+        with open(self.path_settings, 'w') as file: json.dump(self.settings, file, indent=4)
+        with open(self.path_history, 'w') as file: json.dump(self.history, file, indent=4)
+
+ds = DataStorage()
+# =======================================
+# PLIK: ui_utils.py
+# =======================================
+
+import os
+import shutil
+import sys
+import tempfile
+import textwrap
+import html
+import re
+
+# From pip
+from InquirerPy import inquirer
+from PIL import Image
+from termcolor import colored
+import requests
+
+from i18n import t
+
+def clear():
+    os.system("cls" if os.name == "nt" else "clear")
+
+def get_terminal_size():
+    columns, rows = os.get_terminal_size()
+    return columns, rows
+
+def center_text(text: str) -> str:
+    # Odejmujemy 1 od szerokości terminala
+    terminal_width = os.get_terminal_size().columns - 1
+    art_lines = text.splitlines()
+    
+    # Zostawiamy oryginalne .center() bez rstrip()
+    return "\n".join(line.center(terminal_width) for line in art_lines)
+
+def open_menu(choices, prompt='Prompt', border=True, qmark='', message='', pointer='>', cycle=True, height=10, image=None, description=None):
+    clear()
+
+    if image:
+        try:
+            response = requests.get(image)
+            image_path = os.path.join(tempfile.gettempdir(), "cover.png")
+            with open(image_path, 'wb') as file:
+                file.write(response.content)
+
+            term_width, term_height = get_terminal_size()
+            
+            avail_height = max(5, term_height - height - 7) 
+            chafa_height = max(3, avail_height)
+
+            img_ratio = 0.7
+            margin_ratio = 0.0
+
+            try:
+                img = Image.open(image_path).convert("RGBA")
+                img_w, img_h = img.size
+                
+                pad_pixels = int(img_w * 0.15) 
+                new_w = pad_pixels + img_w
+                
+                padded_img = Image.new("RGBA", (new_w, img_h), (0, 0, 0, 0))
+                padded_img.paste(img, (pad_pixels, 0))
+                padded_img.save(image_path, "PNG")
+                
+                img_ratio = new_w / img_h
+                margin_ratio = pad_pixels / img_h
+            except Exception:
+                pass
+
+            if shutil.which('chafa') is not None:
+                char_aspect = 2.0 
+                chafa_units_h = chafa_height * char_aspect
+                
+                rendered_cols = int(chafa_units_h * img_ratio)
+                margin_cols = int(chafa_units_h * margin_ratio)
+                
+                text_start_col = rendered_cols + margin_cols + 4
+                
+                if text_start_col >= term_width - 15:
+                    text_start_col = int(term_width * 0.4)
+                    
+                text_width = term_width - text_start_col - 2
+
+                print("\0337", end="")
+                sys.stdout.flush()
+
+                os.system(f"chafa -s {term_width}x{chafa_height} {image_path}")
+                
+                if description:
+                    # 1. Odkodowanie znaków specjalnych
+                    clean_desc = html.unescape(description)
+                    
+                    # 2. Zamiana tagów HTML na pojedynczą spację
+                    clean_desc = re.sub(r'<[^>]+>', ' ', clean_desc)
+                    
+                    # 3. Zgniecenie wszystkich spacji i enterów w jedną spację
+                    clean_desc = re.sub(r'\s+', ' ', clean_desc).strip()
+                    
+                    wrapped_desc = textwrap.wrap(clean_desc, width=text_width)
+                    
+                    header_text = t("ui_desc_header")
+                    colored_header = colored(header_text, "cyan") 
+                    
+                    wrapped_desc.insert(0, colored_header)
+                    wrapped_desc.insert(1, "") 
+                else:
+                    wrapped_desc = []
+
+                for i, line in enumerate(wrapped_desc[:avail_height]):
+                    row = i + 2 
+                    print(f"\033[{row};{text_start_col}H{line}", end="")
+
+                menu_row = avail_height + 2
+                print(f"\033[{menu_row};1H", end="")
+                sys.stdout.flush()
+                    
+            else:
+                print(center_text(t("ui_no_chafa")))
+                
+        except Exception as e:
+            pass
+
+    try:
+        action = inquirer.fuzzy(
+            message=message if message.startswith('[') else center_text(message),
+            choices=choices,
+            border=border,
+            qmark=qmark,
+            prompt=prompt,
+            long_instruction=t("ui_ctrl_c"),
+            pointer=pointer,
+            cycle=cycle,
+            height=height,
+        ).execute()
+    except KeyboardInterrupt:
+        clear()
+        back_keywords = ["cofnij", "wróć", "menu główne", "zamknij", "anuluj", "back", "exit", "cancel", "main menu"]
+        for choice in choices:
+            if any(kw in str(choice).lower() for kw in back_keywords):
+                return choice
+        return choices[0]
+
+    clear() 
+
+    try:
+        return choices[choices.index(action)]
+    except ValueError:
+        return open_menu(choices=choices, prompt=prompt, border=border, qmark=t("ui_not_found"), message=message, pointer=pointer, cycle=cycle, height=height)

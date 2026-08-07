@@ -167,7 +167,7 @@ def perform_update_windows(download_url):
                 
         print(colored(t("run_upd_dl_ok"), "green"))
         
-        subprocess.Popen([exe_path, "/VERYSILENT", "/SUPPRESSMSGBOXES", "/FORCECLOSEAPPLICATIONS"])
+        subprocess.Popen([exe_path, "/SILENT", "/SUPPRESSMSGBOXES", "/FORCECLOSEAPPLICATIONS"])
         sys.exit()
         
     except Exception as e:

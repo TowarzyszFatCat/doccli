@@ -73,6 +73,15 @@ cd ~/.doccli_src && .venv/bin/pip install requests inquirerpy termcolor pillow d
 cd ~/.doccli_src && .venv/bin/pip install https://github.com/qwertyquerty/pypresence/archive/master.zip
 echo ""
 
+mkdir -p ~/.config/doccli
+if [ ! -f ~/.config/doccli/settings.json ]; then
+    if [ "$lang_choice" = "2" ]; then
+        echo '{"language": "en"}' > ~/.config/doccli/settings.json
+    else
+        echo '{"language": "pl"}' > ~/.config/doccli/settings.json
+    fi
+fi
+
 echo -e "${GREEN}====================================================${NC}"
 echo -e "${GREEN} ${MSG_DONE}${NC}"
 echo -e "${BLUE} ${MSG_INFO}${YELLOW}${MSG_INFO_CMD}${BLUE}${MSG_INFO2}${NC}"
