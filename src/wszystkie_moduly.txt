@@ -395,8 +395,8 @@ def get_anilist_history(token):
                 continue
                 
             created_at = act.get('createdAt')
-            title_romaji = act.get('media', {}).get('title', {}).get('romaji', 'Nieznany')
-            title_eng = act.get('media', {}).get('title', {}).get('english', 'Nieznany')
+            title_romaji = act.get('media', {}).get('title', {}).get('romaji', t("player_unknown_anime"))
+            title_eng = act.get('media', {}).get('title', {}).get('english', t("player_unknown_anime"))
             
             if not title_eng:
                 title_eng = title_romaji
@@ -527,7 +527,7 @@ def get_anilist_advanced_stats(token):
                 entries = lists[0].get('entries', [])
                 if len(entries) > 0:
                     t_title = entries[0]['media']['title']
-                    oldest_title = t_title.get('romaji') or t_title.get('english') or "Nieznany"
+                    oldest_title = t_title.get('romaji') or t_title.get('english') or t("player_unknown_anime")
                     
         return {
             'completed': completed,
@@ -1175,6 +1175,7 @@ from docchi_api_connector import extract_lycoris_direct_link, get_players_list, 
 from ui_utils import clear, open_menu
 from anilist_connector import get_quick_episode_count
 from i18n import t
+from storage import ds
 
 def w_download_season(details, episodes_list=None, base_download_dir=""):
     SLUG = details['slug']
@@ -1192,12 +1193,18 @@ def w_download_season(details, episodes_list=None, base_download_dir=""):
     if episodes_list is None:
         episodes_list = list(range(1, how_many_episodes + 1))
 
-    lang_choices = [
-        t("dl_lang_pl_sub"),
+    current_lang = ds.settings.get("language", "pl")
+    lang_choices = []
+    
+    if current_lang == "pl":
+        lang_choices.append(t("dl_lang_pl_sub"))
+        
+    # Zawsze pokazuj angielskie
+    lang_choices.extend([
         t("dl_lang_en_sub"),
         t("dl_lang_en_dub"),
         t("cancel")
-    ]
+    ])
     
     chosen_lang = open_menu(
         choices=lang_choices,
@@ -1437,7 +1444,7 @@ TEXTS = {
         
         "rpc_q": "Czy chcesz aby znajomi na discordzie widzieli co oglądasz?",
         "rpc_input": "Wpisz co tylko zechcesz! Będzie to wyświetlane w II linijce statusu. Zostaw puste jeśli chcesz domyślny status. [Min. 2 znaki] (Domyślnie: 'Używa doccli!') \n",
-        "rpc_def_status": "Używa doccli!",
+        "rpc_def_status": "Watching anime via doccli!",
         
         "al_info1": "Zaraz otworzy się przeglądarka z prośbą o autoryzację aplikacji doccli na Twoim koncie AniList.",
         "al_info2": "Po zatwierdzeniu, skopiuj Token (długi ciąg znaków) i wklej go poniżej.\n",
@@ -1459,6 +1466,8 @@ TEXTS = {
         
         "lang_prompt": "Wybierz język / Choose language:",
         "lang_success": "\n[+] Zmieniono język na: Polski",
+
+        "dl_def_path": "Domyślny",
         
         # m_mylist
         "mylist_sync": "[INFO] Trwa automatyczna synchronizacja z AniList...",
@@ -1781,7 +1790,7 @@ TEXTS = {
         
         "rpc_q": "Do you want your Discord friends to see what you are watching?",
         "rpc_input": "Type whatever you want! This will be displayed on the 2nd line of your status. Leave empty for default. [Min. 2 chars] (Default: 'Using doccli!') \n",
-        "rpc_def_status": "Using doccli!",
+        "rpc_def_status": "Watching anime via doccli!",
         
         "al_info1": "A browser window will open asking you to authorize doccli on your AniList account.",
         "al_info2": "After approving, copy the Token (long string of characters) and paste it below.\n",
@@ -1803,6 +1812,8 @@ TEXTS = {
         
         "lang_prompt": "Choose language / Wybierz język:",
         "lang_success": "\n[+] Language changed to: English",
+
+        "dl_def_path": "Default",
         
         # m_mylist
         "mylist_sync": "[INFO] Auto-syncing with AniList...",
@@ -2344,7 +2355,7 @@ def m_welcome():
 
 def m_settings():
     def_dl = ds.settings.get("download_path", "")
-    current_dl_path = def_dl if def_dl != "" else "Default" if ds.settings.get("language", "pl") == "en" else "Domyślny"
+    current_dl_path = def_dl if def_dl != "" else t("dl_def_path")
     current_quality = ds.settings.get("player_quality", "best")
     current_lang = ds.settings.get("language", "pl")
 
@@ -3274,6 +3285,32 @@ def m_calendar():
 # PLIK: menus_decor.py
 # =======================================
 
+from storage import ds
+
+class DynamicAscii:
+    """Sprytna klasa udająca string, która dynamicznie zwraca język w momencie jej wyświetlania."""
+    def __init__(self, pl_art, en_art):
+        self.pl_art = pl_art
+        self.en_art = en_art
+        
+    @property
+    def current(self):
+        return self.en_art if ds.settings.get("language", "pl") == "en" else self.pl_art
+        
+    def __str__(self):
+        return self.current
+        
+    def __add__(self, other):
+        return self.current + str(other)
+        
+    def __radd__(self, other):
+        return str(other) + self.current
+        
+    def __getattr__(self, name):
+        # Przekazuje metody stringa (np. .splitlines() czy .startswith()) bezpośrednio do obecnego tekstu
+        return getattr(self.current, name)
+
+
 MAIN_MENU = r'''
   _____    ____    _____  _____  _       _____        ___      ____  ____    __ 
  |  __ \  / __ \  / ____|/ ____|| |     |_   _|      |__ \    |___ \|___ \  /_ |
@@ -3282,8 +3319,7 @@ MAIN_MENU = r'''
  | |__| || |__| || |____| |____ | |____  _| |_   \ V // /_  _  ___) |___) |_ | |
  |_____/  \____/  \_____|\_____||______||_____|   \_/|____|(_)|____/|____/(_)|_|
 '''
-
-NA_CZASIE = r'''
+_NA_CZASIE_PL = r'''
   _   _              _____  ______            _____  _____  ______ 
  | \ | |    /\      / ____||___  /    /\     / ____||_   _||  ____|
  |  \| |   /  \    | |        / /    /  \   | (___    | |  | |__   
@@ -3291,8 +3327,15 @@ NA_CZASIE = r'''
  | |\  | / ____ \  | |____  / /__  / ____ \  ____) | _| |_ | |____ 
  |_| \_|/_/    \_\  \_____|/_____|/_/    \_\|_____/ |_____||______|
 '''
-
-SZUKAJ = r'''
+_NA_CZASIE_EN = r'''
+  _______  _____   ______  _   _  _____  _____  _   _   _____ 
+ |__   __||  __ \ |  ____|| \ | ||  __ \|_   _|| \ | | / ____|
+    | |   | |__) || |__   |  \| || |  | | | |  |  \| || |  __ 
+    | |   |  _  / |  __|  | . ` || |  | | | |  | . ` || | |_ |
+    | |   | | \ \ | |____ | |\  || |__| |_| |_ | |\  || |__| |
+    |_|   |_|  \_\|______||_| \_||_____/|_____||_| \_| \_____|
+'''
+_SZUKAJ_PL = r'''
    _____  ______ _    _  _  __               _ 
   / ____||___  /| |  | || |/ /    /\        | |
  | (___     / / | |  | || ' /    /  \       | |
@@ -3301,7 +3344,15 @@ SZUKAJ = r'''
  |_____/ /_____| \____/ |_|\_\/_/    \_\\____/ 
 '''
 
-MOJA_LISTA=r'''
+_SZUKAJ_EN = r'''
+   _____  ______            _____    _____  _    _ 
+  / ____||  ____|    /\    |  __ \  / ____|| |  | |
+ | (___  | |__      /  \   | |__) || |     | |__| |
+  \___ \ |  __|    / /\ \  |  _  / | |     |  __  |
+  ____) || |____  / ____ \ | | \ \ | |____ | |  | |
+ |_____/ |______|/_/    \_\|_|  \_\ \_____||_|  |_|
+'''
+_MOJA_LISTA_PL = r'''
   __  __   ____        _                 _       _____   _____  _______        
  |  \/  | / __ \      | |   /\          | |     |_   _| / ____||__   __| /\    
  | \  / || |  | |     | |  /  \         | |       | |  | (___     | |   /  \   
@@ -3309,8 +3360,15 @@ MOJA_LISTA=r'''
  | |  | || |__| || |__| |/ ____ \       | |____  _| |_  ____) |   | | / ____ \ 
  |_|  |_| \____/  \____//_/    \_\      |______||_____||_____/    |_|/_/    \_\ 
 '''
-
-HISTORIA = r'''
+_MOJA_LISTA_EN = r'''
+  __  __ __     __    _       _____   _____  _______ 
+ |  \/  |\ \   / /   | |     |_   _| / ____||__   __|
+ | \  / | \ \_/ /    | |       | |  | (___     | |   
+ | |\/| |  \   /     | |       | |   \___ \    | |   
+ | |  | |   | |      | |____  _| |_  ____) |   | |   
+ |_|  |_|   |_|      |______||_____||_____/    |_|   
+'''
+_HISTORIA_PL = r'''
   _    _  _____   _____  _______  ____   _____   _____           
  | |  | ||_   _| / ____||__   __|/ __ \ |  __ \ |_   _|    /\    
  | |__| |  | |  | (___     | |  | |  | || |__) |  | |     /  \   
@@ -3318,17 +3376,31 @@ HISTORIA = r'''
  | |  | | _| |_  ____) |   | |  | |__| || | \ \  _| |_  / ____ \ 
  |_|  |_||_____||_____/    |_|   \____/ |_|  \_\|_____|/_/    \_\ 
 '''
-
-MOJA_BIBLIOTEKA = r'''
-  __  __   ____        _            ____  _____  ____   _       _____  ____  _______  ______  _  __          
- |  \/  | / __ \      | |   /\     |  _ \|_   _||  _ \ | |     |_   _|/ __ \|__   __||  ____|| |/ /    /\     
- | \  / || |  | |     | |  /  \    | |_) | | |  | |_) || |       | | | |  | |  | |   | |__   | ' /    /  \    
- | |\/| || |  | | _   | | / /\ \   |  _ <  | |  |  _ < | |       | | | |  | |  | |   |  __|  |  <    / /\ \   
- | |  | || |__| || |__| |/ ____ \  | |_) |_| |_ | |_) || |____  _| |_| |__| |  | |   | |____ | . \  / ____ \  
- |_|  |_| \____/  \____//_/    \_\ |____/|_____||____/ |______||_____|\____/   |_|   |______||_|\_\/_/    \_\ 
- '''
-
-KALENDARZ = r"""
+_HISTORIA_EN = r'''
+  _    _  _____  _____  _______  ____   _____ __     __
+ | |  | ||_   _|/ ____||__   __|/ __ \ |  __ \\ \   / /
+ | |__| |  | | | (___     | |  | |  | || |__) |\ \_/ / 
+ |  __  |  | |  \___ \    | |  | |  | ||  _  /  \   /  
+ | |  | | _| |_ ____) |   | |  | |__| || | \ \   | |   
+ |_|  |_||_____|_____/    |_|   \____/ |_|  \_\  |_|   
+'''
+_MOJA_BIBLIOTEKA_PL = r'''
+  __  __   ____        _              ____  _____  ____   _       _____  ____  _______  ______  _  __          
+ |  \/  | / __ \      | |   /\       |  _ \|_   _||  _ \ | |     |_   _|/ __ \|__   __||  ____|| |/ /    /\    
+ | \  / || |  | |     | |  /  \      | |_) | | |  | |_) || |       | | | |  | |  | |   | |__   | ' /    /  \   
+ | |\/| || |  | | _   | | / /\ \     |  _ <  | |  |  _ < | |       | | | |  | |  | |   |  __|  |  <    / /\ \  
+ | |  | || |__| || |__| |/ ____ \    | |_) |_| |_ | |_) || |____  _| |_| |__| |  | |   | |____ | . \  / ____ \ 
+ |_|  |_| \____/  \____//_/    \_\   |____/|_____||____/ |______||_____|\____/   |_|   |______||_|\_\/_/    \_\
+'''
+_MOJA_BIBLIOTEKA_EN = r'''
+  __  __ __     __    _       _____  ____   _____             _____ __     __
+ |  \/  |\ \   / /   | |     |_   _||  _ \ |  __ \     /\    |  __ \\ \   / /
+ | \  / | \ \_/ /    | |       | |  | |_) || |__) |   /  \   | |__) |\ \_/ / 
+ | |\/| |  \   /     | |       | |  |  _ < |  _  /   / /\ \  |  _  /  \   /  
+ | |  | |   | |      | |____  _| |_ | |_) || | \ \  / ____ \ | | \ \   | |   
+ |_|  |_|   |_|      |______||_____||____/ |_|  \_\/_/    \_\|_|  \_\  |_|   
+'''
+_KALENDARZ_PL = r"""
   _  __           _       ______  _   _  _____            _____   ______
  | |/ /    /\    | |     |  ____|| \ | ||  __ \    /\    |  __ \ |___  /
  | ' /    /  \   | |     | |__   |  \| || |  | |  /  \   | |__) |   / / 
@@ -3336,6 +3408,21 @@ KALENDARZ = r"""
  | . \  / ____ \ | |____ | |____ | |\  || |__| |/ ____ \ | | \ \  / /__ 
  |_|\_\/_/    \_\|______||______||_| \_||_____//_/    \_\|_|  \_\/_____|
 """
+_KALENDARZ_EN = r"""
+   _____            _       ______  _   _  _____            _____  
+  / ____|    /\    | |     |  ____|| \ | ||  __ \    /\    |  __ \ 
+ | |        /  \   | |     | |__   |  \| || |  | |  /  \   | |__) |
+ | |       / /\ \  | |     |  __|  | . ` || |  | | / /\ \  |  _  / 
+ | |____  / ____ \ | |____ | |____ | |\  || |__| |/ ____ \ | | \ \ 
+  \_____|/_/    \_\|______||______||_| \_||_____//_/    \_\|_|  \_\
+"""
+
+NA_CZASIE = DynamicAscii(_NA_CZASIE_PL, _NA_CZASIE_EN)
+SZUKAJ = DynamicAscii(_SZUKAJ_PL, _SZUKAJ_EN)
+MOJA_LISTA = DynamicAscii(_MOJA_LISTA_PL, _MOJA_LISTA_EN)
+HISTORIA = DynamicAscii(_HISTORIA_PL, _HISTORIA_EN)
+MOJA_BIBLIOTEKA = DynamicAscii(_MOJA_BIBLIOTEKA_PL, _MOJA_BIBLIOTEKA_EN)
+KALENDARZ = DynamicAscii(_KALENDARZ_PL, _KALENDARZ_EN)
 # =======================================
 # PLIK: player.py
 # =======================================
@@ -3650,7 +3737,7 @@ def m_stats():
     last_watched = t("stat_no_data")
     if ds.history:
         first_entry = ds.history[0]
-        if isinstance(first_entry, dict): clean_title = first_entry.get("title", "Nieznany")
+        if isinstance(first_entry, dict): clean_title = first_entry.get("title", t("player_unknown_anime"))
         else:
             raw_history = str(first_entry) 
             clean_title = raw_history.split("]", 1)[1].strip() if "]" in raw_history else raw_history
@@ -3801,7 +3888,7 @@ class DataStorage:
         # Domyślne ustawienia
         self.settings = {
             "rpc_enabled": True,
-            "rpc_status": "Używa doccli!",
+            "rpc_status": "Watching anime via doccli!",
             "auto_sync": True,
             "anilist_token": "",
             "download_path": "",

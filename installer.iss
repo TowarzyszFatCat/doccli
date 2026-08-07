@@ -1,4 +1,4 @@
-#define MyAppVersion "2.33.2"
+#define MyAppVersion "2.40.0"
 
 [Setup]
 ; Info
@@ -136,6 +136,26 @@ begin
   SetEnvironmentVariable('PATH', NewPath);
 end;
 
+procedure CreateSettingsJSON;
+var
+  SettingsDir, SettingsFile, JsonContent: string;
+begin
+  SettingsDir := ExpandConstant('{userappdata}\doccli');
+  SettingsFile := SettingsDir + '\settings.json';
+  
+  ForceDirectories(SettingsDir);
+  
+  if not FileExists(SettingsFile) then
+  begin
+    if ActiveLanguage = 'english' then
+      JsonContent := '{'#13#10'    "language": "en"'#13#10'}'
+    else
+      JsonContent := '{'#13#10'    "language": "pl"'#13#10'}';
+      
+    SaveStringToFile(SettingsFile, JsonContent, False);
+  end;
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   ResultCode: Integer;
@@ -187,22 +207,3 @@ begin
   end;
 end;
 
-procedure CreateSettingsJSON;
-var
-  SettingsDir, SettingsFile, JsonContent: string;
-begin
-  SettingsDir := ExpandConstant('{userappdata}\doccli');
-  SettingsFile := SettingsDir + '\settings.json';
-  
-  ForceDirectories(SettingsDir);
-  
-  if not FileExists(SettingsFile) then
-  begin
-    if ActiveLanguage = 'english' then
-      JsonContent := '{'#13#10'    "language": "en"'#13#10'}'
-    else
-      JsonContent := '{'#13#10'    "language": "pl"'#13#10'}';
-      
-    SaveStringToFile(SettingsFile, JsonContent, False);
-  end;
-end;

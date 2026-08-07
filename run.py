@@ -16,7 +16,7 @@ from discord_integration import set_running, start_rpc
 from main_module import m_welcome
 from i18n import t
 
-VERSION = "v2.33.1"
+VERSION = "v2.40.0"
 
 def get_cmd_version(cmd, args=["--version"]):
     try:
@@ -25,9 +25,9 @@ def get_cmd_version(cmd, args=["--version"]):
         match = re.search(r'(\d+\.\d+(?:\.\d+)*[a-zA-Z0-9\-]*)', out)
         if match:
             return match.group(1)
-        return "Nieznana"
+        return t("pl_unknown")
     except Exception:
-        return "Nieznana"
+        return t("pl_unknown")
 
 def get_latest_ytdlp_version():
     try:

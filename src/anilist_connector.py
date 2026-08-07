@@ -596,8 +596,8 @@ def sync_history_with_anilist():
         al_history = get_anilist_history(token)
         for al_item in al_history:
             is_duplicate = False
-            al_progress = str(al_item['progress']) if al_item['progress'] else ("Ukończono" if al_item['status'] == 'completed' else "?")
-            
+            al_progress = str(al_item['progress']) if al_item['progress'] else (t("al_completed") if al_item['status'] == 'completed' else "?")
+
             for local_item in ds.history:
                 if local_item.get('episode') == al_progress:
                     lt_lower = local_item.get('title', '').lower()

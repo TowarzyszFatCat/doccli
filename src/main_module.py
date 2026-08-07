@@ -75,7 +75,7 @@ def m_welcome():
 
 def m_settings():
     def_dl = ds.settings.get("download_path", "")
-    current_dl_path = def_dl if def_dl != "" else "Default" if ds.settings.get("language", "pl") == "en" else "Domyślny"
+    current_dl_path = def_dl if def_dl != "" else t("dl_def_path")
     current_quality = ds.settings.get("player_quality", "best")
     current_lang = ds.settings.get("language", "pl")
 
@@ -859,7 +859,7 @@ def w_default(SLUG, NUMBER, process):
     elif ans == t("def_finish"):
         kill_process(process)
         clear()
-        print(colored(t("finish_msg").format(details.get('title', 'Brak tytułu')), "green"))
+        print(colored(t("finish_msg").format(details.get('title', t("player_unknown_anime"))), "green"))
         time.sleep(2)
         update_rpc(t("menu_main"), t("rpc_searching"))
         m_welcome()

@@ -36,13 +36,14 @@ TEXTS = {
         
         "rpc_q": "Czy chcesz aby znajomi na discordzie widzieli co oglądasz?",
         "rpc_input": "Wpisz co tylko zechcesz! Będzie to wyświetlane w II linijce statusu. Zostaw puste jeśli chcesz domyślny status. [Min. 2 znaki] (Domyślnie: 'Używa doccli!') \n",
-        "rpc_def_status": "Używa doccli!",
+        "rpc_def_status": "Watching anime via doccli!",
         
         "al_info1": "Zaraz otworzy się przeglądarka z prośbą o autoryzację aplikacji doccli na Twoim koncie AniList.",
         "al_info2": "Po zatwierdzeniu, skopiuj Token (długi ciąg znaków) i wklej go poniżej.\n",
         "al_err": "Nie udało się otworzyć przeglądarki! Wejdź ręcznie w ten link:\n{}\n",
         "al_input": "Wklej swój AniList Access Token (lub zostaw puste by anulować):",
         "al_success": "\n[+] Pomyślnie zapisano token! Od teraz doccli będzie automatycznie zapisywać postęp.",
+        "al_completed": "Ukończono",
         
         "dl_info": "[INFO] Obecny folder pobierania: {}",
         "dl_help1": "Wpisz pełną ścieżkę do nowego folderu (np. D:\\Anime lub /home/user/Wideo).",
@@ -58,6 +59,8 @@ TEXTS = {
         
         "lang_prompt": "Wybierz język / Choose language:",
         "lang_success": "\n[+] Zmieniono język na: Polski",
+
+        "dl_def_path": "Domyślny",
         
         # m_mylist
         "mylist_sync": "[INFO] Trwa automatyczna synchronizacja z AniList...",
@@ -380,13 +383,14 @@ TEXTS = {
         
         "rpc_q": "Do you want your Discord friends to see what you are watching?",
         "rpc_input": "Type whatever you want! This will be displayed on the 2nd line of your status. Leave empty for default. [Min. 2 chars] (Default: 'Using doccli!') \n",
-        "rpc_def_status": "Using doccli!",
+        "rpc_def_status": "Watching anime via doccli!",
         
         "al_info1": "A browser window will open asking you to authorize doccli on your AniList account.",
         "al_info2": "After approving, copy the Token (long string of characters) and paste it below.\n",
         "al_err": "Could not open the browser! Please visit this link manually:\n{}\n",
         "al_input": "Paste your AniList Access Token (or leave empty to cancel):",
         "al_success": "\n[+] Token saved successfully! Doccli will now automatically sync your progress.",
+        "al_completed": "Completed",
         
         "dl_info": "[INFO] Current download folder: {}",
         "dl_help1": "Enter the full path to the new folder (e.g. D:\\Anime or /home/user/Videos).",
@@ -402,6 +406,8 @@ TEXTS = {
         
         "lang_prompt": "Choose language / Wybierz język:",
         "lang_success": "\n[+] Language changed to: English",
+
+        "dl_def_path": "Default",
         
         # m_mylist
         "mylist_sync": "[INFO] Auto-syncing with AniList...",
