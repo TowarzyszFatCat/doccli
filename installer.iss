@@ -1,4 +1,4 @@
-#define MyAppVersion "2.33.2"
+#define MyAppVersion "2.40.0"
 
 [Setup]
 ; Info
@@ -12,14 +12,43 @@ OutputBaseFilename=InstallDoccli_v{#MyAppVersion}
 SetupIconFile=icon.ico
 UninstallDisplayIcon={app}\icon.ico
 Compression=lzma2
-LicenseFile=eula.txt
 SolidCompression=yes
 ; Instalator modyfikuje zmienne środowiskowe
 ChangesEnvironment=yes 
 WizardSmallImageFile=icon_1.png
 
 [Languages]
-Name: "polish"; MessagesFile: "compiler:Languages\Polish.isl"
+Name: "english"; MessagesFile: "compiler:Default.isl"; LicenseFile: "eula_en.txt"
+Name: "polish"; MessagesFile: "compiler:Languages\Polish.isl"; LicenseFile: "eula_pl.txt"
+
+[CustomMessages]
+english.TaskDesktop=Create a desktop shortcut
+english.TaskStartMenu=Create a Start Menu shortcut
+english.GroupShortcuts=Shortcuts:
+english.TaskAutostart=Run Doccli automatically after installation
+english.GroupOther=Other options:
+english.RunDoccli=Launch Doccli
+english.StatusPython=Installing Python 3.12...
+english.StatusYtDlp=Installing yt-dlp tool...
+english.StatusMpv=Installing MPV player...
+english.StatusChafa=Installing Chafa...
+english.StatusEnv=Configuring Python environment and downloading libraries...
+english.UninstallPrompt=Do you also want to remove configuration files and watch history (folder AppData)?
+
+polish.TaskDesktop=Utwórz skrót na pulpicie
+polish.TaskStartMenu=Utwórz skrót w Menu Start
+polish.GroupShortcuts=Skróty:
+polish.TaskAutostart=Uruchom Doccli automatycznie po zakończeniu instalacji
+polish.GroupOther=Inne opcje:
+polish.RunDoccli=Uruchom Doccli
+polish.StatusPython=Instalowanie Pythona 3.12...
+polish.StatusYtDlp=Instalowanie narzędzia yt-dlp...
+polish.StatusMpv=Instalowanie odtwarzacza MPV...
+polish.StatusChafa=Instalowanie Chafa...
+polish.StatusEnv=Konfigurowanie środowiska Python i pobieranie bibliotek...
+polish.UninstallPrompt=Czy chcesz usunąć również pliki konfiguracji i historię programu (folder AppData)?
+
+```
 
 [Files]
 ; Pakuje pliki i foldery
@@ -34,12 +63,12 @@ Name: "{userprograms}\Doccli"; Filename: "{app}\run.bat"; IconFilename: "{app}\i
 Root: HKCU; Subkey: "Environment"; ValueType: expandsz; ValueName: "Path"; ValueData: "{olddata};{app}"; Check: NeedsAddPath(ExpandConstant('{app}'))
 
 [Run]
-Filename: "{app}\run.bat"; Description: "Uruchom Doccli"; Flags: postinstall shellexec; Tasks: autostart
+Filename: "{app}\run.bat"; Description: "{cm:RunDoccli}"; Flags: postinstall shellexec; Tasks: autostart
 
 [Tasks]
-Name: "desktopicon"; Description: "Utwórz skrót na pulpicie"; GroupDescription: "Skróty:"
-Name: "startmenuicon"; Description: "Utwórz skrót w Menu Start"; GroupDescription: "Skróty:"
-Name: "autostart"; Description: "Uruchom Doccli automatycznie po zakończeniu instalacji"; GroupDescription: "Inne opcje:"
+Name: "desktopicon"; Description: "{cm:TaskDesktop}"; GroupDescription: "{cm:GroupShortcuts}"
+Name: "startmenuicon"; Description: "{cm:TaskStartMenu}"; GroupDescription: "{cm:GroupShortcuts}"
+Name: "autostart"; Description: "{cm:TaskAutostart}"; GroupDescription: "{cm:GroupOther}"
 
 [Code]
 function SetEnvironmentVariable(lpName: string; lpValue: string): BOOL;
@@ -109,6 +138,26 @@ begin
   SetEnvironmentVariable('PATH', NewPath);
 end;
 
+procedure CreateSettingsJSON;
+var
+  SettingsDir, SettingsFile, JsonContent: string;
+begin
+  SettingsDir := ExpandConstant('{userappdata}\doccli');
+  SettingsFile := SettingsDir + '\settings.json';
+  
+  ForceDirectories(SettingsDir);
+  
+  if not FileExists(SettingsFile) then
+  begin
+    if ActiveLanguage = 'english' then
+      JsonContent := '{'#13#10'    "language": "en"'#13#10'}'
+    else
+      JsonContent := '{'#13#10'    "language": "pl"'#13#10'}';
+      
+    SaveStringToFile(SettingsFile, JsonContent, False);
+  end;
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   ResultCode: Integer;
@@ -119,19 +168,19 @@ begin
     
     if CheckWinget then
     begin
-      WizardForm.StatusLabel.Caption := 'Instalowanie Pythona 3.12 (w tle)...';
+      WizardForm.StatusLabel.Caption := CustomMessage('StatusPython');
       WizardForm.ProgressGauge.Position := 1;
       Exec('winget', 'install --id Python.Python.3.12 --exact --silent --accept-source-agreements --accept-package-agreements --override "/quiet PrependPath=1 Include_test=0"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
 
-      WizardForm.StatusLabel.Caption := 'Instalowanie narzędzia yt-dlp...';
+      WizardForm.StatusLabel.Caption := CustomMessage('StatusYtDlp');
       WizardForm.ProgressGauge.Position := 2;
       Exec('winget', 'install --id yt-dlp.yt-dlp --silent --accept-source-agreements --accept-package-agreements', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
 
-      WizardForm.StatusLabel.Caption := 'Instalowanie odtwarzacza MPV...';
+      WizardForm.StatusLabel.Caption := CustomMessage('StatusMpv');
       WizardForm.ProgressGauge.Position := 3;
       Exec('winget', 'install --id 9P3JFR0CLLL6 --silent --accept-source-agreements --accept-package-agreements', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
 
-      WizardForm.StatusLabel.Caption := 'Instalowanie Chafa...';
+      WizardForm.StatusLabel.Caption := CustomMessage('StatusChafa');
       WizardForm.ProgressGauge.Position := 4;
       Exec('winget', 'install --id hpjansson.Chafa --silent --accept-source-agreements --accept-package-agreements', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
     end
@@ -140,9 +189,10 @@ begin
       WizardForm.ProgressGauge.Position := 4;
     end;
 
+    CreateSettingsJSON;
     RefreshEnvironment;
 
-    WizardForm.StatusLabel.Caption := 'Konfigurowanie środowiska Python i pobieranie bibliotek...';
+    WizardForm.StatusLabel.Caption := CustomMessage('StatusEnv');
     WizardForm.ProgressGauge.Position := 5;
     Exec(ExpandConstant('{app}\setup_env.bat'), '', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
   end;
@@ -152,9 +202,10 @@ procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 begin
   if CurUninstallStep = usPostUninstall then
   begin
-    if SuppressibleMsgBox('Czy chcesz usunąć również pliki konfiguracji i historię programu (folder AppData)?', mbConfirmation, MB_YESNO or MB_DEFBUTTON2, IDNO) = IDYES then
+    if SuppressibleMsgBox(CustomMessage('UninstallPrompt'), mbConfirmation, MB_YESNO or MB_DEFBUTTON2, IDNO) = IDYES then
     begin
       DelTree(ExpandConstant('{userappdata}\doccli'), True, True, True);
     end;
   end;
 end;
+

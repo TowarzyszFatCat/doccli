@@ -21,89 +21,217 @@ from cache import preload_series_cache, get_cached_series_list, get_cached_trend
 from ui_utils import clear, open_menu
 from downloader import w_download_season
 from stats import m_stats
-from menus_decor import MAIN_MENU, SZUKAJ, NA_CZASIE, MOJA_LISTA, HISTORIA, MOJA_BIBLIOTEKA, KALENDARZ
+from menus_decor import MAIN_MENU, SZUKAJ, NA_CZASIE, MOJA_LISTA, HISTORIA, MOJA_BIBLIOTEKA, KALENDARZ, POWIADOMIENIA
 from discord_integration import update_rpc, set_running
 from docchi_api_connector import get_episodes_count_for_serie, get_players_list, get_details_for_serie, extract_lycoris_direct_link, get_english_players
 from anilist_connector import get_details_from_anilist, update_anilist_progress, get_anilist_plan_to_watch, sync_anilist_list_status, get_anilist_history, get_duration_by_malid, sync_history_with_anilist, get_quick_episode_count
 from player import mpv_play, kill_process, delayed_tracker
 from local_lib import m_local_library
+from i18n import t
 
+LAST_CHECK_TIME = 0
+
+def get_notifications():
+    tracked_mal_ids = set()
+    
+    for item in ds.mylist:
+        if item.get('mal_id'): tracked_mal_ids.add(int(item['mal_id']))
+        
+    seen_slugs = set()
+    for item in ds.history:
+        if isinstance(item, dict) and item.get('source', '').startswith('Doccli - Online'):
+            slug = item.get('slug')
+            if slug and slug not in seen_slugs:
+                ep_str = str(item.get('episode', '1'))
+                if ep_str not in ["Ukończono", "Completed", t("al_completed")]:
+                    seen_slugs.add(slug)
+    
+    if seen_slugs:
+        for s in get_cached_series_list():
+            if s.get('slug') in seen_slugs and s.get('mal_id'):
+                tracked_mal_ids.add(int(s['mal_id']))
+                
+    if not tracked_mal_ids:
+        return
+        
+    from anilist_connector import check_new_episodes
+    current_eps = {}
+    mal_list = list(tracked_mal_ids)
+    for i in range(0, len(mal_list), 50):
+        current_eps.update(check_new_episodes(mal_list[i:i+50]))
+    
+    known_eps = ds.settings.get("known_eps", {})
+    history = ds.settings.get("notification_history", [])
+    
+    all_s_dict = {str(s.get('mal_id')): s for s in get_cached_series_list()}
+    
+    for mal_id_str, ep_count in current_eps.items():
+        known = known_eps.get(mal_id_str, 0)
+        if known > 0 and ep_count > known:
+            s = all_s_dict.get(mal_id_str)
+            if s:
+                title = s.get('title_en') if ds.settings.get('language') == 'en' and s.get('title_en') else s.get('title', 'Anime')
+                msg = t("notif_new_ep").format(title, ep_count)
+                
+                already_exists = any(h.get('slug') == s.get('slug') and h.get('episode') == ep_count for h in history)
+                if not already_exists:
+                    history.insert(0, {
+                        "message": msg,
+                        "slug": s.get('slug'),
+                        "episode": ep_count,
+                        "unread": True
+                    })
+        known_eps[mal_id_str] = ep_count
+        
+    ds.settings["known_eps"] = known_eps
+    ds.settings["notification_history"] = history[:50]
+    ds.save()
+
+def m_notifications():
+    clear()
+    history = ds.settings.get("notification_history", [])
+    
+    if not history:
+        print(colored(t("notif_empty"), "yellow"))
+        print('')
+        input(colored(t("lib_enter_to_return"), "yellow"))
+        m_welcome()
+        return
+        
+    ds.settings["unread_notifications"] = []
+    
+    choices = [t("notif_clear")]
+    display_map = {}
+    
+    for item in history:
+        bell = "🔔 " if item.get("unread", False) else ""
+        display_text = f"{bell}{item.get('message')}"
+        choices.append(display_text)
+        display_map[display_text] = item
+        
+        item["unread"] = False
+        
+    ds.settings["notification_history"] = history
+    ds.save()
+    
+    choices.append(t("back"))
+    
+    ans = open_menu(choices=choices, prompt=t("hist_prompt"), message=POWIADOMIENIA, height=10)
+    
+    if ans == t("back") or ans == choices[-1]:
+        m_welcome()
+    elif ans == t("notif_clear"):
+        ds.settings["notification_history"] = []
+        ds.save()
+        m_notifications()
+    else:
+        selected_item = display_map.get(ans)
+        if selected_item and selected_item.get("slug"):
+            clear()
+            print(colored(t("res_load"), "cyan"))
+            details = get_details_for_serie(selected_item["slug"])
+            if details and details != 404:
+                m_details(details)
+            else:
+                m_notifications()
+        else:
+            m_notifications()
 
 def m_welcome():
+    global LAST_CHECK_TIME
+
     preload_series_cache()
-    update_rpc("Menu główne", "Szuka anime do obejrzenia...")
+    update_rpc(t("menu_main"), t("rpc_searching"))
+
+    if time.time() - LAST_CHECK_TIME > 600:
+        get_notifications()
+        LAST_CHECK_TIME = time.time()
+
+    unread_items = [h for h in ds.settings.get("notification_history", []) if h.get("unread")]
+    unread_count = len(unread_items)
+    notif_label = t("menu_notifications").format(unread_count)
 
     choices = [
-        "Wyszukaj",
-        "Kontynuuj oglądanie",
-        "Anime na czasie",
-        "Kalendarz Premier",
-        "Moja lista",
-        "Moja Biblioteka (Offline)",
-        "Historia oglądania",
-        "Statystyki doccli",
-        "Dołącz do discorda",
-        "Ustawienia",
-        "Zamknij"
+        t("menu_search"),
+        t("menu_resume"),
+        notif_label,
+        t("menu_mylist"),
+        t("menu_trending"),
+        t("menu_calendar"),
+        t("menu_library"),
+        t("menu_history"),
+        t("menu_stats"),
+        t("menu_settings"),
+        t("menu_discord"),
+        t("menu_exit")
     ]
 
-    prompt_txt = 'Wybierz co chcesz zrobić: '
+    prompt_txt = t("welcome_prompt")
 
     has_token = ds.settings.get("anilist_token", "") != ""
-    
     if has_token:
-        status_txt = "🟢 STATUS: Połączono z kontem AniList!"
+        status_txt = t("status_connected")
     else:
-        status_txt = "🔴 STATUS: Brak połączenia z AniList (Skonfiguruj w Ustawieniach)"    
+        status_txt = t("status_disconnected")
 
     dynamic_menu_art = MAIN_MENU + "\n" + status_txt + "\n"
+    
+    all_history = ds.settings.get("notification_history", [])
+    if all_history:
+        latest = all_history[0]
+        bell = "🔔 " if latest.get("unread", False) else ""
+        dynamic_menu_art += "\n" + f"{bell}{latest.get('message')}" + "\n"
 
     ans = open_menu(choices=choices, prompt=prompt_txt, height=12, message=dynamic_menu_art)
 
     if ans == choices[0]: m_find()
     elif ans == choices[1]: m_resume()
-    elif ans == choices[2]: m_trending()
-    elif ans == choices[3]: m_calendar()
-    elif ans == choices[4]: m_mylist()
-    elif ans == choices[5]: m_local_library()
-    elif ans == choices[6]: m_history()
-    elif ans == choices[7]: m_stats(); m_welcome()
-    elif ans == choices[8]: m_discord()
+    elif ans == choices[2]: m_notifications()
+    elif ans == choices[3]: m_mylist()
+    elif ans == choices[4]: m_trending()
+    elif ans == choices[5]: m_calendar()
+    elif ans == choices[6]: m_local_library()
+    elif ans == choices[7]: m_history()
+    elif ans == choices[8]: m_stats(); m_welcome()
     elif ans == choices[9]: m_settings()
-    elif ans == choices[10]: set_running(False); sys.exit()
+    elif ans == choices[10]: m_discord()
+    elif ans == choices[11]: set_running(False); sys.exit()
 
 
 def m_settings():
-    current_dl_path = ds.settings.get("download_path", "") if ds.settings.get("download_path", "") != "" else "Domyślny"
+    def_dl = ds.settings.get("download_path", "")
+    current_dl_path = def_dl if def_dl != "" else t("dl_def_path")
     current_quality = ds.settings.get("player_quality", "best")
+    current_lang = ds.settings.get("language", "pl")
 
     choices = [
-        "Ustawienia Discord RPC",
-        "Połącz / Zaktualizuj konto AniList",
-        f"Zmień folder pobierania (Obecnie: {current_dl_path})",
-        f"Zmień domyślną jakość wideo (Obecnie: {current_quality})",
-        "Wróć do menu głównego"
+        t("set_rpc"),
+        t("set_anilist"),
+        f"{t('set_dl_path')} ({t('currently')}: {current_dl_path})",
+        f"{t('set_quality')} ({t('currently')}: {current_quality})",
+        f"{t('set_lang')} ({t('currently')}: {current_lang.upper()})",
+        t("menu_main")
     ]
     
-    prompt_text = 'Wybierz co chcesz skonfigurować: '
-    ans = open_menu(choices=choices, prompt=prompt_text, height=7)
+    prompt_text = t("set_prompt")
+    ans = open_menu(choices=choices, prompt=prompt_text, height=8)
     
     if ans == choices[0]:
         rpc_choices = [{
                 "type": "list",
-                "message": "Czy chcesz aby znajomi na discordzie widzieli co oglądasz?",
-                "choices": ["Tak", "Nie"],
+                "message": t("rpc_q"),
+                "choices": [t("yes"), t("no")],
             }]
         res = prompt(questions=rpc_choices)
 
-        if res[0] == "Nie":
+        if res[0] == t("no"):
             ds.settings["rpc_enabled"] = False
             ds.save()
             m_welcome()
-        if res[0] == "Tak":
+        if res[0] == t("yes"):
             clear()
             ds.settings["rpc_enabled"] = True
-            choices2 = [{"type": "input", "message": "Wpisz co tylko zechcesz! Będzie to wyświetlane w II linijce statusu. Zostaw puste jeśli chcesz aby był wyświetlany domyślny status. [Minimalnie 2 znaki] (Domyślna wartość: 'Używa doccli!') \n", "name": "status_dc"}]
+            choices2 = [{"type": "input", "message": t("rpc_input"), "name": "status_dc"}]
             res2 = prompt(questions=choices2)
 
             if not res2['status_dc'] == "" and len(res2['status_dc']) > 1:
@@ -111,74 +239,90 @@ def m_settings():
                 ds.save()
                 m_welcome()
             else:
-                ds.settings["rpc_status"] = 'Używa doccli!'
+                ds.settings["rpc_status"] = t("rpc_def_status")
                 ds.save()
                 m_welcome()
                 
     elif ans == choices[1]:
         clear()
         CLIENT_ID = "16904"
-        print(colored("Zaraz otworzy się przeglądarka z prośbą o autoryzację aplikacji doccli na Twoim koncie AniList.", "cyan"))
-        print(colored("Po zatwierdzeniu, skopiuj Token (długi ciąg znaków) i wklej go poniżej.\n", "cyan"))
+        print(colored(t("al_info1"), "cyan"))
+        print(colored(t("al_info2"), "cyan"))
         
         auth_url = f"https://anilist.co/api/v2/oauth/authorize?client_id={CLIENT_ID}&response_type=token"
         try:
             webbrowser.open(auth_url)
         except:
-            print(colored(f"Nie udało się otworzyć przeglądarki! Wejdź ręcznie w ten link:\n{auth_url}\n", "yellow"))
+            print(colored(t("al_err").format(auth_url), "yellow"))
             
-        questions = [{"type": "input", "message": "Wklej swój AniList Access Token (lub zostaw puste by anulować):", "name": "token"}]
+        questions = [{"type": "input", "message": t("al_input"), "name": "token"}]
         res = prompt(questions)
         
         if res['token']:
             ds.settings["anilist_token"] = res['token'].strip()
             ds.save()
-            print(colored("\n[+] Pomyślnie zapisano token! Od teraz doccli będzie automatycznie zapisywać postęp.", "green"))
+            print(colored(t("al_success"), "green"))
             time.sleep(3)
         m_settings()
 
     elif ans == choices[2]:
         clear()
-        print(colored(f"[INFO] Obecny folder pobierania: {current_dl_path}", "cyan"))
-        print(colored("Wpisz pełną ścieżkę do nowego folderu (np. D:\\Anime lub /home/user/Wideo).", "yellow"))
-        print(colored("Zostaw to pole puste i wciśnij ENTER, aby przywrócić domyślny folder wewnątrz programu.\n", "yellow"))
+        print(colored(t("dl_info").format(current_dl_path), "cyan"))
+        print(colored(t("dl_help1"), "yellow"))
+        print(colored(t("dl_help2"), "yellow"))
         
-        questions = [{"type": "input", "message": "Podaj nową ścieżkę:", "name": "new_path"}]
+        questions = [{"type": "input", "message": t("dl_input"), "name": "new_path"}]
         res = prompt(questions)
         new_input = res['new_path'].strip()
         
         if new_input == "":
             ds.settings["download_path"] = ""
             ds.save()
-            print(colored("\n[+] Przywrócono domyślny folder pobierania!", "green"))
+            print(colored(t("dl_reset"), "green"))
         else:
             try:
-                # Tworzy podany folder, jeśli jeszcze nie istnieje
                 os.makedirs(new_input, exist_ok=True)
                 ds.settings["download_path"] = new_input
                 ds.save()
-                print(colored(f"\n[+] Pomyślnie zmieniono folder zapisu na: {new_input}", "green"))
+                print(colored(t("dl_success").format(new_input), "green"))
             except Exception as e:
-                print(colored(f"\n[-] Błąd podczas tworzenia folderu (Nieprawidłowa ścieżka?): {e}", "red"))
+                print(colored(t("dl_err").format(e), "red"))
         
         time.sleep(3)
         m_settings()
         
     elif ans == choices[3]:
-        quality_choices = ["Źródłowa", "1080p", "720p", "480p", "360p", "Cofnij"]
-        chosen = open_menu(choices=quality_choices, prompt="Wybierz domyślną jakość dla odtwarzacza:", height=7)
+        quality_choices = [t("qual_source"), "1080p", "720p", "480p", "360p", t("back")]
+        chosen = open_menu(choices=quality_choices, prompt=t("qual_prompt"), height=7)
         
-        if chosen != "Cofnij":
-            if chosen == "Źródłowa" or chosen.startswith("best"):
+        if chosen != t("back"):
+            if chosen == t("qual_source") or chosen.startswith("best"):
                 ds.settings["player_quality"] = "best"
             else:
                 ds.settings["player_quality"] = chosen
             ds.save()
-            print(colored(f"\n[+] Pomyślnie zmieniono jakość na: {ds.settings['player_quality']}", "green"))
+            print(colored(t("qual_success").format(ds.settings['player_quality']), "green"))
             time.sleep(2)
         m_settings()
 
     elif ans == choices[4]:
+        lang_choices = ["Polski (pl)", "English (en)", t("back")]
+        chosen = open_menu(choices=lang_choices, prompt=t("lang_prompt"), height=5)
+        
+        if chosen == "Polski (pl)":
+            ds.settings["language"] = "pl"
+            ds.save()
+            print(colored(t("lang_success"), "green"))
+            time.sleep(2)
+        elif chosen == "English (en)":
+            ds.settings["language"] = "en"
+            ds.save()
+            print(colored(t("lang_success"), "green"))
+            time.sleep(2)
+            
+        m_settings()
+
+    elif ans == choices[5]:
         m_welcome()
 
 
@@ -192,7 +336,7 @@ def m_mylist():
     
     if has_token:
         clear()
-        print(colored("[INFO] Trwa automatyczna synchronizacja z AniList...", "cyan"))
+        print(colored(t("mylist_sync"), "cyan"))
         
         token = ds.settings["anilist_token"]
         mal_ids = get_anilist_plan_to_watch(token)
@@ -211,33 +355,45 @@ def m_mylist():
                         
             ds.save()
 
-    choices = ['Cofnij']
+    choices = [t("back")]
+    display_map = {}
+    
+    if ds.mylist:
+        choices.append(t("mylist_random"))
     
     display_list = list(reversed(ds.mylist))
     
     for element in display_list:
-        choices.append(f"{element['title']} | {element['title_en']}")
+        display_text = f"{element['title']} | {element['title_en']}"
+        choices.append(display_text)
+        display_map[display_text] = element
 
-    prompt_txt = 'Wybierz anime: '
+    prompt_txt = t("mylist_prompt")
     ans = open_menu(choices=choices, prompt=prompt_txt, message=MOJA_LISTA)
     
-    if ans == choices[0]:
+    if ans == t("back"):
         m_welcome()
+        
+    elif ans == t("mylist_random"):
+        import random
+        random_anime = random.choice(ds.mylist)
+        m_details(random_anime)
+        
     else:
-        index = choices.index(ans)
-        m_details(display_list[index - 1])
+        selected_anime = display_map[ans]
+        m_details(selected_anime)
 
 
 def m_history():
-    choices = ['Cofnij']
+    choices = [t("back")]
     display_map = {}
     
     for item in ds.history[:50]:  
-        display_text = f"[{item['dt_string']}] [{item['source']}] {item['title']} [Odc: {item['episode']}]"
+        display_text = f"[{item['dt_string']}] [{item['source']}] {item['title']} [{t('def_qmark').format(item['episode'], '')[:-1]}]"
         choices.append(display_text)
         display_map[display_text] = item
 
-    prompt = 'Wybierz wpis aby przejść do szczegółów: '
+    prompt = t("hist_prompt")
     ans = open_menu(choices=choices, prompt=prompt, message=HISTORIA)
     
     if ans == choices[0]:
@@ -249,27 +405,25 @@ def m_history():
             if details and details != 404:
                 m_details(details)
             else:
-                print(colored("Błąd: Nie udało się pobrać szczegółów z serwera.", "red"))
+                print(colored(t("hist_err_server"), "red"))
                 time.sleep(2)
                 m_history()
         else:
-            print(colored("To anime nie ma przypisanego profilu w Docchi.", "yellow"))
+            print(colored(t("hist_err_profile"), "yellow"))
             time.sleep(3)
             m_history()
 
 
 def m_find():
     choices = [
-        "Po tytule",
-        "Po tytule EN",
-        "Mal ID",
-        "Po gatunku",
-        "Cofnij"
+        t("find_title"),
+        t("find_title_en"),
+        t("find_mal"),
+        t("find_genre"),
+        t("back")
     ]
 
-    prompt = 'Wybierz jak chcesz wyszukać: '
-
-    # Zwiększyliśmy height z 4 na 5, bo mamy nową opcję
+    prompt = t("find_prompt")
     ans = open_menu(choices=choices, prompt=prompt, height=5, message=SZUKAJ)
 
     if ans == choices[0]:
@@ -288,12 +442,12 @@ def perform_search(search_key):
     all_series_json = get_cached_series_list()
     
     choices = [serie[search_key] for serie in all_series_json]
-    choices.append("Cofnij")
+    choices.append(t("back"))
     
-    prompt = 'Szukaj: '
+    prompt = t("find_search")
     ans = open_menu(choices=choices, prompt=prompt, message=SZUKAJ)
     
-    if ans == "Cofnij":
+    if ans == t("back"):
         m_find()
         return
         
@@ -315,22 +469,22 @@ def perform_genre_search():
                 unique_genres.add(genre.strip())
                 
     if not unique_genres:
-        print(colored("Błąd: Nie znaleziono żadnych gatunków w bazie.", "red"))
+        print(colored(t("genre_err"), "red"))
         time.sleep(2)
         m_find()
         return
 
     genres_list = sorted(list(unique_genres))
-    genres_list.append("Cofnij")
+    genres_list.append(t("back"))
 
     ans_genre = open_menu(
         choices=genres_list, 
-        prompt="Wybierz gatunek, który Cię interesuje:", 
+        prompt=t("genre_prompt"), 
         message=SZUKAJ, 
         height=10
     )
     
-    if ans_genre == "Cofnij":
+    if ans_genre == t("back"):
         m_find()
         return
 
@@ -339,21 +493,21 @@ def perform_genre_search():
         if 'genres' in serie and ans_genre in serie['genres']:
             filtered_series.append(serie)
 
-    sort_choices = ["Po popularności (Trendy AniList)", "Alfabetycznie", "Zaskocz mnie!", "Cofnij"]
-    ans_sort = open_menu(choices=sort_choices, prompt="Co robimy dalej?", message=SZUKAJ, height=6)
+    sort_choices = [t("sort_trending"), t("sort_alpha"), t("sort_surprise"), t("back")]
+    ans_sort = open_menu(choices=sort_choices, prompt=t("sort_prompt"), message=SZUKAJ, height=6)
     
-    if ans_sort == "Cofnij":
+    if ans_sort == t("back"):
         perform_genre_search()
         return
         
-    if ans_sort == "Zaskocz mnie!":
+    if ans_sort == t("sort_surprise"):
         ans_details = random.choice(filtered_series)
         m_details(details=ans_details)
         return
         
     trending_list = get_cached_trending_list()
     
-    if ans_sort == "Po popularności (Trendy AniList)":
+    if ans_sort == t("sort_trending"):
         def sort_key(serie):
             mal_id = serie.get('mal_id')
             if mal_id in trending_list:
@@ -366,19 +520,19 @@ def perform_genre_search():
 
     choices_titles = []
     for serie in filtered_series:
-        prefix = "⭐ " if ans_sort == "Po popularności (Trendy AniList)" and serie.get('mal_id') in trending_list else ""
-        choices_titles.append(f"{prefix}{serie.get('title', 'Brak')} / {serie.get('title_en', 'Brak')}")
+        prefix = "⭐ " if ans_sort == t("sort_trending") and serie.get('mal_id') in trending_list else ""
+        choices_titles.append(f"{prefix}{serie.get('title', t('al_none'))} / {serie.get('title_en', t('al_none'))}")
         
-    choices_titles.append("Cofnij")
+    choices_titles.append(t("back"))
 
     ans_anime = open_menu(
         choices=choices_titles, 
-        prompt=f'Wyniki dla gatunku [{ans_genre}] (Znaleziono: {len(filtered_series)}):', 
+        prompt=t("genre_res_prompt").format(ans_genre, len(filtered_series)), 
         message=SZUKAJ, 
         height=10
     )
 
-    if ans_anime == "Cofnij":
+    if ans_anime == t("back"):
         perform_genre_search()
         return
 
@@ -389,7 +543,6 @@ def perform_genre_search():
 
 
 def m_trending():
-    # Pobieranie danych z cache
     trending_anime_malids = get_cached_trending_list()
     all_anime_list = get_cached_series_list()
 
@@ -404,14 +557,13 @@ def m_trending():
             
             top_anime.append([order, slug, title, title_en])
 
-    # Sortowanie względem miejsca w trendach
     top_anime.sort(key=lambda x: x[0])
     
-    choices = ["Cofnij"]
+    choices = [t("back")]
     for anime in top_anime:
         choices.append(f"{anime[0] + 1}. {anime[2]} / {anime[3]}")
 
-    prompt = 'Wybierz: '
+    prompt = t("trend_prompt")
 
     ans = open_menu(choices=choices, prompt=prompt, message=NA_CZASIE)
     
@@ -435,120 +587,118 @@ def m_details(details):
                 
     next_ep = last_watched_ep + 1 if last_watched_ep > 0 else 1
 
-    choices = [
-        f"Kontynuuj od odcinka {next_ep}" if last_watched_ep > 0 else "Oglądaj od 1 odcinka",
-        "Lista odcinków",
-        "Pobierz cały sezon",
-        "Pobierz wybrane odcinki"
-    ]
+    score_bar, description, episode_count, trailer_url = get_details_from_anilist(str(details["mal_id"]))
+
+    watch_opt = f"{t('det_cont')} {next_ep}" if last_watched_ep > 0 else t("det_first")
+    
+    choices = [watch_opt, t("det_list")]
+    
+    if trailer_url:
+        choices.append(t("det_trailer"))
+
+    choices.extend([t("det_dl_season"), t("det_dl_eps")])
 
     if details in ds.mylist:
-        choices.append("Usuń z mojej listy")
+        choices.append(t("det_rm_list"))
     else:
-        choices.append("Dodaj do mojej listy")
+        choices.append(t("det_add_list"))
 
-    choices.append("Wyszukiwarka")
-    choices.append("Menu główne")
+    choices.extend([t("det_search"), t("menu_main")])
 
-    prompt_txt = 'Wybierz co chcesz zrobić: '
+    prompt_txt = t("det_prompt")
 
     genres = "[ "
     for genre in details['genres']:
         genres += genre + ","
     genres += " ]"
 
-    stars, description, episode_count = get_details_from_anilist(str(details["mal_id"]))
-
     max_ep = episode_count if isinstance(episode_count, int) else 9999
 
     ans = open_menu(
         choices=choices,
         prompt=prompt_txt,
-        qmark=f'{details["title"]} / {details["title_en"]} \n [Ilość odcinków: {episode_count}] [Ocena: {stars}]',
+        qmark=f'{details["title"]} / {details["title_en"]} \n [{t("det_ep_count")}: {episode_count}] [{t("det_score")}: {score_bar}]',
         message=genres,
-        height=7,
+        height=8,
         image=details['cover'],
         description=description 
     )
 
-    if ans == choices[0]:
+    if ans == watch_opt:
         ds.continue_data[0] = details
         ds.continue_data[1] = next_ep
         ds.save()
         w_players(details['slug'], next_ep)
         
-    elif ans == choices[1]:
+    elif ans == t("det_list"):
         ds.continue_data[0] = details
         w_list(details['slug'])
         
-    elif ans == choices[2]: 
+    elif ans == t("det_trailer"):
+        clear()
+        print(colored(t("trailer_loading"), "cyan"))
+        mpv_cmd = "mpv.exe" if os.name == "nt" else "mpv"
+        try:
+            subprocess.run([mpv_cmd, trailer_url], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception:
+            pass
+        m_details(details)
+        
+    elif ans == t("det_dl_season"): 
         w_download_season(details, base_download_dir=ds.settings["download_path"])
         m_details(details)
         
-    elif ans == choices[3]: 
+    elif ans == t("det_dl_eps"): 
         questions = [{
             "type": "input", 
-            "message": f"Wpisz numery do pobrania (np. 3 lub 4-6 lub 1,3,5 lub 1,7-8,11) [Wszystkich odc: {episode_count}]:", 
+            "message": t("det_dl_input").format(episode_count), 
             "name": "episodes_input"
         }]
         res = prompt(questions)
         
         if res['episodes_input']:
             episodes_to_download = set()
-            
             for part in res['episodes_input'].split(','):
                 part = part.strip()
-                if not part: 
-                    continue
-                    
+                if not part: continue
                 if '-' in part:
                     try:
                         start, end = map(int, part.split('-'))
                         start, end = min(start, end), max(start, end)
-                        start_safe = max(1, start)
-                        end_safe = min(max_ep, end)
-                        episodes_to_download.update(range(start_safe, end_safe + 1))
-                    except ValueError: 
-                        pass 
+                        episodes_to_download.update(range(max(1, start), min(max_ep, end) + 1))
+                    except ValueError: pass 
                 else:
                     try:
                         ep = int(part)
-                        if 1 <= ep <= max_ep:
-                            episodes_to_download.add(ep)
-                    except ValueError: 
-                        pass 
+                        if 1 <= ep <= max_ep: episodes_to_download.add(ep)
+                    except ValueError: pass 
 
             ep_list = sorted(list(episodes_to_download))
-            
             if not ep_list:
-                print(colored("Błąd: Nie podano poprawnych numerów odcinków!", "red"))
+                print(colored(t("det_dl_err"), "red"))
                 time.sleep(2)
             else:
                 w_download_season(details, ep_list, base_download_dir=ds.settings["download_path"])
-
         m_details(details)
         
-    elif ans == choices[4]:
+    elif ans in [t("det_rm_list"), t("det_add_list")]:
         has_token = ds.settings.get("anilist_token") != ""
         token = ds.settings["anilist_token"] if has_token else ""
         
         if details in ds.mylist:
             ds.mylist.remove(details)
-            ds.save()
-            if has_token:
-                threading.Thread(target=sync_anilist_list_status, args=(details['mal_id'], token, False), daemon=True).start()
-            m_details(details)
+            if has_token: threading.Thread(target=sync_anilist_list_status, args=(details['mal_id'], token, False), daemon=True).start()
         else:
             ds.mylist.append(details)
-            ds.save()
-            if has_token:
-                threading.Thread(target=sync_anilist_list_status, args=(details['mal_id'], token, True), daemon=True).start()
-            m_details(details)
+            if has_token: threading.Thread(target=sync_anilist_list_status, args=(details['mal_id'], token, True), daemon=True).start()
             
-    elif ans == choices[5]:
+        ds.save()
+        m_details(details)
+            
+    elif ans == t("det_search"):
         m_find()
         
-    elif ans == choices[6]:
+    elif ans == t("menu_main"):
         m_welcome()
 
 
@@ -563,18 +713,18 @@ def w_list(SLUG):
 
     if last_episode <= 0:
         clear()
-        print(colored("Nie znaleziono ilości odcinków [Błąd AniList lub brak MAL ID]", "red"))
+        print(colored(t("list_err"), "red"))
         time.sleep(3)
         m_details(details)
         return
 
     choices = list(range(1, last_episode + 1))
-    choices.append('Cofnij')
+    choices.append(t("back"))
 
-    prompt = 'Wybierz odcinek: '
+    prompt = t("list_prompt")
     ans = open_menu(choices=choices, prompt=prompt)
     
-    if ans == "Cofnij":
+    if ans == t("back"):
         m_details(details)
     else:
         ds.continue_data[1] = ans
@@ -590,18 +740,19 @@ def w_players(SLUG, NUMBER, err=''):
 
     players = []
     details = ds.continue_data[0]
+    current_lang = ds.settings.get("language", "pl")
 
     clear()
-    print(colored(f"[INFO] Odcinek {NUMBER} - Ładowanie źródeł...", "cyan"))
+    print(colored(t("pl_load").format(NUMBER), "cyan"))
     
-    print(colored("Pobieranie polskich źródeł (docchi.pl)...", "yellow"))
-    pl_players_list = get_players_list(SLUG, NUMBER)
-    if pl_players_list != 404 and isinstance(pl_players_list, list):
-        for player in pl_players_list:
-            # Lista z 3 elementami: [TAG, HOSTING, URL]
-            players.append(["[PL]", player['player_hosting'], player['player']])
+    if current_lang == "pl":
+        print(colored(t("pl_pl_src"), "yellow"))
+        pl_players_list = get_players_list(SLUG, NUMBER)
+        if pl_players_list != 404 and isinstance(pl_players_list, list):
+            for player in pl_players_list:
+                players.append(["[PL]", player['player_hosting'], player['player']])
 
-    print(colored("Pobieranie angielskich źródeł (anidb.app z weryfikacją MAL ID)...", "yellow"))
+    print(colored(t("pl_en_src"), "yellow"))
     if details:
         en_players_list = get_english_players(details, NUMBER)
         if en_players_list:
@@ -610,7 +761,7 @@ def w_players(SLUG, NUMBER, err=''):
 
     if not players:
         clear()
-        print(colored("Nie znaleziono odcinka w żadnej z baz (PL/EN) [Błąd 404]", "red"))
+        print(colored(t("pl_404"), "red"))
         time.sleep(3)
         if details:
             m_details(details)
@@ -618,7 +769,7 @@ def w_players(SLUG, NUMBER, err=''):
             m_details(get_details_for_serie(SLUG))
         return
 
-    print(colored("\nTrwa analizowanie, sprawdzanie źródeł na żywo i pobieranie jakości...", "cyan"))
+    print(colored(t("pl_analyzing"), "cyan"))
     
     def check_link(player):
         hosting_name, url = player[1], player[2]
@@ -652,7 +803,7 @@ def w_players(SLUG, NUMBER, err=''):
                         else:
                             resolved_res = raw_res
                     else:
-                        resolved_res = "Nieznana"
+                        resolved_res = t("pl_unknown")
                         
                     return ("ok", resolved_res)
                     
@@ -664,7 +815,7 @@ def w_players(SLUG, NUMBER, err=''):
                 )
                 
                 if res_fallback.returncode == 0:
-                    return ("ok", "Nieznana")
+                    return ("ok", t("pl_unknown"))
                     
                 return ("error", "")
             except:
@@ -686,37 +837,36 @@ def w_players(SLUG, NUMBER, err=''):
         elif status == "mega":
             prefix = f"🟡 {lang_tag} [MEGA] "
         else:
-            prefix = f"❌ {lang_tag} [Brak] "
+            prefix = f"❌ {lang_tag} [{t('pl_none')}] "
             
-        display_line = (prefix + hosting_name).ljust(45) + " | Link źródła: " + source_link
+        display_line = (prefix + hosting_name).ljust(45) + f" | {t('pl_link')}: " + source_link
         choices.append(display_line)
 
     current_quality = ds.settings.get("player_quality", "best")
-    choices.append(f"Zmień maksymalną jakość (Obecnie: {current_quality})")
-    choices.append("Wróć do menu")
+    choices.append(f"{t('pl_chg_qual')} ({t('currently')}: {current_quality})")
+    choices.append(t("menu_main"))
 
-    prompt = 'Wybierz źródło: '
+    prompt = t("pl_prompt")
     ans = open_menu(choices=choices, prompt=prompt, qmark=err)
 
     if ans == choices[-1]:
         m_welcome()
         return
         
-    if ans == choices[-2]: # Zmiana jakości
-        quality_choices = ["Źródłowa", "1080p", "720p", "480p", "360p"]
-        chosen = open_menu(choices=quality_choices, prompt="Wybierz preferowaną jakość:", height=6)
+    if ans == choices[-2]: 
+        quality_choices = [t("qual_source"), "1080p", "720p", "480p", "360p"]
+        chosen = open_menu(choices=quality_choices, prompt=t("qual_prompt"), height=6)
         
-        if chosen == "Źródłowa" or chosen.startswith("best"):
+        if chosen == t("qual_source") or chosen.startswith("best"):
             ds.settings["player_quality"] = "best"
         else:
             ds.settings["player_quality"] = chosen
             
-        ds.save() # Zapisujemy od razu na dysk!
-        w_players(SLUG, NUMBER, err=f'Zmieniono jakość odtwarzacza na {ds.settings["player_quality"]}')
+        ds.save()
+        w_players(SLUG, NUMBER, err=t("pl_qual_chg").format(ds.settings["player_quality"]))
         return
 
     ans_index_in_choices = choices.index(ans)
-    
     selected_player_url = players[ans_index_in_choices][2]
 
     mal_id = ds.continue_data[0].get('mal_id') if ds.continue_data[0] else None
@@ -728,10 +878,10 @@ def w_players(SLUG, NUMBER, err=''):
         ep_number=NUMBER
     )
 
-    print("Rozpoczynanie odtwarzania...")
+    print(t("pl_start"))
     time.sleep(3)                                      
     if process == None or process.poll() is not None:
-        w_players(SLUG, NUMBER, err='Wybrane źródło nie jest dostępne, lub nie jest wspierane!')
+        w_players(SLUG, NUMBER, err=t("pl_err_src"))
 
     w_default(SLUG, NUMBER, process)
 
@@ -744,86 +894,78 @@ def w_default(SLUG, NUMBER, process):
     how_many_episodes = get_quick_episode_count(details.get('mal_id'))
 
     if how_many_episodes <= 0:
-        how_many_episodes = NUMBER # Awaryjne zabezpieczenie, gdyby AniList padł
+        how_many_episodes = NUMBER
 
     if ds.settings.get("rpc_enabled", True):
-        update_rpc(f"Ogląda: {details.get('title', 'Anime')} [{str(NUMBER)}/{str(how_many_episodes)}]", ds.settings.get("rpc_status", "Używa doccli!"))
+        update_rpc(t("def_rpc_watch").format(details.get('title', 'Anime'), NUMBER, how_many_episodes), ds.settings.get("rpc_status", t("rpc_def_status")))
     else:
-        update_rpc("Ogląda anime", ds.settings.get("rpc_status", "Używa doccli!"))
+        update_rpc(t("def_rpc_def"), ds.settings.get("rpc_status", t("rpc_def_status")))
 
     threading.Thread(target=delayed_tracker, args=(details, NUMBER, process, how_many_episodes), daemon=True).start()
 
-    choices = [
-        "Zmień źródło",
-    ]
-
+    choices = [t("def_chg_src")]
     token = ds.settings.get("anilist_token", "")
 
     if NUMBER < how_many_episodes:
-        choices.append("Następny odcinek")
+        choices.append(t("def_next"))
     else:
         if token != "":
-            choices.append("Oceń serię (AniList)")
+            choices.append(t("def_rate"))
 
     choices.extend([
-        "Poprzedni odcinek",
-        "Lista odcinków",
-        "Menu główne"
+        t("def_prev"),
+        t("def_list"),
+        t("menu_main")
     ])
 
-    prompt = 'Co chcesz zrobić? '
-    ans = open_menu(choices=choices, prompt=prompt, qmark=f'Odcinek: {NUMBER}/{how_many_episodes}', height=7)
+    prompt = t("def_prompt")
+    ans = open_menu(choices=choices, prompt=prompt, qmark=t("def_qmark").format(NUMBER, how_many_episodes), height=7)
 
     if ans == choices[0]:
         kill_process(process)
-        update_rpc("Menu główne", "Szuka anime do obejrzenia...")
+        update_rpc(t("menu_main"), t("rpc_searching"))
         w_players(SLUG, NUMBER)
 
-    elif ans == "Następny odcinek":
+    elif ans == t("def_next"):
         kill_process(process)
-        update_rpc("Menu główne", "Szuka anime do obejrzenia...")
+        update_rpc(t("menu_main"), t("rpc_searching"))
         next_ep = NUMBER + 1
         ds.continue_data[1] = next_ep
         ds.save()
         w_players(SLUG, next_ep)
         
-    elif ans == "Oceń serię (AniList)":
+    elif ans == t("def_rate"):
         kill_process(process) 
         if token != "":
             clear()
             
             from anilist_connector import rate_anilist_anime, get_anilist_score_format
             
-            print(colored("[INFO] Pobieranie Twojej skali ocen z AniList...", "cyan"))
+            print(colored(t("rate_info"), "cyan"))
             score_format = get_anilist_score_format(token)
             
             rate_choices = []
             
             if score_format == "POINT_100":
-                # Liczby całkowite 1-100
                 rate_choices = [str(i) for i in range(100, 0, -1)]
             elif score_format == "POINT_10_DECIMAL":
-                # Ułamki 1.0 - 10.0
                 rate_choices = [f"{i/10:.1f}" for i in range(100, 0, -1)]
             elif score_format == "POINT_5":
-                # Reprezentacja w gwiazdkach
                 rate_choices = ["5 ⭐", "4 ⭐", "3 ⭐", "2 ⭐", "1 ⭐"]
             elif score_format == "POINT_3":
-                # Reprezentacja w emotikonach
-                rate_choices = ["🙂 (Dobrze)", "😐 (Średnio)", "🙁 (Źle)"]
+                rate_choices = [f"🙂 {t('rate_good')}", f"😐 {t('rate_avg')}", f"🙁 {t('rate_bad')}"]
             else: 
-                # POINT_10 - domyślne liczby całkowite 1-10
                 rate_choices = [str(i) for i in range(10, 0, -1)]
                 
-            rate_choices.append("Nie chcę oceniać")
+            rate_choices.append(t("rate_no"))
             
             ans_rate = open_menu(
                 choices=rate_choices,
-                prompt="Jak oceniasz tę serię w swojej skali?",
+                prompt=t("rate_prompt"),
                 height=12
             )
             
-            if ans_rate != "Nie chcę oceniać":
+            if ans_rate != t("rate_no"):
                 score_raw = 0
                 
                 if score_format == "POINT_100":
@@ -839,40 +981,40 @@ def w_default(SLUG, NUMBER, process):
                 else:
                     score_raw = int(ans_rate) * 10
                 
-                print(colored("[INFO] Wysyłanie oceny do AniList...", "cyan"))
+                print(colored(t("rate_send"), "cyan"))
                 if rate_anilist_anime(details.get('mal_id'), score_raw, token):
-                    print(colored("[+] Ocena została pomyślnie zapisana na profilu!", "green"))
+                    print(colored(t("rate_ok"), "green"))
                 else:
-                    print(colored("[-] Wystąpił błąd podczas wysyłania oceny.", "red"))
+                    print(colored(t("rate_err"), "red"))
                 time.sleep(2)
                 
-        update_rpc("Menu główne", "Szuka anime do obejrzenia...")
+        update_rpc(t("menu_main"), t("rpc_searching"))
         m_welcome()
 
-    elif ans == "Ukończono serię (Wróć do menu głównego)":
+    elif ans == t("def_finish"):
         kill_process(process)
         clear()
-        print(colored(f"🎉 Gratulacje! Ukończono anime: {details.get('title', 'Brak tytułu')}", "green"))
+        print(colored(t("finish_msg").format(details.get('title', t("player_unknown_anime"))), "green"))
         time.sleep(2)
-        update_rpc("Menu główne", "Szuka anime do obejrzenia...")
+        update_rpc(t("menu_main"), t("rpc_searching"))
         m_welcome()
 
-    elif ans == "Poprzedni odcinek":
+    elif ans == t("def_prev"):
         kill_process(process)
-        update_rpc("Menu główne", "Szuka anime do obejrzenia...")
+        update_rpc(t("menu_main"), t("rpc_searching"))
         prev_ep = NUMBER - 1 if NUMBER >= 2 else NUMBER
         ds.continue_data[1] = prev_ep
         ds.save()
         w_players(SLUG, prev_ep)
         
-    elif ans == "Lista odcinków":
+    elif ans == t("def_list"):
         kill_process(process)
-        update_rpc("Menu główne", "Szuka anime do obejrzenia...")
+        update_rpc(t("menu_main"), t("rpc_searching"))
         w_list(SLUG)
         
-    elif ans == "Menu główne":
+    elif ans == t("menu_main"):
         kill_process(process)
-        update_rpc("Menu główne", "Szuka anime do obejrzenia...")
+        update_rpc(t("menu_main"), t("rpc_searching"))
         m_welcome()
 
 
@@ -884,37 +1026,79 @@ def m_resume():
         if isinstance(item, dict) and item.get('source', '').startswith('Doccli - Online'):
             slug = item.get('slug')
             if slug and slug not in seen_slugs:
-                seen_slugs.add(slug)
-                
                 ep_str = str(item.get('episode', '1'))
+                
+                if ep_str in ["Ukończono", "Completed", t("al_completed")]:
+                    seen_slugs.add(slug)
+                    continue
+                    
                 try:
-                    next_ep = int(ep_str) + 1
+                    last_ep = int(ep_str)
+                    next_ep = last_ep + 1
                 except ValueError:
+                    last_ep = 0
                     next_ep = 1
 
+                seen_slugs.add(slug)
+                
                 resume_list.append({
                     'slug': slug,
                     'title': item.get('title'),
-                    'next_ep': next_ep
+                    'last_ep': last_ep,
+                    'next_ep': next_ep,
+                    'mal_id': None
                 })
 
     if not resume_list:
-        print(colored("Brak historii oglądania do wznowienia.", "yellow"))
+        print(colored(t("res_empty"), "yellow"))
         time.sleep(2)
         m_welcome()
         return
 
-    choices = ["Cofnij"]
+    resume_list = resume_list[:15]
+    all_series = get_cached_series_list()
+    
+    for res_item in resume_list:
+        for s in all_series:
+            if s.get('slug') == res_item['slug']:
+                res_item['mal_id'] = s.get('mal_id')
+                break
+
+    clear()
+    print(colored(t("res_load"), "cyan"))
+    
+    def fetch_total(item):
+        total = get_quick_episode_count(item['mal_id']) if item['mal_id'] else 0
+        return item, total
+
+    with ThreadPoolExecutor(max_workers=15) as executor:
+        results = list(executor.map(fetch_total, resume_list))
+
+    choices = [t("back")]
     display_map = {}
     
-    for item in resume_list[:15]:  
-        display_text = f"Wznów: {item['title']} (Odcinek {item['next_ep']})"
+    for item, total_eps in results:
+        bar_len = 10
+        if total_eps > 0:
+            ratio = min(1.0, item['last_ep'] / total_eps)
+            filled = int(bar_len * ratio)
+            bar = "█" * filled + "░" * (bar_len - filled)
+            ep_info = f"[{item['last_ep']}/{total_eps}]"
+        else:
+            bar = "░" * bar_len
+            ep_info = f"[{item['last_ep']}/?]"
+            
+        short_title = item['title'][:25] + "..." if len(item['title']) > 25 else item['title']
+        base_text = t("res_resume").format(short_title, item['next_ep'])
+        
+        display_text = f"{base_text.ljust(45)} {ep_info.rjust(8)} {bar}"
+        
         choices.append(display_text)
         display_map[display_text] = item
 
-    ans = open_menu(choices=choices, prompt='Co chcesz kontynuować?', height=10)
+    ans = open_menu(choices=choices, prompt=t("res_prompt"), height=10)
     
-    if ans == "Cofnij":
+    if ans == t("back"):
         m_welcome()
     else:
         selected = display_map[ans]
@@ -922,7 +1106,7 @@ def m_resume():
         next_ep = selected['next_ep']
         
         clear()
-        print(colored("[INFO] Wczytywanie danych...", "cyan"))
+        print(colored(t("res_load"), "cyan"))
         details = get_details_for_serie(slug)
         
         ds.continue_data[0] = details
@@ -936,12 +1120,12 @@ def m_calendar():
     from datetime import datetime
     
     clear()
-    print(colored("[INFO] Pobieranie kalendarza premier z AniList...", "cyan"))
+    print(colored(t("cal_info"), "cyan"))
     
     schedule = get_anilist_schedule(days=7) 
     
     if not schedule:
-        print(colored("[-] Nie udało się pobrać kalendarza lub brak nadchodzących premier.", "red"))
+        print(colored(t("cal_err1"), "red"))
         time.sleep(2)
         m_welcome()
         return
@@ -952,7 +1136,7 @@ def m_calendar():
     choices_map = {}
     choices = []
 
-    days_pl = ["Pon", "Wto", "Śro", "Czw", "Pią", "Sob", "Nie"]
+    days_names = t("cal_days")
 
     for item in schedule:
         if not item.get('media') or not item['media'].get('idMal'):
@@ -966,30 +1150,30 @@ def m_calendar():
             ep_num = item['episode']
 
             dt = datetime.fromtimestamp(air_time)
-            day_name = days_pl[dt.weekday()]
+            day_name = days_names[dt.weekday()]
             time_str = dt.strftime("%H:%M")
             date_str = dt.strftime("%d.%m")
 
-            display_str = f"[{day_name} {date_str} | {time_str}] {local_anime.get('title', 'Brak')} (Odc. {ep_num})"
+            display_str = f"[{day_name} {date_str} | {time_str}] {local_anime.get('title', t('cal_none'))} (Odc. {ep_num})"
             choices.append(display_str)
             choices_map[display_str] = local_anime
 
     if not choices:
-        print(colored("[-] Wśród 50 najbliższych premier na świecie, nie znaleziono żadnej w polskiej bazie.", "yellow"))
+        print(colored(t("cal_err2"), "yellow"))
         time.sleep(3)
         m_welcome()
         return
 
-    choices.append("Cofnij")
+    choices.append(t("back"))
 
     ans = open_menu(
         choices=choices, 
-        prompt="Najbliższe premiery (Posortowane chronologicznie):", 
+        prompt=t("cal_prompt"), 
         height=12,
         message=KALENDARZ
     )
 
-    if ans == "Cofnij":
+    if ans == t("back"):
         m_welcome()
     else:
         selected_anime = choices_map[ans]

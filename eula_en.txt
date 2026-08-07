@@ -1,0 +1,20 @@
+DISCLAIMER
+Project: doccli
+
+The primary goal of this project is to combine automation and efficiency to extract content provided to the user on the Internet. All content accessible within the project is hosted by external, unaffiliated sources.
+
+All content made available through this project is publicly accessible. If your website is listed in this project, the code is largely public. Please take the necessary measures to counteract exploits used to extract content from your website.
+
+Think of this project as a standard web browser, but somewhat simpler and more specific. While an average browser sends hundreds of requests, this project exclusively sends requests related to the content provided by the websites.
+
+This project must be used at your own risk, in accordance with applicable laws, as the project has no control over the content it provides access to. The use of copyrighted content will not be held against the developer, but solely against the user.
+
+DMCA AND COPYRIGHT VIOLATIONS
+A browser is a tool, and the maliciousness of a tool depends directly on the user.
+This project employs client-side content access mechanisms. Therefore, any copyright or DMCA violations regarding this project should be reported directly to the respective website by the party filing such claims. At the time of writing, these are docchi (https://docchi.pl/) and anidb (https://anidb.app/).
+
+CONTACT
+Create an "issue" on GitHub or contact me on Discord.
+
+DO NOT HARASS THE DEVELOPER!
+YOU USE THIS PROGRAM AT YOUR OWN RISK.

@@ -22,11 +22,15 @@ class DataStorage:
         # Domyślne ustawienia
         self.settings = {
             "rpc_enabled": True,
-            "rpc_status": "Używa doccli!",
+            "rpc_status": "Watching anime via doccli!",
             "auto_sync": True,
             "anilist_token": "",
             "download_path": "",
-            "player_quality": "best"
+            "player_quality": "best",
+            "language": "pl",
+            "unread_notifications": [],
+            "notification_history": [],
+            "known_eps": {}
         }
 
         self.load()

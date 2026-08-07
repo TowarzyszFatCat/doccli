@@ -1,6 +1,5 @@
 import time
 from datetime import datetime
-from termcolor import colored
 import os
 import requests
 
@@ -11,6 +10,7 @@ from termcolor import colored
 
 # Doccli modules
 from storage import ds
+from i18n import t
 
 SYNC_DONE = False
 url = "https://graphql.anilist.co"
@@ -50,15 +50,20 @@ def get_details_from_anilist(mal_id):
         nextAiringEpisode {
           episode
         }
+        trailer {
+          id
+          site
+        }
       }
     }
     '''
     
-    variables = {"malId": mal_id}
+    variables = {"malId": mal_id}  
     
-    stars = "\U0001F311\U0001F311\U0001F311\U0001F311\U0001F311"
-    description = "Brak opisu."
+    score_bar = "\U0001F311\U0001F311\U0001F311\U0001F311\U0001F311" # 🌑🌑🌑🌑🌑 (5 pustych)
+    description = t("al_no_desc")
     episode_count = "?" 
+    trailer_url = None
 
     try:
         response = post(url, json={'query': query, 'variables': variables}, timeout=5)
@@ -68,23 +73,40 @@ def get_details_from_anilist(mal_id):
             media = data.get('data', {}).get('Media')
 
             if media:
+                if media.get('trailer') and media['trailer'].get('site') == 'youtube':
+                    trailer_url = f"https://www.youtube.com/watch?v={media['trailer']['id']}"
+                
                 if media.get('averageScore'):
                     avg = media['averageScore']
-                    stars_val = avg / 20 
-                    full_stars = int(stars_val)
-                    half_star = stars_val - full_stars >= 0.5
-                    full = "\U0001F315" * full_stars
-                    if half_star and full_stars < 5:
-                        full += "\U0001F317"
-                    full += "\U0001F311" * (5 - len(full))
-                    stars = full
+                    
+                    val = round(avg / 5)
+                    
+                    full_count = val // 4
+                    remainder = val % 4
+                    
+                    m_full = "\U0001F315"  # 🌕
+                    m_empty = "\U0001F311" # 🌑
+                    
+                    # 1/4 (🌘), 2/4 (🌗), 3/4 (🌖)
+                    m_partials = ["", "\U0001F318", "\U0001F317", "\U0001F316"]
+                    
+                    temp_bar = m_full * full_count
+                    
+                    if full_count < 5 and remainder > 0:
+                        temp_bar += m_partials[remainder]
+                        
+                    current_len = full_count + (1 if remainder > 0 else 0)
+                    temp_bar += m_empty * (5 - current_len)
+                    
+                    score_bar = temp_bar
                 
                 if media.get('description'):
                     raw_desc = media['description']
                     clean_desc = raw_desc.replace('<br>', '\n').replace('<i>', '').replace('</i>', '')
                     
                     try:
-                        translated = GoogleTranslator(source='auto', target='pl').translate(clean_desc)
+                        current_lang = ds.settings.get("language", "pl")
+                        translated = GoogleTranslator(source='auto', target=current_lang).translate(clean_desc)
                         description = translated
                     except Exception:
                         description = clean_desc
@@ -94,16 +116,16 @@ def get_details_from_anilist(mal_id):
                     next_airing = media.get('nextAiringEpisode')
                     if next_airing and next_airing.get('episode'):
                         aired = next_airing['episode'] - 1
-                        episode_count = f"Trwa emisja (Wydano: {aired})"
+                        episode_count = t("al_airing_rel").format(aired)
                     else:
-                        episode_count = "Trwa emisja"
+                        episode_count = t("al_airing")
                 else:
                     episode_count = episodes_total
 
     except Exception:
         pass
 
-    return stars, description, episode_count
+    return score_bar, description, episode_count, trailer_url
 
 
 def update_anilist_progress(mal_id, episode_number, token, is_completed=False):
@@ -144,14 +166,13 @@ def update_anilist_progress(mal_id, episode_number, token, is_completed=False):
             
         if episode_number <= current_progress:
             return True
-            
+
         if media_status == 'RELEASING':
             is_completed = False
         elif total_episodes and episode_number >= total_episodes:
             is_completed = True
         else:
-            is_completed = False
-            
+            is_completed = False      
     except:
         return False
 
@@ -377,8 +398,8 @@ def get_anilist_history(token):
                 continue
                 
             created_at = act.get('createdAt')
-            title_romaji = act.get('media', {}).get('title', {}).get('romaji', 'Nieznany')
-            title_eng = act.get('media', {}).get('title', {}).get('english', 'Nieznany')
+            title_romaji = act.get('media', {}).get('title', {}).get('romaji', t("player_unknown_anime"))
+            title_eng = act.get('media', {}).get('title', {}).get('english', t("player_unknown_anime"))
             
             if not title_eng:
                 title_eng = title_romaji
@@ -501,21 +522,21 @@ def get_anilist_advanced_stats(token):
         '''
         req_plan = post("https://graphql.anilist.co", json={'query': query_plan, 'variables': {'userId': user_id}}, headers=headers, timeout=5)
         
-        oldest_title = "Brak"
+        oldest_title = t("al_none")
         
         if req_plan.status_code == 200:
             lists = req_plan.json()['data'].get('MediaListCollection', {}).get('lists', [])
             if lists and len(lists) > 0:
                 entries = lists[0].get('entries', [])
                 if len(entries) > 0:
-                    t = entries[0]['media']['title']
-                    oldest_title = t.get('romaji') or t.get('english') or "Nieznany"
+                    t_title = entries[0]['media']['title']
+                    oldest_title = t_title.get('romaji') or t_title.get('english') or t("player_unknown_anime")
                     
         return {
             'completed': completed,
             'not_completed': not_completed,
             'mean_score': mean_score,
-            'genres': ", ".join(genres) if genres else "Brak",
+            'genres': ", ".join(genres) if genres else t("al_none"),
             'planning_count': planning_count,
             'oldest_planning': oldest_title
         }
@@ -576,15 +597,15 @@ def sync_history_with_anilist():
     if not has_token:
         return
         
-    print(colored("[INFO] Trwa synchronizacja historii z AniList (To zajmie tylko chwilę)...", "cyan"))
+    print(colored(t("al_sync"), "cyan"))
     token = ds.settings["anilist_token"]
     
     try:
         al_history = get_anilist_history(token)
         for al_item in al_history:
             is_duplicate = False
-            al_progress = str(al_item['progress']) if al_item['progress'] else ("Ukończono" if al_item['status'] == 'completed' else "?")
-            
+            al_progress = str(al_item['progress']) if al_item['progress'] else (t("al_completed") if al_item['status'] == 'completed' else "?")
+
             for local_item in ds.history:
                 if local_item.get('episode') == al_progress:
                     lt_lower = local_item.get('title', '').lower()
@@ -630,12 +651,12 @@ def generate_aniskip_chapters(mal_id, ep_number, filepath):
             pass
             
     if not mal_id or not ep_number:
-        print(colored("[-] AniSkip: Brak MAL ID lub numeru odcinka. Markery wyłączone.", "dark_grey"))
+        print(colored(t("al_skip_no_id"), "dark_grey"))
         return
         
     try:
-        url = f"https://api.aniskip.com/v2/skip-times/{mal_id}/{ep_number}?types=op&types=ed&types=mixed-op&types=mixed-ed&types=recap&episodeLength=0"
-        req = requests.get(url, timeout=3)
+        url_api = f"https://api.aniskip.com/v2/skip-times/{mal_id}/{ep_number}?types=op&types=ed&types=mixed-op&types=mixed-ed&types=recap&episodeLength=0"
+        req = requests.get(url_api, timeout=3)
         
         if req.status_code == 200:
             data = req.json()
@@ -655,7 +676,7 @@ def generate_aniskip_chapters(mal_id, ep_number, filepath):
                         content += "\n[CHAPTER]\nTIMEBASE=1/1000\n"
                         content += f"START={int(current_time * 1000)}\n"
                         content += f"END={int(start_time * 1000)}\n"
-                        content += "title=Odcinek\n"
+                        content += f"title={t('al_skip_ep')}\n"
                         
                     title = "Opening" if "op" in skip_type else "Ending" if "ed" in skip_type else skip_type.capitalize()
                     content += "\n[CHAPTER]\nTIMEBASE=1/1000\n"
@@ -668,19 +689,19 @@ def generate_aniskip_chapters(mal_id, ep_number, filepath):
                 content += "\n[CHAPTER]\nTIMEBASE=1/1000\n"
                 content += f"START={int(current_time * 1000)}\n"
                 content += "END=99999999\n"
-                content += "title=Odcinek\n"
+                content += f"title={t('al_skip_ep')}\n"
                 
                 with open(filepath, "w", encoding="utf-8") as f:
                     f.write(content)
                 
-                print(colored(f"[+] Znaleziono markery AniSkip! Wygenerowano {len(results)} przedziałów.", "green"))
+                print(colored(t("al_skip_found").format(len(results)), "green"))
             else:
-                print(colored("[-] Baza AniSkip nie posiada jeszcze markerów dla tego odcinka.", "yellow"))
+                print(colored(t("al_skip_not_found"), "yellow"))
         else:
-            print(colored(f"[-] Odrzucenie z serwera AniSkip (Błąd {req.status_code})", "red"))
+            print(colored(t("al_skip_rej").format(req.status_code), "red"))
             
     except Exception as e:
-        print(colored(f"[BŁĄD] AniSkip awaria pobierania: {e}", "red"))
+        print(colored(t("al_skip_err").format(e), "red"))
 
 
 def get_anilist_score_format(token):
@@ -804,3 +825,34 @@ def get_quick_episode_count(mal_id):
         pass
         
     return 0
+
+def check_new_episodes(mal_ids):
+    if not mal_ids: return {}
+    query = '''
+    query($idIn: [Int]) {
+      Page(page: 1, perPage: 50) {
+        media(idMal_in: $idIn, type: ANIME) {
+          idMal
+          episodes
+          nextAiringEpisode { episode }
+        }
+      }
+    }
+    '''
+    try:
+        from requests import post
+        req = post("https://graphql.anilist.co", json={'query': query, 'variables': {'idIn': mal_ids}}, timeout=5)
+        if req.status_code == 200:
+            ans = {}
+            for m in req.json()['data']['Page']['media']:
+                mal_id = str(m['idMal'])
+                ep = m.get('episodes')
+                if not ep:
+                    ne = m.get('nextAiringEpisode')
+                    if ne and ne.get('episode'):
+                        ep = ne['episode'] - 1
+                ans[mal_id] = ep or 0
+            return ans
+    except:
+        pass
+    return {}
