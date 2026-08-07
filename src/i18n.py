@@ -355,8 +355,8 @@ TEXTS = {
         "menu_notifications": "Powiadomienia ({})",
         "notif_title": "Powiadomienia",
         "notif_empty": "Brak historii powiadomień.",
-        "notif_clear": "🗑️ Wyczyść historię powiadomień",
-        "notif_new_ep": "🔔 Nowy odcinek: {} (Odc. {}) jest już dostępny!",
+        "notif_clear": "Wyczyść historię powiadomień",
+        "notif_new_ep": "Nowy odcinek: {} (Odc. {}) jest już dostępny!",
     },
     "en": {
         "yes": "Yes",
@@ -712,8 +712,8 @@ TEXTS = {
         "menu_notifications": "Notifications ({})",
         "notif_title": "Notifications",
         "notif_empty": "No notification history.",
-        "notif_clear": "🗑️ Clear notification history",
-        "notif_new_ep": "🔔 New episode: {} (Ep. {}) is now available!",
+        "notif_clear": "Clear notification history",
+        "notif_new_ep": "New episode: {} (Ep. {}) is now available!",
     }
 }
 

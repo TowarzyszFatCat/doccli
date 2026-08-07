@@ -21,7 +21,7 @@ from cache import preload_series_cache, get_cached_series_list, get_cached_trend
 from ui_utils import clear, open_menu
 from downloader import w_download_season
 from stats import m_stats
-from menus_decor import MAIN_MENU, SZUKAJ, NA_CZASIE, MOJA_LISTA, HISTORIA, MOJA_BIBLIOTEKA, KALENDARZ
+from menus_decor import MAIN_MENU, SZUKAJ, NA_CZASIE, MOJA_LISTA, HISTORIA, MOJA_BIBLIOTEKA, KALENDARZ, POWIADOMIENIA
 from discord_integration import update_rpc, set_running
 from docchi_api_connector import get_episodes_count_for_serie, get_players_list, get_details_for_serie, extract_lycoris_direct_link, get_english_players
 from anilist_connector import get_details_from_anilist, update_anilist_progress, get_anilist_plan_to_watch, sync_anilist_list_status, get_anilist_history, get_duration_by_malid, sync_history_with_anilist, get_quick_episode_count
@@ -98,6 +98,8 @@ def m_notifications():
         m_welcome()
         return
         
+    ds.settings["unread_notifications"] = []
+    
     choices = [t("notif_clear")]
     display_map = {}
     
@@ -107,14 +109,14 @@ def m_notifications():
         choices.append(display_text)
         display_map[display_text] = item
         
-    choices.append(t("back"))
-    
-    ans = open_menu(choices=choices, prompt=t("hist_prompt"), message=t("notif_title"), height=10)
-    
-    for item in history:
         item["unread"] = False
+        
     ds.settings["notification_history"] = history
     ds.save()
+    
+    choices.append(t("back"))
+    
+    ans = open_menu(choices=choices, prompt=t("hist_prompt"), message=POWIADOMIENIA, height=10)
     
     if ans == t("back") or ans == choices[-1]:
         m_welcome()
@@ -137,7 +139,7 @@ def m_notifications():
 
 def m_welcome():
     global LAST_CHECK_TIME
-    
+
     preload_series_cache()
     update_rpc(t("menu_main"), t("rpc_searching"))
 
@@ -176,7 +178,9 @@ def m_welcome():
     
     all_history = ds.settings.get("notification_history", [])
     if all_history:
-        dynamic_menu_art += "\n" + colored(all_history[0].get("message"), "green") + "\n"
+        latest = all_history[0]
+        bell = "🔔 " if latest.get("unread", False) else ""
+        dynamic_menu_art += "\n" + f"{bell}{latest.get('message')}" + "\n"
 
     ans = open_menu(choices=choices, prompt=prompt_txt, height=12, message=dynamic_menu_art)
 
