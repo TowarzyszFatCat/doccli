@@ -56,6 +56,13 @@ CLI do oglądania anime!<br>
     Historia aktualizacji v2.40.X:
 </h1>
 
+**v2.40.0**
+- Dodano pełne wsparcie języka angielskiego wraz z angielskim instalatorem,
+- Poprawiono autoupdater - teraz nie updatuje w tle tylko wyswietla okienko z progressem,
+- Dodano opcje losowania anime z mojej listy,
+- Poprawki menu wznawiania - pokazuje postęp danej serii,
+- Dodano system powiadomień gdy wyjdzie nowy odcinek anime,
+- i wiele więcej fixów...
 
 ---
 <h1 align="center">

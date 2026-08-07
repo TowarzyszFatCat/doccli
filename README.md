@@ -56,6 +56,13 @@ CLI for watching anime!<br>
     Update History v2.40.X:
 </h1>
 
+**v2.40.0**
+- Added full English language support along with an English installer,
+- Fixed the autoupdater - it no longer updates in the background, but instead displays a progress window,
+- Added an option to randomize anime from my list,
+- Resume menu fixes - it now displays the progress of a given series,
+- Added a notification system when a new anime episode is released,
+- and many more fixes...
 
 ---
 <h1 align="center">
