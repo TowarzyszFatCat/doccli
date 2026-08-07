@@ -27,7 +27,10 @@ class DataStorage:
             "anilist_token": "",
             "download_path": "",
             "player_quality": "best",
-            "language": "pl"
+            "language": "pl",
+            "unread_notifications": [],
+            "notification_history": [],
+            "known_eps": {}
         }
 
         self.load()

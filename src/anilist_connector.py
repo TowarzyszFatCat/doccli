@@ -50,6 +50,10 @@ def get_details_from_anilist(mal_id):
         nextAiringEpisode {
           episode
         }
+        trailer {
+          id
+          site
+        }
       }
     }
     '''
@@ -59,6 +63,7 @@ def get_details_from_anilist(mal_id):
     score_bar = "\U0001F311\U0001F311\U0001F311\U0001F311\U0001F311" # 🌑🌑🌑🌑🌑 (5 pustych)
     description = t("al_no_desc")
     episode_count = "?" 
+    trailer_url = None
 
     try:
         response = post(url, json={'query': query, 'variables': variables}, timeout=5)
@@ -68,6 +73,9 @@ def get_details_from_anilist(mal_id):
             media = data.get('data', {}).get('Media')
 
             if media:
+                if media.get('trailer') and media['trailer'].get('site') == 'youtube':
+                    trailer_url = f"https://www.youtube.com/watch?v={media['trailer']['id']}"
+                
                 if media.get('averageScore'):
                     avg = media['averageScore']
                     
@@ -117,7 +125,7 @@ def get_details_from_anilist(mal_id):
     except Exception:
         pass
 
-    return score_bar, description, episode_count
+    return score_bar, description, episode_count, trailer_url
 
 
 def update_anilist_progress(mal_id, episode_number, token, is_completed=False):
@@ -817,3 +825,34 @@ def get_quick_episode_count(mal_id):
         pass
         
     return 0
+
+def check_new_episodes(mal_ids):
+    if not mal_ids: return {}
+    query = '''
+    query($idIn: [Int]) {
+      Page(page: 1, perPage: 50) {
+        media(idMal_in: $idIn, type: ANIME) {
+          idMal
+          episodes
+          nextAiringEpisode { episode }
+        }
+      }
+    }
+    '''
+    try:
+        from requests import post
+        req = post("https://graphql.anilist.co", json={'query': query, 'variables': {'idIn': mal_ids}}, timeout=5)
+        if req.status_code == 200:
+            ans = {}
+            for m in req.json()['data']['Page']['media']:
+                mal_id = str(m['idMal'])
+                ep = m.get('episodes')
+                if not ep:
+                    ne = m.get('nextAiringEpisode')
+                    if ne and ne.get('episode'):
+                        ep = ne['episode'] - 1
+                ans[mal_id] = ep or 0
+            return ans
+    except:
+        pass
+    return {}

@@ -27,50 +27,145 @@ from docchi_api_connector import get_episodes_count_for_serie, get_players_list,
 from anilist_connector import get_details_from_anilist, update_anilist_progress, get_anilist_plan_to_watch, sync_anilist_list_status, get_anilist_history, get_duration_by_malid, sync_history_with_anilist, get_quick_episode_count
 from player import mpv_play, kill_process, delayed_tracker
 from local_lib import m_local_library
-from i18n import t  # <--- NASZ NOWY SYSTEM TŁUMACZEŃ
+from i18n import t
+
+LAST_CHECK_TIME = 0
+
+def get_notifications():
+    tracked_mal_ids = set()
+    
+    for item in ds.mylist:
+        if item.get('mal_id'): tracked_mal_ids.add(int(item['mal_id']))
+        
+    seen_slugs = set()
+    for item in ds.history:
+        if isinstance(item, dict) and item.get('source', '').startswith('Doccli - Online'):
+            slug = item.get('slug')
+            if slug and slug not in seen_slugs:
+                ep_str = str(item.get('episode', '1'))
+                if ep_str not in ["Ukończono", "Completed", t("al_completed")]:
+                    seen_slugs.add(slug)
+    
+    if seen_slugs:
+        for s in get_cached_series_list():
+            if s.get('slug') in seen_slugs and s.get('mal_id'):
+                tracked_mal_ids.add(int(s['mal_id']))
+                
+    if not tracked_mal_ids:
+        return
+        
+    from anilist_connector import check_new_episodes
+    current_eps = {}
+    mal_list = list(tracked_mal_ids)
+    for i in range(0, len(mal_list), 50):
+        current_eps.update(check_new_episodes(mal_list[i:i+50]))
+    
+    known_eps = ds.settings.get("known_eps", {})
+    unread = ds.settings.get("unread_notifications", [])
+    history = ds.settings.get("notification_history", [])
+    
+    all_s_dict = {str(s.get('mal_id')): s for s in get_cached_series_list()}
+    
+    for mal_id_str, ep_count in current_eps.items():
+        known = known_eps.get(mal_id_str, 0)
+        if known > 0 and ep_count > known:
+            s = all_s_dict.get(mal_id_str)
+            if s:
+                title = s.get('title_en') if ds.settings.get('language') == 'en' and s.get('title_en') else s.get('title', 'Anime')
+                msg = t("notif_new_ep").format(title, ep_count)
+                if msg not in unread and msg not in history:
+                    unread.append(msg)
+                    history.insert(0, msg)
+        known_eps[mal_id_str] = ep_count
+        
+    ds.settings["known_eps"] = known_eps
+    ds.settings["unread_notifications"] = unread
+    ds.settings["notification_history"] = history[:50]
+    ds.save()
+
+def m_notifications():
+    clear()
+    ds.settings["unread_notifications"] = []
+    ds.save()
+    
+    history = ds.settings.get("notification_history", [])
+    
+    if not history:
+        print(colored(t("notif_empty"), "yellow"))
+        print('')
+        input(colored(t("lib_enter_to_return"), "yellow"))
+        m_welcome()
+        return
+        
+    choices = [t("notif_clear")] + history + [t("back")]
+    
+    ans = open_menu(choices=choices, prompt=t("hist_prompt"), message=t("notif_title"), height=10)
+    
+    if ans == t("back") or ans == choices[-1]:
+        m_welcome()
+    elif ans == t("notif_clear"):
+        ds.settings["notification_history"] = []
+        ds.save()
+        m_notifications()
+    else:
+        m_notifications()
 
 def m_welcome():
+    global LAST_CHECK_TIME
+    
     preload_series_cache()
     update_rpc(t("menu_main"), t("rpc_searching"))
+
+    if time.time() - LAST_CHECK_TIME > 600:
+        get_notifications()
+        LAST_CHECK_TIME = time.time()
+
+    unread_count = len(ds.settings.get("unread_notifications", []))
+    notif_label = t("menu_notifications").format(unread_count)
 
     choices = [
         t("menu_search"),
         t("menu_resume"),
+        notif_label,
+        t("menu_mylist"),
         t("menu_trending"),
         t("menu_calendar"),
-        t("menu_mylist"),
         t("menu_library"),
         t("menu_history"),
         t("menu_stats"),
-        t("menu_discord"),
         t("menu_settings"),
+        t("menu_discord"),
         t("menu_exit")
     ]
 
     prompt_txt = t("welcome_prompt")
 
     has_token = ds.settings.get("anilist_token", "") != ""
-    
     if has_token:
         status_txt = t("status_connected")
     else:
         status_txt = t("status_disconnected")
 
     dynamic_menu_art = MAIN_MENU + "\n" + status_txt + "\n"
+    
+    unread = ds.settings.get("unread_notifications", [])
+    if unread:
+        dynamic_menu_art += "\n" + colored(unread[-1], "green") + "\n"
 
     ans = open_menu(choices=choices, prompt=prompt_txt, height=12, message=dynamic_menu_art)
 
-    if ans == choices[0]: m_find()
-    elif ans == choices[1]: m_resume()
-    elif ans == choices[2]: m_trending()
-    elif ans == choices[3]: m_calendar()
-    elif ans == choices[4]: m_mylist()
-    elif ans == choices[5]: m_local_library()
-    elif ans == choices[6]: m_history()
-    elif ans == choices[7]: m_stats(); m_welcome()
-    elif ans == choices[8]: m_discord()
-    elif ans == choices[9]: m_settings()
-    elif ans == choices[10]: set_running(False); sys.exit()
+    if ans == choices[0]: m_find()                          # 0: Search
+    elif ans == choices[1]: m_resume()                      # 1: Continue watching
+    elif ans == choices[2]: m_notifications()               # 2: Notifications (X)
+    elif ans == choices[3]: m_mylist()                      # 3: My List
+    elif ans == choices[4]: m_trending()                    # 4: Trending Anime
+    elif ans == choices[5]: m_calendar()                    # 5: Release Calendar
+    elif ans == choices[6]: m_local_library()               # 6: My Library (Offline)
+    elif ans == choices[7]: m_history()                     # 7: Watch History
+    elif ans == choices[8]: m_stats(); m_welcome()          # 8: Doccli Statistics
+    elif ans == choices[9]: m_settings()                    # 9: Settings
+    elif ans == choices[10]: m_discord()                    # 10: Join our Discord
+    elif ans == choices[11]: set_running(False); sys.exit() # 11: Exit
 
 
 def m_settings():
@@ -231,20 +326,32 @@ def m_mylist():
             ds.save()
 
     choices = [t("back")]
+    display_map = {}
+    
+    if ds.mylist:
+        choices.append(t("mylist_random"))
     
     display_list = list(reversed(ds.mylist))
     
     for element in display_list:
-        choices.append(f"{element['title']} | {element['title_en']}")
+        display_text = f"{element['title']} | {element['title_en']}"
+        choices.append(display_text)
+        display_map[display_text] = element
 
     prompt_txt = t("mylist_prompt")
     ans = open_menu(choices=choices, prompt=prompt_txt, message=MOJA_LISTA)
     
-    if ans == choices[0]:
+    if ans == t("back"):
         m_welcome()
+        
+    elif ans == t("mylist_random"):
+        import random
+        random_anime = random.choice(ds.mylist)
+        m_details(random_anime)
+        
     else:
-        index = choices.index(ans)
-        m_details(display_list[index - 1])
+        selected_anime = display_map[ans]
+        m_details(selected_anime)
 
 
 def m_history():
@@ -450,20 +557,23 @@ def m_details(details):
                 
     next_ep = last_watched_ep + 1 if last_watched_ep > 0 else 1
 
-    choices = [
-        f"{t('det_cont')} {next_ep}" if last_watched_ep > 0 else t("det_first"),
-        t("det_list"),
-        t("det_dl_season"),
-        t("det_dl_eps")
-    ]
+    score_bar, description, episode_count, trailer_url = get_details_from_anilist(str(details["mal_id"]))
+
+    watch_opt = f"{t('det_cont')} {next_ep}" if last_watched_ep > 0 else t("det_first")
+    
+    choices = [watch_opt, t("det_list")]
+    
+    if trailer_url:
+        choices.append(t("det_trailer"))
+
+    choices.extend([t("det_dl_season"), t("det_dl_eps")])
 
     if details in ds.mylist:
         choices.append(t("det_rm_list"))
     else:
         choices.append(t("det_add_list"))
 
-    choices.append(t("det_search"))
-    choices.append(t("menu_main"))
+    choices.extend([t("det_search"), t("menu_main")])
 
     prompt_txt = t("det_prompt")
 
@@ -472,8 +582,6 @@ def m_details(details):
         genres += genre + ","
     genres += " ]"
 
-    score_bar, description, episode_count = get_details_from_anilist(str(details["mal_id"]))
-
     max_ep = episode_count if isinstance(episode_count, int) else 9999
 
     ans = open_menu(
@@ -481,26 +589,36 @@ def m_details(details):
         prompt=prompt_txt,
         qmark=f'{details["title"]} / {details["title_en"]} \n [{t("det_ep_count")}: {episode_count}] [{t("det_score")}: {score_bar}]',
         message=genres,
-        height=7,
+        height=8,
         image=details['cover'],
         description=description 
     )
 
-    if ans == choices[0]:
+    if ans == watch_opt:
         ds.continue_data[0] = details
         ds.continue_data[1] = next_ep
         ds.save()
         w_players(details['slug'], next_ep)
         
-    elif ans == choices[1]:
+    elif ans == t("det_list"):
         ds.continue_data[0] = details
         w_list(details['slug'])
         
-    elif ans == choices[2]: 
+    elif ans == t("det_trailer"):
+        clear()
+        print(colored(t("trailer_loading"), "cyan"))
+        mpv_cmd = "mpv.exe" if os.name == "nt" else "mpv"
+        try:
+            subprocess.run([mpv_cmd, trailer_url], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception:
+            pass
+        m_details(details)
+        
+    elif ans == t("det_dl_season"): 
         w_download_season(details, base_download_dir=ds.settings["download_path"])
         m_details(details)
         
-    elif ans == choices[3]: 
+    elif ans == t("det_dl_eps"): 
         questions = [{
             "type": "input", 
             "message": t("det_dl_input").format(episode_count), 
@@ -510,60 +628,47 @@ def m_details(details):
         
         if res['episodes_input']:
             episodes_to_download = set()
-            
             for part in res['episodes_input'].split(','):
                 part = part.strip()
-                if not part: 
-                    continue
-                    
+                if not part: continue
                 if '-' in part:
                     try:
                         start, end = map(int, part.split('-'))
                         start, end = min(start, end), max(start, end)
-                        start_safe = max(1, start)
-                        end_safe = min(max_ep, end)
-                        episodes_to_download.update(range(start_safe, end_safe + 1))
-                    except ValueError: 
-                        pass 
+                        episodes_to_download.update(range(max(1, start), min(max_ep, end) + 1))
+                    except ValueError: pass 
                 else:
                     try:
                         ep = int(part)
-                        if 1 <= ep <= max_ep:
-                            episodes_to_download.add(ep)
-                    except ValueError: 
-                        pass 
+                        if 1 <= ep <= max_ep: episodes_to_download.add(ep)
+                    except ValueError: pass 
 
             ep_list = sorted(list(episodes_to_download))
-            
             if not ep_list:
                 print(colored(t("det_dl_err"), "red"))
                 time.sleep(2)
             else:
                 w_download_season(details, ep_list, base_download_dir=ds.settings["download_path"])
-
         m_details(details)
         
-    elif ans == choices[4]:
+    elif ans in [t("det_rm_list"), t("det_add_list")]:
         has_token = ds.settings.get("anilist_token") != ""
         token = ds.settings["anilist_token"] if has_token else ""
         
         if details in ds.mylist:
             ds.mylist.remove(details)
-            ds.save()
-            if has_token:
-                threading.Thread(target=sync_anilist_list_status, args=(details['mal_id'], token, False), daemon=True).start()
-            m_details(details)
+            if has_token: threading.Thread(target=sync_anilist_list_status, args=(details['mal_id'], token, False), daemon=True).start()
         else:
             ds.mylist.append(details)
-            ds.save()
-            if has_token:
-                threading.Thread(target=sync_anilist_list_status, args=(details['mal_id'], token, True), daemon=True).start()
-            m_details(details)
+            if has_token: threading.Thread(target=sync_anilist_list_status, args=(details['mal_id'], token, True), daemon=True).start()
             
-    elif ans == choices[5]:
+        ds.save()
+        m_details(details)
+            
+    elif ans == t("det_search"):
         m_find()
         
-    elif ans == choices[6]:
+    elif ans == t("menu_main"):
         m_welcome()
 
 

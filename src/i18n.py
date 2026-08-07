@@ -65,6 +65,7 @@ TEXTS = {
         # m_mylist
         "mylist_sync": "[INFO] Trwa automatyczna synchronizacja z AniList...",
         "mylist_prompt": "Wybierz anime: ",
+        "mylist_random": "🎲 Wylosuj anime z listy",
         
         # m_history
         "hist_prompt": "Wybierz wpis aby przejść do szczegółów: ",
@@ -347,6 +348,15 @@ TEXTS = {
         "rank_deity": "Bóstwo",
         "rank_titan": "Tytan",
         "rank_hikikomori": "Hikikomori",
+
+        "det_trailer": "Obejrzyj zwiastun",
+        "trailer_loading": "[INFO] Ładowanie zwiastuna w odtwarzaczu MPV...",
+
+        "menu_notifications": "Powiadomienia ({})",
+        "notif_title": "Powiadomienia",
+        "notif_empty": "Brak historii powiadomień.",
+        "notif_clear": "🗑️ Wyczyść historię powiadomień",
+        "notif_new_ep": "🔔 Nowy odcinek: {} (Odc. {}) jest już dostępny!",
     },
     "en": {
         "yes": "Yes",
@@ -412,6 +422,7 @@ TEXTS = {
         # m_mylist
         "mylist_sync": "[INFO] Auto-syncing with AniList...",
         "mylist_prompt": "Choose anime: ",
+        "mylist_random": "🎲 Random anime from my list",
         
         # m_history
         "hist_prompt": "Select an entry to view details: ",
@@ -694,6 +705,15 @@ TEXTS = {
         "rank_deity": "Deity",
         "rank_titan": "Titan",
         "rank_hikikomori": "Hikikomori",
+
+        "det_trailer": "Watch trailer",
+        "trailer_loading": "[INFO] Loading trailer in MPV player...",
+
+        "menu_notifications": "Notifications ({})",
+        "notif_title": "Notifications",
+        "notif_empty": "No notification history.",
+        "notif_clear": "🗑️ Clear notification history",
+        "notif_new_ep": "🔔 New episode: {} (Ep. {}) is now available!",
     }
 }
 
