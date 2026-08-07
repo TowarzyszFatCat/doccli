@@ -61,7 +61,6 @@ def get_notifications():
         current_eps.update(check_new_episodes(mal_list[i:i+50]))
     
     known_eps = ds.settings.get("known_eps", {})
-    unread = ds.settings.get("unread_notifications", [])
     history = ds.settings.get("notification_history", [])
     
     all_s_dict = {str(s.get('mal_id')): s for s in get_cached_series_list()}
@@ -73,21 +72,23 @@ def get_notifications():
             if s:
                 title = s.get('title_en') if ds.settings.get('language') == 'en' and s.get('title_en') else s.get('title', 'Anime')
                 msg = t("notif_new_ep").format(title, ep_count)
-                if msg not in unread and msg not in history:
-                    unread.append(msg)
-                    history.insert(0, msg)
+                
+                already_exists = any(h.get('slug') == s.get('slug') and h.get('episode') == ep_count for h in history)
+                if not already_exists:
+                    history.insert(0, {
+                        "message": msg,
+                        "slug": s.get('slug'),
+                        "episode": ep_count,
+                        "unread": True
+                    })
         known_eps[mal_id_str] = ep_count
         
     ds.settings["known_eps"] = known_eps
-    ds.settings["unread_notifications"] = unread
     ds.settings["notification_history"] = history[:50]
     ds.save()
 
 def m_notifications():
     clear()
-    ds.settings["unread_notifications"] = []
-    ds.save()
-    
     history = ds.settings.get("notification_history", [])
     
     if not history:
@@ -97,9 +98,23 @@ def m_notifications():
         m_welcome()
         return
         
-    choices = [t("notif_clear")] + history + [t("back")]
+    choices = [t("notif_clear")]
+    display_map = {}
+    
+    for item in history:
+        bell = "🔔 " if item.get("unread", False) else ""
+        display_text = f"{bell}{item.get('message')}"
+        choices.append(display_text)
+        display_map[display_text] = item
+        
+    choices.append(t("back"))
     
     ans = open_menu(choices=choices, prompt=t("hist_prompt"), message=t("notif_title"), height=10)
+    
+    for item in history:
+        item["unread"] = False
+    ds.settings["notification_history"] = history
+    ds.save()
     
     if ans == t("back") or ans == choices[-1]:
         m_welcome()
@@ -108,7 +123,17 @@ def m_notifications():
         ds.save()
         m_notifications()
     else:
-        m_notifications()
+        selected_item = display_map.get(ans)
+        if selected_item and selected_item.get("slug"):
+            clear()
+            print(colored(t("res_load"), "cyan"))
+            details = get_details_for_serie(selected_item["slug"])
+            if details and details != 404:
+                m_details(details)
+            else:
+                m_notifications()
+        else:
+            m_notifications()
 
 def m_welcome():
     global LAST_CHECK_TIME
@@ -120,7 +145,8 @@ def m_welcome():
         get_notifications()
         LAST_CHECK_TIME = time.time()
 
-    unread_count = len(ds.settings.get("unread_notifications", []))
+    unread_items = [h for h in ds.settings.get("notification_history", []) if h.get("unread")]
+    unread_count = len(unread_items)
     notif_label = t("menu_notifications").format(unread_count)
 
     choices = [
@@ -148,24 +174,24 @@ def m_welcome():
 
     dynamic_menu_art = MAIN_MENU + "\n" + status_txt + "\n"
     
-    unread = ds.settings.get("unread_notifications", [])
-    if unread:
-        dynamic_menu_art += "\n" + colored(unread[-1], "green") + "\n"
+    all_history = ds.settings.get("notification_history", [])
+    if all_history:
+        dynamic_menu_art += "\n" + colored(all_history[0].get("message"), "green") + "\n"
 
     ans = open_menu(choices=choices, prompt=prompt_txt, height=12, message=dynamic_menu_art)
 
-    if ans == choices[0]: m_find()                          # 0: Search
-    elif ans == choices[1]: m_resume()                      # 1: Continue watching
-    elif ans == choices[2]: m_notifications()               # 2: Notifications (X)
-    elif ans == choices[3]: m_mylist()                      # 3: My List
-    elif ans == choices[4]: m_trending()                    # 4: Trending Anime
-    elif ans == choices[5]: m_calendar()                    # 5: Release Calendar
-    elif ans == choices[6]: m_local_library()               # 6: My Library (Offline)
-    elif ans == choices[7]: m_history()                     # 7: Watch History
-    elif ans == choices[8]: m_stats(); m_welcome()          # 8: Doccli Statistics
-    elif ans == choices[9]: m_settings()                    # 9: Settings
-    elif ans == choices[10]: m_discord()                    # 10: Join our Discord
-    elif ans == choices[11]: set_running(False); sys.exit() # 11: Exit
+    if ans == choices[0]: m_find()
+    elif ans == choices[1]: m_resume()
+    elif ans == choices[2]: m_notifications()
+    elif ans == choices[3]: m_mylist()
+    elif ans == choices[4]: m_trending()
+    elif ans == choices[5]: m_calendar()
+    elif ans == choices[6]: m_local_library()
+    elif ans == choices[7]: m_history()
+    elif ans == choices[8]: m_stats(); m_welcome()
+    elif ans == choices[9]: m_settings()
+    elif ans == choices[10]: m_discord()
+    elif ans == choices[11]: set_running(False); sys.exit()
 
 
 def m_settings():
