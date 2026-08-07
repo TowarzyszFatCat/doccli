@@ -384,7 +384,7 @@ def perform_genre_search():
     choices_titles = []
     for serie in filtered_series:
         prefix = "⭐ " if ans_sort == t("sort_trending") and serie.get('mal_id') in trending_list else ""
-        choices_titles.append(f"{prefix}{serie.get('title', 'Brak')} / {serie.get('title_en', 'Brak')}")
+        choices_titles.append(f"{prefix}{serie.get('title', t('al_none'))} / {serie.get('title_en', t('al_none'))}")
         
     choices_titles.append(t("back"))
 
@@ -891,18 +891,27 @@ def m_resume():
         if isinstance(item, dict) and item.get('source', '').startswith('Doccli - Online'):
             slug = item.get('slug')
             if slug and slug not in seen_slugs:
-                seen_slugs.add(slug)
-                
                 ep_str = str(item.get('episode', '1'))
+                
+                if ep_str in ["Ukończono", "Completed", t("al_completed")]:
+                    seen_slugs.add(slug)
+                    continue
+                    
                 try:
-                    next_ep = int(ep_str) + 1
+                    last_ep = int(ep_str)
+                    next_ep = last_ep + 1
                 except ValueError:
+                    last_ep = 0
                     next_ep = 1
 
+                seen_slugs.add(slug)
+                
                 resume_list.append({
                     'slug': slug,
                     'title': item.get('title'),
-                    'next_ep': next_ep
+                    'last_ep': last_ep,
+                    'next_ep': next_ep,
+                    'mal_id': None
                 })
 
     if not resume_list:
@@ -911,11 +920,44 @@ def m_resume():
         m_welcome()
         return
 
+    resume_list = resume_list[:15]
+    all_series = get_cached_series_list()
+    
+    for res_item in resume_list:
+        for s in all_series:
+            if s.get('slug') == res_item['slug']:
+                res_item['mal_id'] = s.get('mal_id')
+                break
+
+    clear()
+    print(colored(t("res_load"), "cyan"))
+    
+    def fetch_total(item):
+        total = get_quick_episode_count(item['mal_id']) if item['mal_id'] else 0
+        return item, total
+
+    with ThreadPoolExecutor(max_workers=15) as executor:
+        results = list(executor.map(fetch_total, resume_list))
+
     choices = [t("back")]
     display_map = {}
     
-    for item in resume_list[:15]:  
-        display_text = t("res_resume").format(item['title'], item['next_ep'])
+    for item, total_eps in results:
+        bar_len = 10
+        if total_eps > 0:
+            ratio = min(1.0, item['last_ep'] / total_eps)
+            filled = int(bar_len * ratio)
+            bar = "█" * filled + "░" * (bar_len - filled)
+            ep_info = f"[{item['last_ep']}/{total_eps}]"
+        else:
+            bar = "░" * bar_len
+            ep_info = f"[{item['last_ep']}/?]"
+            
+        short_title = item['title'][:25] + "..." if len(item['title']) > 25 else item['title']
+        base_text = t("res_resume").format(short_title, item['next_ep'])
+        
+        display_text = f"{base_text.ljust(45)} {ep_info.rjust(8)} {bar}"
+        
         choices.append(display_text)
         display_map[display_text] = item
 

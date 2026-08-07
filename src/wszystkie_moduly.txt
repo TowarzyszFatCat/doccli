@@ -601,8 +601,8 @@ def sync_history_with_anilist():
         al_history = get_anilist_history(token)
         for al_item in al_history:
             is_duplicate = False
-            al_progress = str(al_item['progress']) if al_item['progress'] else ("Ukończono" if al_item['status'] == 'completed' else "?")
-            
+            al_progress = str(al_item['progress']) if al_item['progress'] else (t("al_completed") if al_item['status'] == 'completed' else "?")
+
             for local_item in ds.history:
                 if local_item.get('episode') == al_progress:
                     lt_lower = local_item.get('title', '').lower()
@@ -1451,6 +1451,7 @@ TEXTS = {
         "al_err": "Nie udało się otworzyć przeglądarki! Wejdź ręcznie w ten link:\n{}\n",
         "al_input": "Wklej swój AniList Access Token (lub zostaw puste by anulować):",
         "al_success": "\n[+] Pomyślnie zapisano token! Od teraz doccli będzie automatycznie zapisywać postęp.",
+        "al_completed": "Ukończono",
         
         "dl_info": "[INFO] Obecny folder pobierania: {}",
         "dl_help1": "Wpisz pełną ścieżkę do nowego folderu (np. D:\\Anime lub /home/user/Wideo).",
@@ -1797,6 +1798,7 @@ TEXTS = {
         "al_err": "Could not open the browser! Please visit this link manually:\n{}\n",
         "al_input": "Paste your AniList Access Token (or leave empty to cancel):",
         "al_success": "\n[+] Token saved successfully! Doccli will now automatically sync your progress.",
+        "al_completed": "Completed",
         
         "dl_info": "[INFO] Current download folder: {}",
         "dl_help1": "Enter the full path to the new folder (e.g. D:\\Anime or /home/user/Videos).",
@@ -3139,7 +3141,7 @@ def w_default(SLUG, NUMBER, process):
     elif ans == t("def_finish"):
         kill_process(process)
         clear()
-        print(colored(t("finish_msg").format(details.get('title', 'Brak tytułu')), "green"))
+        print(colored(t("finish_msg").format(details.get('title', t("player_unknown_anime"))), "green"))
         time.sleep(2)
         update_rpc(t("menu_main"), t("rpc_searching"))
         m_welcome()

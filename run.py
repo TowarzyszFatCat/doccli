@@ -15,6 +15,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "src
 from discord_integration import set_running, start_rpc
 from main_module import m_welcome
 from i18n import t
+from storage import ds
 
 VERSION = "v2.40.0"
 
@@ -166,8 +167,10 @@ def perform_update_windows(download_url):
                 f.write(chunk)
                 
         print(colored(t("run_upd_dl_ok"), "green"))
-        
-        subprocess.Popen([exe_path, "/SILENT", "/SUPPRESSMSGBOXES", "/FORCECLOSEAPPLICATIONS"])
+
+
+        lang_flag = "/LANG=english" if ds.settings.get("language") == "en" else "/LANG=polish"
+        subprocess.Popen([exe_path, "/SILENT", "/SUPPRESSMSGBOXES", "/FORCECLOSEAPPLICATIONS", lang_flag])
         sys.exit()
         
     except Exception as e:
