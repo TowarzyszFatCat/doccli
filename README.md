@@ -35,8 +35,9 @@ CLI for watching anime!<br>
 - AniList ratings display,
 - Full AniList account integration (auto-save progress and status),
 - Two-way synchronization of "My List" with AniList's "Plan to Watch" tab,
-- Live source availability checking.
-- Windows autoupdater and simple installer
+- Live source availability checking,
+- Windows autoupdater and simple installer,
+- Notifications about new releases.
 
 </td>
 <td>
@@ -112,7 +113,7 @@ sudo apt install mpv yt-dlp python3-pip python3-venv chafa
 ```
 
 ### Optional Packages:
-- For mega.nz source support: `megatools`  [ <a href="[https://megatools.megous.com/](https://megatools.megous.com/)">megatools link</a> ]
+- For mega.nz source support: `megatools`
 
 ### Installation in a Single Command:
 ```bash

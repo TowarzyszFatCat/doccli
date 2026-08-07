@@ -9,7 +9,7 @@ CLI do oglądania anime!<br>
 </h2>
 
 <p align="center">
-  <img src="https://i.imgur.com/JNe5hNG.gif" alt="doccli_gif">
+  <img src="https://i.imgur.com/rHaT3dd.gif" alt="doccli_gif">
 </p>
 
 ---
@@ -35,8 +35,9 @@ CLI do oglądania anime!<br>
 - Wyświetlanie ocen z AniList,
 - Pełna integracja z kontem AniList (auto-zapis postępu i statusu),
 - Dwustronna synchronizacja "Mojej listy" z zakładką "Plan to Watch" AniList,
-- Sprawdzanie dostępności źródeł na żywo.
-- Autoupdater windows oraz prosty instalator
+- Sprawdzanie dostępności źródeł na żywo,
+- Autoupdater windows oraz prosty instalator,
+- Powiadomienia o nowych odcinkach.
 
 </td>
 <td>
@@ -112,7 +113,7 @@ sudo apt install mpv yt-dlp python3-pip python3-venv chafa
 ```
 
 ### Opcjonalne paczki:
-- Dla wsparcia źródeł z mega.nz: `megatools`  [ <a href="https://megatools.megous.com/">link do megatools</a> ]
+- Dla wsparcia źródeł z mega.nz: `megatools`
 
 ### Instalacja w jednej komendzie:
 ```bash
