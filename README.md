@@ -172,9 +172,5 @@ Found a bug while watching? Or maybe you have an idea for a cool new feature? Le
 
 </div>
 
----
-
-### Using: <a href="[https://github.com/mpv-player/mpv](https://github.com/mpv-player/mpv)">mpv</a>, <a href="[https://api.aniskip.com/api-docs](https://api.aniskip.com/api-docs)">aniskip-api</a>
-### Inspired by: <a href="[https://github.com/pystardust/ani-cli](https://github.com/pystardust/ani-cli)">ani-cli</a>
-
-```
+### Using: <a href="https://github.com/mpv-player/mpv">mpv</a>, <a href="https://api.aniskip.com/api-docs">aniskip-api</a>
+### Inspired by: <a href="https://github.com/pystardust/ani-cli">ani-cli</a>
