@@ -15,6 +15,40 @@ from i18n import t
 SYNC_DONE = False
 url = "https://graphql.anilist.co"
 
+# Ostatni wynik rozmowy z AniList. Pozwala menu odróżnić "brak danych"
+# od "AniList nie odpowiada" (np. globalne 403 albo limit 429).
+ANILIST_STATUS = {"ok": True, "code": None}
+
+
+def _note_anilist_status(code):
+    ANILIST_STATUS["ok"] = (code == 200)
+    ANILIST_STATUS["code"] = code
+
+
+def anilist_is_degraded():
+    return not ANILIST_STATUS["ok"]
+
+
+def released_episode_count(media):
+    """
+    Liczba faktycznie wydanych odcinków.
+    AniList podaje 'episodes' (plan sezonu) razem z 'nextAiringEpisode' dla trwających
+    serii, więc nextAiringEpisode musi mieć pierwszeństwo - inaczej menu oferuje
+    odcinki, których jeszcze nie ma.
+    """
+    if not media:
+        return 0
+
+    next_ep = (media.get('nextAiringEpisode') or {}).get('episode')
+
+    try:
+        if next_ep:
+            return max(0, int(next_ep) - 1)
+        return int(media.get('episodes') or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
 def get_trending_anime_malids():
     query = '''
     query {
@@ -26,18 +60,36 @@ def get_trending_anime_malids():
     }
     '''
 
-    request = post(url, json={'query': query})
+    # Zawsze lista - wcześniej przy błędzie wracał status_code, który trafiał
+    # do cache i wysypywał testy "mal_id in trending" z TypeError.
+    for attempt in range(2):
+        try:
+            request = post(url, json={'query': query}, timeout=5)
+        except Exception:
+            _note_anilist_status(None)
+            return []
 
-    if request.status_code == 200:
-        ans = request.json()
-        ids = []
+        _note_anilist_status(request.status_code)
 
-        for elm in ans['data']['Page']['media']:
-            ids.append(elm['idMal'])
+        if request.status_code == 200:
+            try:
+                media = request.json()['data']['Page']['media']
+            except (ValueError, KeyError, TypeError):
+                return []
 
-        return ids
-    else:
-        return request.status_code
+            return [elm['idMal'] for elm in media if elm.get('idMal')]
+
+        if request.status_code == 429 and attempt == 0:
+            try:
+                delay = float(request.headers.get('Retry-After') or 2)
+            except ValueError:
+                delay = 2.0
+            time.sleep(min(delay, 5.0))
+            continue
+
+        break
+
+    return []
 
 
 def get_details_from_anilist(mal_id):
@@ -111,16 +163,12 @@ def get_details_from_anilist(mal_id):
                     except Exception:
                         description = clean_desc
 
-                episodes_total = media.get('episodes')
-                if not episodes_total:
-                    next_airing = media.get('nextAiringEpisode')
-                    if next_airing and next_airing.get('episode'):
-                        aired = next_airing['episode'] - 1
-                        episode_count = t("al_airing_rel").format(aired)
-                    else:
-                        episode_count = t("al_airing")
+                if (media.get('nextAiringEpisode') or {}).get('episode'):
+                    episode_count = t("al_airing_rel").format(released_episode_count(media))
+                elif media.get('episodes'):
+                    episode_count = media['episodes']
                 else:
-                    episode_count = episodes_total
+                    episode_count = t("al_airing")
 
     except Exception:
         pass
@@ -788,10 +836,11 @@ def get_anilist_schedule(days=3):
     '''
     try:
         req = post("https://graphql.anilist.co", json={'query': query, 'variables': {'start': now, 'end': end_time}}, timeout=5)
+        _note_anilist_status(req.status_code)
         if req.status_code == 200:
             return req.json()['data']['Page']['airingSchedules']
     except Exception:
-        pass
+        _note_anilist_status(None)
     return []
     
     
@@ -810,21 +859,34 @@ def get_quick_episode_count(mal_id):
     try:
         from requests import post
         req = post("https://graphql.anilist.co", json={'query': query, 'variables': {'malId': int(mal_id)}}, timeout=3)
+        _note_anilist_status(req.status_code)
         if req.status_code == 200:
             media = req.json().get('data', {}).get('Media')
             if not media: return 0
-            
-            # Jeśli anime jest w pełni wyemitowane (zakończone)
-            if media.get('episodes'): 
-                return media['episodes']
-                
-            # Jeśli anime wciąż wychodzi, pobieramy odcinek - 1 (czyli ostatni wydany)
-            if media.get('nextAiringEpisode') and media.get('nextAiringEpisode').get('episode'):
-                return media['nextAiringEpisode']['episode'] - 1
+
+            return released_episode_count(media)
     except Exception:
-        pass
+        _note_anilist_status(None)
         
     return 0
+
+def resolve_episode_count(mal_id, slug=None):
+    """
+    Liczba odcinków do pokazania w menu. AniList jest źródłem pierwszego wyboru
+    (zna faktycznie wydane odcinki), a gdy nie odpowiada, spadamy na docchi.
+    Licznik z docchi to liczba odcinków dostępnych w docchi, więc może być
+    mniejszy niż liczba wyemitowanych - traktujemy go jako minimum awaryjne.
+    """
+    count = get_quick_episode_count(mal_id)
+    if count > 0:
+        return count
+
+    if slug:
+        from docchi_api_connector import get_episodes_count_or_zero
+        return get_episodes_count_or_zero(slug)
+
+    return 0
+
 
 def check_new_episodes(mal_ids):
     if not mal_ids: return {}
@@ -846,12 +908,7 @@ def check_new_episodes(mal_ids):
             ans = {}
             for m in req.json()['data']['Page']['media']:
                 mal_id = str(m['idMal'])
-                ep = m.get('episodes')
-                if not ep:
-                    ne = m.get('nextAiringEpisode')
-                    if ne and ne.get('episode'):
-                        ep = ne['episode'] - 1
-                ans[mal_id] = ep or 0
+                ans[mal_id] = released_episode_count(m)
             return ans
     except:
         pass

@@ -30,6 +30,23 @@ def get_episodes_count_for_serie(SLUG):
         return request.status_code
 
 
+# To samo, ale bez mieszania kodu HTTP z wynikiem - kody typu 404 albo 500
+# mieszczą się w prawdopodobnym zakresie liczby odcinków i były brane za wynik.
+def get_episodes_count_or_zero(SLUG):
+    if not SLUG:
+        return 0
+
+    try:
+        request = get(f"https://api.docchi.pl/v1/episodes/count/{SLUG}", timeout=10)
+        if request.status_code != 200:
+            return 0
+
+        data = request.json()
+        return len(data) if isinstance(data, list) else 0
+    except Exception:
+        return 0
+
+
 # Get all hentais list
 def get_hentai_list():  # XD
     request = get(f"https://api.docchi.pl/v1/series/hentai")
@@ -87,10 +104,51 @@ def anidb_curl(url):
         pass
     return "", ""
 
+
+def _anidb_lang_fields(lang):
+    code = str(lang.get("code") or lang.get("language") or "").lower().strip()
+    name = str(lang.get("name") or lang.get("label") or lang.get("title") or "").strip()
+    return code, name
+
+
+def _anidb_lang_kind(lang):
+    """
+    Klasyfikuje język anidb.app po polach code/name, nie po całym JSON-ie.
+    English Subtitles nie może wpaść jako dub tylko dlatego, że zawiera 'eng'.
+    """
+    code, name = _anidb_lang_fields(lang)
+    name_l = name.lower()
+
+    if any(token in name_l for token in ("subtitle", "subtitles", "napisy")):
+        return "sub"
+    if code in ("jpn", "ja", "japanese") or any(
+        token in name_l for token in ("og soundtrack", "japanese", "original")
+    ):
+        return "sub"
+    if code in ("eng", "en", "english") or "dub" in name_l:
+        return "dub"
+    return "src"
+
+
+def _anidb_lang_label(lang, kind):
+    _, name = _anidb_lang_fields(lang)
+    if name:
+        return name
+
+    if kind == "dub":
+        return t("anidb_dub")
+    if kind == "src":
+        return t("anidb_src")
+
+    code, _ = _anidb_lang_fields(lang)
+    if code in ("jpn", "ja", "japanese"):
+        return t("anidb_og")
+    return t("anidb_en_subs")
+
 def get_english_players(details, ep_number):
     """
     Pobiera absolutnie wszystkie angielskie źródła z anidb.app omijając CF
-    i flagując SUB/DUB na podstawie zawartości JSON-a.
+    i flagując SUB/DUB po polach code/name (OG Soundtrack, English Subtitles, dub).
     Zawiera system punktacji sezonów oraz offset Absolute Numbering.
     """
     
@@ -204,14 +262,9 @@ def get_english_players(details, ep_number):
             continue
         
         embed_url = embed_url.replace('\\/', '/')
-        
-        lang_str = str(lang).lower()
-        if 'eng' in lang_str or 'dub' in lang_str:
-            label = t("anidb_dub")
-        elif 'jpn' in lang_str or 'sub' in lang_str or 'ja' in lang_str:
-            label = t("anidb_sub")
-        else:
-            label = t("anidb_src")
+
+        kind = _anidb_lang_kind(lang)
+        label = _anidb_lang_label(lang, kind)
             
         embed_page, _ = anidb_curl(embed_url)
         
@@ -224,7 +277,8 @@ def get_english_players(details, ep_number):
             hosting = f"anidb.app ({label} {source_counter})"
             players.append({
                 "player_hosting": hosting,
-                "player": master_url
+                "player": master_url,
+                "kind": kind,
             })
             source_counter += 1
             

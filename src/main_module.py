@@ -24,7 +24,7 @@ from stats import m_stats
 from menus_decor import MAIN_MENU, SZUKAJ, NA_CZASIE, MOJA_LISTA, HISTORIA, MOJA_BIBLIOTEKA, KALENDARZ, POWIADOMIENIA
 from discord_integration import update_rpc, set_running
 from docchi_api_connector import get_episodes_count_for_serie, get_players_list, get_details_for_serie, extract_lycoris_direct_link, get_english_players
-from anilist_connector import get_details_from_anilist, update_anilist_progress, get_anilist_plan_to_watch, sync_anilist_list_status, get_anilist_history, get_duration_by_malid, sync_history_with_anilist, get_quick_episode_count
+from anilist_connector import get_details_from_anilist, update_anilist_progress, get_anilist_plan_to_watch, sync_anilist_list_status, get_anilist_history, get_duration_by_malid, sync_history_with_anilist, resolve_episode_count, anilist_is_degraded
 from player import mpv_play, kill_process, delayed_tracker
 from local_lib import m_local_library
 from i18n import t
@@ -546,6 +546,13 @@ def m_trending():
     trending_anime_malids = get_cached_trending_list()
     all_anime_list = get_cached_series_list()
 
+    if not trending_anime_malids:
+        clear()
+        print(colored(t("anilist_down") if anilist_is_degraded() else t("trend_empty"), "yellow"))
+        time.sleep(3)
+        m_welcome()
+        return
+
     top_anime = []
 
     for anime in all_anime_list:
@@ -709,11 +716,11 @@ def w_list(SLUG):
         details = get_details_for_serie(SLUG)
         ds.continue_data[0] = details
         
-    last_episode = get_quick_episode_count(details.get('mal_id'))
+    last_episode = resolve_episode_count(details.get('mal_id'), SLUG)
 
     if last_episode <= 0:
         clear()
-        print(colored(t("list_err"), "red"))
+        print(colored(t("anilist_down") if anilist_is_degraded() else t("list_err"), "red"))
         time.sleep(3)
         m_details(details)
         return
@@ -750,14 +757,14 @@ def w_players(SLUG, NUMBER, err=''):
         pl_players_list = get_players_list(SLUG, NUMBER)
         if pl_players_list != 404 and isinstance(pl_players_list, list):
             for player in pl_players_list:
-                players.append(["[PL]", player['player_hosting'], player['player']])
+                players.append(["[PL]", player['player_hosting'], player['player'], None])
 
     print(colored(t("pl_en_src"), "yellow"))
     if details:
         en_players_list = get_english_players(details, NUMBER)
         if en_players_list:
             for player in en_players_list:
-                players.append(["[EN]", player['player_hosting'], player['player']])
+                players.append(["[EN]", player['player_hosting'], player['player'], player.get('kind')])
 
     if not players:
         clear()
@@ -867,7 +874,9 @@ def w_players(SLUG, NUMBER, err=''):
         return
 
     ans_index_in_choices = choices.index(ans)
-    selected_player_url = players[ans_index_in_choices][2]
+    selected_player = players[ans_index_in_choices]
+    selected_player_url = selected_player[2]
+    selected_kind = selected_player[3] if len(selected_player) > 3 else None
 
     mal_id = ds.continue_data[0].get('mal_id') if ds.continue_data[0] else None
 
@@ -875,7 +884,8 @@ def w_players(SLUG, NUMBER, err=''):
         URL=selected_player_url, 
         quality=ds.settings.get("player_quality", "best"),
         mal_id=mal_id,
-        ep_number=NUMBER
+        ep_number=NUMBER,
+        kind=selected_kind,
     )
 
     print(t("pl_start"))
@@ -891,7 +901,7 @@ def w_default(SLUG, NUMBER, process):
     if not details or details.get('slug') != SLUG:
         details = get_details_for_serie(SLUG)
         
-    how_many_episodes = get_quick_episode_count(details.get('mal_id'))
+    how_many_episodes = resolve_episode_count(details.get('mal_id'), SLUG)
 
     if how_many_episodes <= 0:
         how_many_episodes = NUMBER
@@ -1068,7 +1078,7 @@ def m_resume():
     print(colored(t("res_load"), "cyan"))
     
     def fetch_total(item):
-        total = get_quick_episode_count(item['mal_id']) if item['mal_id'] else 0
+        total = resolve_episode_count(item.get('mal_id'), item.get('slug'))
         return item, total
 
     with ThreadPoolExecutor(max_workers=15) as executor:
@@ -1125,8 +1135,8 @@ def m_calendar():
     schedule = get_anilist_schedule(days=7) 
     
     if not schedule:
-        print(colored(t("cal_err1"), "red"))
-        time.sleep(2)
+        print(colored(t("anilist_down") if anilist_is_degraded() else t("cal_err1"), "red"))
+        time.sleep(3)
         m_welcome()
         return
 

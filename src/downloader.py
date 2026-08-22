@@ -11,7 +11,7 @@ from termcolor import colored
 # Doccli modules
 from docchi_api_connector import extract_lycoris_direct_link, get_players_list, get_english_players
 from ui_utils import clear, open_menu
-from anilist_connector import get_quick_episode_count
+from anilist_connector import resolve_episode_count
 from i18n import t
 from storage import ds
 
@@ -20,7 +20,7 @@ def w_download_season(details, episodes_list=None, base_download_dir=""):
     TITLE = details.get('title_en') if ds.settings.get('language') == 'en' and details.get('title_en') else details['title']
     MAL_ID = details.get('mal_id')
     
-    how_many_episodes = get_quick_episode_count(MAL_ID)
+    how_many_episodes = resolve_episode_count(MAL_ID, SLUG)
 
     if how_many_episodes <= 0:
         clear()
@@ -108,11 +108,10 @@ def w_download_season(details, episodes_list=None, base_download_dir=""):
             en_sources = get_english_players(details, ep_number)
             if isinstance(en_sources, list):
                 for p in en_sources:
-                    hosting_label = p['player_hosting'].lower()
-                    # Sprawdzamy używając słów ze słownika (napisy/sub, dubbing/dub)
-                    if chosen_lang == t("dl_lang_en_sub") and t("anidb_sub").lower() in hosting_label:
+                    kind = p.get("kind")
+                    if chosen_lang == t("dl_lang_en_sub") and kind == "sub":
                         players.append(p)
-                    elif chosen_lang == t("dl_lang_en_dub") and t("anidb_dub").lower() in hosting_label:
+                    elif chosen_lang == t("dl_lang_en_dub") and kind == "dub":
                         players.append(p)
         
         if not players:

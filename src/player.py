@@ -29,7 +29,16 @@ def kill_process(process):
         process.terminate()
 
 
-def mpv_play(URL, quality="best", mal_id=None, ep_number=None):
+def _mpv_lang_args(kind):
+    """Wybór ścieżek audio/napisów: OG JP + EN subs albo EN dub."""
+    if kind == "sub":
+        return ["--alang=jpn,ja,japanese", "--slang=eng,en,english"]
+    if kind == "dub":
+        return ["--alang=eng,en,english"]
+    return []
+
+
+def mpv_play(URL, quality="best", mal_id=None, ep_number=None, kind=None):
     """Uruchamia odtwarzacz mpv z odpowiednimi parametrami."""
     mpv_exec = "mpv.exe" if os.name == "nt" else "mpv"
 
@@ -67,6 +76,7 @@ def mpv_play(URL, quality="best", mal_id=None, ep_number=None):
         anime_title = details.get('title', t("player_unknown_anime")) if details else t("player_unknown_anime")
         
     media_title = f"{anime_title} - {t('player_ep')} {ep_number}"
+    lang_args = _mpv_lang_args(kind)
 
     if "mega" in URL:
         if shutil.which('megatools') is None:
@@ -99,6 +109,7 @@ def mpv_play(URL, quality="best", mal_id=None, ep_number=None):
                                   "--input-terminal=no",
                                   f"--force-media-title={media_title}",
                                   f"--chapters-file={chapters_file}",
+                                  *lang_args,
                                   os.path.join(temp_dir, video_files[0])],
                             shell=False,
                             stdout=DEVNULL,
@@ -114,6 +125,7 @@ def mpv_play(URL, quality="best", mal_id=None, ep_number=None):
                               f"--force-media-title={media_title}",
                               f"--ytdl-format={ytdl_format_arg}",
                               f"--chapters-file={chapters_file}",
+                              *lang_args,
                               URL],
                         shell=False,
                         stdout=DEVNULL,
