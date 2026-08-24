@@ -5,7 +5,7 @@ CLI do oglądania anime!<br>
 </h1>
 
 <h2 align="center">
-<u><b>NAJNOWSZA WERSJA v2.40.0</b></u>
+<u><b>NAJNOWSZA WERSJA v2.40.1</b></u>
 </h2>
 
 <p align="center">
@@ -55,6 +55,12 @@ CLI do oglądania anime!<br>
 <h1 align="center">
     Historia aktualizacji v2.40.X:
 </h1>
+
+**v2.40.1 (*Wielkie podziękowania dla @KornelKnop za przygotowanie poniższych poprawek!*)**
+- Naprawiono wyłączanie się aplikacji (`TypeError`) przy awarii API AniList/Docchi oraz dodano walidację,
+- Poprawiono listę odcinków dla trwających serii – menu wyświetla teraz wyłącznie faktycznie wydane odcinki,
+- Poprawiono klasyfikację napisów i dubbingu dla źródeł anidb.app wraz z automatycznym wyborem ścieżek w mpv,
+- Dodano awaryjne pobieranie liczby odcinków z Docchi w przypadku problemów z AniList,
 
 **v2.40.0**
 - Dodano pełne wsparcie języka angielskiego wraz z angielskim instalatorem,

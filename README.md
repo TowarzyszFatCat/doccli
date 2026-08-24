@@ -5,7 +5,7 @@ CLI for watching anime!<br>
 </h1>
 
 <h2 align="center">
-<u><b>LATEST VERSION v2.40.0</b></u>
+<u><b>LATEST VERSION v2.40.1</b></u>
 </h2>
 
 <p align="center">
@@ -55,6 +55,12 @@ CLI for watching anime!<br>
 <h1 align="center">
     Update History v2.40.X:
 </h1>
+
+**v2.40.1 (*Special thanks to @KornelKnop for providing these fixes!*)**
+- Fixed application crash (`TypeError`) during AniList/Docchi API outages and added cache validation,
+- Fixed episode menu for ongoing series – now displays only currently released episodes,
+- Fixed subtitle and dubbing classification for anidb.app sources with automatic audio/sub track selection in mpv,
+- Added fallback episode count from Docchi when AniList is unavailable,
 
 **v2.40.0**
 - Added full English language support along with an English installer,

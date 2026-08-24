@@ -17,7 +17,7 @@ from main_module import m_welcome
 from i18n import t
 from storage import ds
 
-VERSION = "v2.40.0"
+VERSION = "v2.40.1"
 
 def get_cmd_version(cmd, args=["--version"]):
     try:
