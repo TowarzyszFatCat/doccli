@@ -91,6 +91,7 @@ TEXTS = {
         
         # trending
         "trend_prompt": "Wybierz: ",
+        "trend_empty": "[-] Brak danych o popularnych tytułach.",
         
         # m_details
         "det_cont": "Kontynuuj od odcinka",
@@ -110,6 +111,7 @@ TEXTS = {
         # w_list
         "list_err": "Nie znaleziono ilości odcinków [Błąd AniList lub brak MAL ID]",
         "list_prompt": "Wybierz odcinek: ",
+        "anilist_down": "AniList nie odpowiada - ta funkcja korzysta z jego danych.\nOdtwarzanie i pobieranie działają normalnie. Spróbuj ponownie później.",
         
         # w_players
         "pl_load": "[INFO] Odcinek {} - Ładowanie źródeł...",
@@ -188,6 +190,8 @@ TEXTS = {
         "anidb_dub": "dubbing",
         "anidb_sub": "napisy",
         "anidb_src": "źródło",
+        "anidb_og": "OG Soundtrack",
+        "anidb_en_subs": "English Subtitles",
 
         # downloader
         "dl_err_ep_count": "Nie udało się ustalić liczby odcinków z AniList",
@@ -448,6 +452,7 @@ TEXTS = {
         
         # trending
         "trend_prompt": "Choose: ",
+        "trend_empty": "[-] No trending data available.",
         
         # m_details
         "det_cont": "Continue from episode",
@@ -467,6 +472,7 @@ TEXTS = {
         # w_list
         "list_err": "Episodes count not found [AniList error or missing MAL ID]",
         "list_prompt": "Choose episode: ",
+        "anilist_down": "AniList is not responding - this feature relies on its data.\nPlayback and downloads still work. Please try again later.",
         
         # w_players
         "pl_load": "[INFO] Episode {} - Loading sources...",
@@ -545,6 +551,8 @@ TEXTS = {
         "anidb_dub": "dub",
         "anidb_sub": "sub",
         "anidb_src": "source",
+        "anidb_og": "OG Soundtrack",
+        "anidb_en_subs": "English Subtitles",
 
         # downloader
         "dl_err_ep_count": "Could not determine the number of episodes from AniList",
